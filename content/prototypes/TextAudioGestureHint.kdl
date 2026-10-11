@@ -1,4 +1,0 @@
-name "TextAudioGestureHint"
-components {
-    MeshAsset source="content/meshes/text/audio_gesture_hint.mesh"
-}

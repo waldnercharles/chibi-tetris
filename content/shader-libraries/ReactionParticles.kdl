@@ -1,8 +1,8 @@
 version 3
 name "ReactionParticles"
 domain "shader-library"
-id_counter 150000
-description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rotation crescents, drop corridors, landing halos, row releases, hold arcs or stationary collision brackets. Cubic release never changes logical piece placement."
+id_counter 180000
+description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rotation crescents, dense braided drop wakes, landing ripples, row releases, hold arcs or stationary collision brackets. Cubic release never changes logical piece placement."
 (array)graphs {
     - kind="event" name="Functions"
     - {
@@ -26,6 +26,7 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
                     - id=107 name="Life" type="float" kind="data" default=0.35
                     - id=108 name="Quiet" type="float" kind="data"
                     - id=109 name="Hue" type="float" kind="data"
+                    - id=96010 name="Width" type="float" kind="data"
                 }
             }
             - {
@@ -129,8 +130,11 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - {
                 id 1700
                 type "Behavior Expression"
-                reference_name "vec3((step(0.5, random.x) * 2 - 1) * (23 + random.z * 5), -fraction * travel * 24, (random.y - 0.5) * 9)"
+                reference_name "vec3(width * ((strand - 0.5) * 0.7 * cos(fraction * 9.4 - release * 3.2) + sin(fraction * 6.2831853 + release * 1.8) * 0.12) * (0.2 + 0.8 * (1 - fraction)), -(fraction + release * 0.16 * (1 - fraction)) * travel * 24, width * (strand - 0.5) * 0.7 * sin(fraction * 9.4 - release * 3.2) * (1 - fraction) + (random.y - 0.5) * 1.2)"
                 inputs {
+                    width id=96040 type="float"
+                    release id=96030 type="float"
+                    strand id=96020 type="float"
                     random id=1701 type="struct" type_name="ShaderVec3"
                     fraction id=1702 type="float"
                     travel id=1703 type="float"
@@ -142,8 +146,10 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - {
                 id 1800
                 type "Behavior Expression"
-                reference_name "vec3(cos(fraction * pi * 2), sin(fraction * pi * 2) * 0.42, sin(fraction * pi * 2) * 0.18) * (28 + release * 72)"
+                reference_name "vec3(cos(fraction * pi * 2), sin(fraction * pi * 2) * (0.18 + release * 0.14), sin(fraction * pi * 2) * 0.26) * (width * 0.38 + release * (40 + random.x * 36))"
                 inputs {
+                    random id=96090 type="struct" type_name="ShaderVec3"
+                    width id=96050 type="float"
                     fraction id=1801 type="float"
                     release id=1802 type="float"
                 }
@@ -210,8 +216,10 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - {
                 id 2300
                 type "Behavior Expression"
-                reference_name "(1.15 + random.z * 1.25) * (1 - phase * 0.65) * (1 + strength * 0.4)"
+                reference_name "mix((1.4 + random.z) * (1 - phase * 0.5) * (1 + strength * 0.25), (2.6 + strength * 0.7) * (1 - phase * 0.35) * (0.72 + 0.28 * fraction), 1 - step(0.5, abs(pattern - 3)))"
                 inputs {
+                    fraction id=96070 type="float"
+                    pattern id=96060 type="float"
                     random id=2301 type="struct" type_name="ShaderVec3"
                     phase id=2302 type="float"
                     strength id=2303 type="float"
@@ -223,8 +231,9 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - {
                 id 2400
                 type "Behavior Expression"
-                reference_name "vec4(mix(mix(vec3(0.12, 1.2, 2.0), vec3(1.3, 0.18, 1.8), clamp(hue, 0, 1)), vec3(2.2, 0.55, 0.045), clamp(hue - 1, 0, 1)) * (0.8 + strength), (1 - phase) * (1 - phase) * (1 - quiet * 0.5))"
+                reference_name "vec4(mix(mix(vec3(0.12, 1.2, 2.0), vec3(1.3, 0.18, 1.8), clamp(hue, 0, 1)), vec3(2.2, 0.55, 0.045), clamp(hue - 1, 0, 1)) * (0.65 + strength * 0.55), (1 - phase) * (1 - phase) * (1 - quiet * 0.5) * mix(1, smoothstep(0, 0.08, phase), 1 - step(1, abs(pattern - 3.5))))"
                 inputs {
+                    pattern id=96080 type="float"
                     hue id=2401 type="float"
                     strength id=2402 type="float"
                     phase id=2403 type="float"
@@ -234,13 +243,27 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
                     Result id=2490 type="struct" type_name="ShaderVec4"
                 }
             }
+            - {
+                id 2500
+                type "Behavior Expression"
+                reference_name "fract(index * 0.2) * 1.25"
+                inputs {
+                    index id=2501 type="float"
+                }
+                outputs {
+                    Result id=2590 type="float"
+                }
+            }
         }
         (array)edges {
             - from="11.Index" to="1000.index"
             - from="11.Index" to="1300.index"
+            - from="11.Index" to="2500.index"
             - from="11.Count" to="1300.count"
             - from="11.Seed" to="1000.seed"
             - from="11.Pattern" to="2200.pattern"
+            - from="11.Pattern" to="2300.pattern"
+            - from="11.Pattern" to="2400.pattern"
             - from="11.Direction" to="1500.direction"
             - from="11.Direction" to="1600.direction"
             - from="11.Direction" to="2000.direction"
@@ -251,11 +274,14 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - from="11.Quiet" to="1200.quiet"
             - from="11.Quiet" to="2400.quiet"
             - from="11.Hue" to="2400.hue"
+            - from="11.Width" to="1700.width"
+            - from="11.Width" to="1800.width"
             - from="13.Value" to="1100.age"
             - from="1000.Result" to="1400.random"
             - from="1000.Result" to="1500.random"
             - from="1000.Result" to="1600.random"
             - from="1000.Result" to="1700.random"
+            - from="1000.Result" to="1800.random"
             - from="1000.Result" to="1900.random"
             - from="1000.Result" to="2100.random"
             - from="1000.Result" to="2300.random"
@@ -265,6 +291,7 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - from="1200.Result" to="1400.release"
             - from="1200.Result" to="1500.release"
             - from="1200.Result" to="1600.release"
+            - from="1200.Result" to="1700.release"
             - from="1200.Result" to="1800.release"
             - from="1200.Result" to="1900.release"
             - from="1300.Result" to="1500.fraction"
@@ -274,6 +301,7 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - from="1300.Result" to="1900.fraction"
             - from="1300.Result" to="2000.fraction"
             - from="1300.Result" to="2100.fraction"
+            - from="1300.Result" to="2300.fraction"
             - from="1400.Result" to="2200.p0"
             - from="1500.Result" to="2200.p1"
             - from="1600.Result" to="2200.p2"
@@ -285,8 +313,10 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
             - from="2200.Result" to="12.Position"
             - from="2300.Result" to="12.Size"
             - from="2400.Result" to="12.Color"
+            - from="2500.Result" to="1700.strand"
         }
     }
+    - id=21500 kind="function" math_expression="fract(index * 0.2) * 1.25" expression_mode=1 entry_id=100000
     - id=20000 kind="function" math_expression="fract(sin(vec3(index * 127.1 + seed, index * 269.5 + seed * 2, index * 311.7 + seed * 3)) * 43758.5453)" expression_mode=1 entry_id=50000
     - id=20100 kind="function" math_expression="clamp(age / max(life, 0.01), 0, 1)" expression_mode=1 entry_id=53000
     - id=20200 kind="function" math_expression="(1 - (1 - phase) * (1 - phase) * (1 - phase)) * (1 - quiet)" expression_mode=1 entry_id=56000
@@ -294,12 +324,12 @@ description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rota
     - id=20400 kind="function" math_expression="vec3(cos(random.x * pi * 2), sin(random.x * pi * 2), random.z - 0.5) * (6 + release * (24 + random.y * 70))" expression_mode=1 entry_id=62000
     - id=20500 kind="function" math_expression="vec3(direction * (6 + fraction * 24 + release * 18), (random.y - 0.5) * 8, (random.z - 0.5) * 8)" expression_mode=1 entry_id=65000
     - id=20600 kind="function" math_expression="vec3(cos((fraction * 1.8 + release * 0.42) * -direction), sin((fraction * 1.8 + release * 0.42) * -direction), (random.z - 0.5) * 0.18) * (25 + random.y * 8)" expression_mode=1 entry_id=68000
-    - id=20700 kind="function" math_expression="vec3((step(0.5, random.x) * 2 - 1) * (23 + random.z * 5), -fraction * travel * 24, (random.y - 0.5) * 9)" expression_mode=1 entry_id=71000
-    - id=20800 kind="function" math_expression="vec3(cos(fraction * pi * 2), sin(fraction * pi * 2) * 0.42, sin(fraction * pi * 2) * 0.18) * (28 + release * 72)" expression_mode=1 entry_id=74000
+    - id=20700 kind="function" math_expression="vec3(width * ((strand - 0.5) * 0.7 * cos(fraction * 9.4 - release * 3.2) + sin(fraction * 6.2831853 + release * 1.8) * 0.12) * (0.2 + 0.8 * (1 - fraction)), -(fraction + release * 0.16 * (1 - fraction)) * travel * 24, width * (strand - 0.5) * 0.7 * sin(fraction * 9.4 - release * 3.2) * (1 - fraction) + (random.y - 0.5) * 1.2)" expression_mode=1 entry_id=71000
+    - id=20800 kind="function" math_expression="vec3(cos(fraction * pi * 2), sin(fraction * pi * 2) * (0.18 + release * 0.14), sin(fraction * pi * 2) * 0.26) * (width * 0.38 + release * (40 + random.x * 36))" expression_mode=1 entry_id=74000
     - id=20900 kind="function" math_expression="vec3((fraction - 0.5) * 240 + (step(0.5, fraction) * 2 - 1) * release * 36, (random.y - 0.5) * 10, (random.z - 0.5) * 22)" expression_mode=1 entry_id=77000
     - id=21000 kind="function" math_expression="vec3(direction * fraction * 145, sin(fraction * pi) * 62, sin(fraction * pi * 2) * 16)" expression_mode=1 entry_id=80000
     - id=21100 kind="function" math_expression="vec3((step(0.5, random.x) * 2 - 1) * 32, (fraction - 0.5) * 44, (random.z - 0.5) * 3)" expression_mode=1 entry_id=83000
     - id=21200 kind="function" math_expression="p0 * (1 - step(0.5, abs(pattern - 0))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p5 * (1 - step(0.5, abs(pattern - 5))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7)))" expression_mode=1 entry_id=86000
-    - id=21300 kind="function" math_expression="(1.15 + random.z * 1.25) * (1 - phase * 0.65) * (1 + strength * 0.4)" expression_mode=1 entry_id=89000
-    - id=21400 kind="function" math_expression="vec4(mix(mix(vec3(0.12, 1.2, 2.0), vec3(1.3, 0.18, 1.8), clamp(hue, 0, 1)), vec3(2.2, 0.55, 0.045), clamp(hue - 1, 0, 1)) * (0.8 + strength), (1 - phase) * (1 - phase) * (1 - quiet * 0.5))" expression_mode=1 entry_id=92000
+    - id=21300 kind="function" math_expression="mix((1.4 + random.z) * (1 - phase * 0.5) * (1 + strength * 0.25), (2.6 + strength * 0.7) * (1 - phase * 0.35) * (0.72 + 0.28 * fraction), 1 - step(0.5, abs(pattern - 3)))" expression_mode=1 entry_id=89000
+    - id=21400 kind="function" math_expression="vec4(mix(mix(vec3(0.12, 1.2, 2.0), vec3(1.3, 0.18, 1.8), clamp(hue, 0, 1)), vec3(2.2, 0.55, 0.045), clamp(hue - 1, 0, 1)) * (0.65 + strength * 0.55), (1 - phase) * (1 - phase) * (1 - quiet * 0.5) * mix(1, smoothstep(0, 0.08, phase), 1 - step(1, abs(pattern - 3.5))))" expression_mode=1 entry_id=92000
 }

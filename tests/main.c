@@ -21,6 +21,7 @@
 /* Public Control values from the pinned SDK's runtime/components.h. */
 enum
 {
+    MOUSE_LEFT = 1,
     KEY_SPACE = 4,
     KEY_ENTER = 9,
     KEY_BACKSPACE = 10,
@@ -222,6 +223,23 @@ static void tap(yyjson_mut_doc *doc, int frame, int code)
     key(doc, frame + 1, 0);
 }
 
+static void click_world(yyjson_mut_doc *doc, int frame, double x, double y)
+{
+    yyjson_mut_val *input = sample_input(doc, frame);
+    yyjson_mut_val *controls = yyjson_mut_obj_add_arr(doc, input, "controls");
+    yyjson_mut_arr_add_int(doc, controls, MOUSE_LEFT);
+    yyjson_mut_val *pointer = yyjson_mut_obj_add_obj(doc, input, "pointer");
+    yyjson_mut_val *origin = yyjson_mut_obj_add_obj(doc, pointer, "origin");
+    yyjson_mut_obj_add_real(doc, origin, "x", x);
+    yyjson_mut_obj_add_real(doc, origin, "y", y);
+    yyjson_mut_obj_add_real(doc, origin, "z", 1080);
+    yyjson_mut_val *direction = yyjson_mut_obj_add_obj(doc, pointer, "direction");
+    yyjson_mut_obj_add_real(doc, direction, "x", 0);
+    yyjson_mut_obj_add_real(doc, direction, "y", 0);
+    yyjson_mut_obj_add_real(doc, direction, "z", -1);
+    key(doc, frame + 1, 0);
+}
+
 static bool snapshot(yyjson_mut_doc *doc)
 {
     char input[PATH_MAX], output[PATH_MAX];
@@ -327,7 +345,7 @@ static bool visible_mesh(const char *source)
     return false;
 }
 
-static bool timer_meshes(double y, const char *expected)
+static bool read_number_meshes(double y, int side, char actual[17])
 {
     struct
     {
@@ -343,6 +361,10 @@ static bool timer_meshes(double y, const char *expected)
         const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
         yyjson_val *position = entity_field(entity, "Transform3D", "position");
         double actual_y = yyjson_get_num(yyjson_obj_get(position, "y"));
+        double x = yyjson_get_num(yyjson_obj_get(position, "x"));
+        if ((side < 0 && x >= 0) || (side > 0 && x <= 0)) {
+            continue;
+        }
         if (!mesh || actual_y < y - 0.001 || actual_y > y + 0.001 ||
             yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
             continue;
@@ -361,7 +383,6 @@ static bool timer_meshes(double y, const char *expected)
             continue;
         }
         REQUIRE(glyph_count < 16);
-        double x = yyjson_get_num(yyjson_obj_get(position, "x"));
         int at = glyph_count++;
         while (at && glyphs[at - 1].x > x) {
             glyphs[at] = glyphs[at - 1];
@@ -370,13 +391,19 @@ static bool timer_meshes(double y, const char *expected)
         glyphs[at].x = x;
         glyphs[at].glyph = glyph;
     }
-    char actual[17];
     for (int j = 0; j < glyph_count; j++) {
         actual[j] = glyphs[j].glyph;
     }
     actual[glyph_count] = 0;
+    return true;
+}
+
+static bool number_meshes(double y, int side, const char *expected)
+{
+    char actual[17];
+    REQUIRE(read_number_meshes(y, side, actual));
     if (strcmp(actual, expected)) {
-        fprintf(stderr, "Timer mesh row at %.1f: expected %s, got %s\n", y, expected, actual);
+        fprintf(stderr, "Number mesh row at %.1f, side %d: expected %s, got %s\n", y, side, expected, actual);
     }
     REQUIRE(!strcmp(actual, expected));
     return true;
@@ -406,23 +433,39 @@ static bool modal_depth()
     double half_depth = yyjson_get_num(entity_field(panel, "Geometry3D", "depth")) *
                         yyjson_get_num(yyjson_obj_get(scale, "z")) * 0.5;
     REQUIRE(half_depth > 0);
-    int foreground = 0, background = 0;
+    int screen = yyjson_get_int(field("World", "Session", "screen"));
+    bool connection = screen == 0;
+    int foreground = 0, background = 0, titles = 0;
     yyjson_arr_foreach(entities, i, count, entity)
     {
         const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
         if (!mesh || yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
             continue;
         }
-        bool modal = !strcmp(mesh, "content/meshes/text/paused.mesh") ||
+        position = entity_field(entity, "Transform3D", "position");
+        double y = yyjson_get_num(yyjson_obj_get(position, "y"));
+        bool summary = screen == 3 && (y < 266.999 || y > 267.001) &&
+                       (!strcmp(mesh, "content/meshes/text/score.mesh") ||
+                        !strcmp(mesh, "content/meshes/text/lines.mesh") ||
+                        !strcmp(mesh, "content/meshes/text/elapsed.mesh") ||
+                        !strcmp(mesh, "content/meshes/text/best.mesh") ||
+                        !strcmp(mesh, "content/meshes/text/no_best.mesh") ||
+                        !strncmp(mesh, "content/meshes/text/digit_", sizeof "content/meshes/text/digit_" - 1) ||
+                        !strncmp(mesh, "content/meshes/text/time_", sizeof "content/meshes/text/time_" - 1));
+        bool modal = connection || summary ||
+                     !strcmp(mesh, "content/meshes/text/paused.mesh") ||
                      !strcmp(mesh, "content/meshes/text/controller_lost.mesh") ||
                      !strcmp(mesh, "content/meshes/text/game_over.mesh") ||
                      !strcmp(mesh, "content/meshes/text/complete.mesh") ||
                      !strcmp(mesh, "content/meshes/text/press_enter.mesh") ||
-                     !strcmp(mesh, "content/meshes/text/chapter_controls.mesh");
+                     !strcmp(mesh, "content/meshes/text/chapter_controls.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/play_controls.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/settings_controls.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/music.mesh");
         position = entity_field(entity, "Transform3D", "position");
         scale = entity_field(entity, "Transform3D", "scale");
         double z = yyjson_get_num(yyjson_obj_get(position, "z"));
-        /* Original glyph meshes have a 0.08-unit extrusion in tools/glyphs.c. */
+        /* Glyph meshes have a 0.08-unit extrusion in tools/glyphs.c. */
         double glyph_half = 0.04 * yyjson_get_num(yyjson_obj_get(scale, "z")) *
                             yyjson_get_num(entity_field(entity, "Geometry3D", "depth"));
         if (modal) {
@@ -433,10 +476,39 @@ static bool modal_depth()
                 fprintf(stderr, "%s reaches in front of the modal panel\n", mesh);
             }
             REQUIRE(z + glyph_half < center - half_depth);
+            if (!strcmp(mesh, "content/meshes/text/stillwater.mesh")) {
+                titles++;
+            } else {
+                bool setting = y > 266.999 && y < 267.001 &&
+                               (!strncmp(mesh, "content/meshes/text/setting_", sizeof "content/meshes/text/setting_" - 1) ||
+                                !strncmp(
+                                    mesh,
+                                    "content/meshes/text/digit_",
+                                    sizeof "content/meshes/text/digit_" - 1
+                                ));
+                bool save_failed = !strcmp(mesh, "content/meshes/text/saving_failed.mesh") &&
+                                   yyjson_get_bool(field("World", "Session", "save_failed"));
+                REQUIRE(setting || save_failed);
+                double panel_y = yyjson_get_num(
+                    yyjson_obj_get(entity_field(panel, "Transform3D", "position"), "y")
+                );
+                double panel_half_height = yyjson_get_num(
+                                               entity_field(panel, "Geometry3D", "height")
+                                           ) *
+                                           yyjson_get_num(yyjson_obj_get(
+                                               entity_field(panel, "Transform3D", "scale"),
+                                               "y"
+                                           )) *
+                                           .5;
+                REQUIRE(
+                    y - yyjson_get_num(yyjson_obj_get(scale, "y")) * .5 > panel_y + panel_half_height
+                );
+            }
             background++;
         }
     }
-    REQUIRE(foreground >= 2 && background >= 10);
+    REQUIRE(foreground >= 2);
+    REQUIRE(connection ? background == 0 : titles == 1);
     return true;
 }
 
@@ -480,9 +552,45 @@ static bool stats_backings(int mode)
             stats++;
         }
     }
+    REQUIRE(stats + timers + hidden == 3);
+    if (yyjson_get_int(field("World", "Session", "screen")) != 1) {
+        REQUIRE(stats == 0 && timers == 0 && hidden == 3);
+        return true;
+    }
     REQUIRE(stats == (mode == 3 ? 2 : 1));
     REQUIRE(timers == (mode == 2 ? 1 : 0));
-    REQUIRE(stats + timers + hidden == 3);
+    return true;
+}
+
+static bool active_hud()
+{
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+    static const char *essential[] = { "score", "lines", "hold", "next", "pause_hint" };
+    for (int i = 0; i < (int)(sizeof essential / sizeof *essential); i++) {
+        char mesh[128];
+        snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", essential[i]);
+        REQUIRE(visible_mesh(mesh));
+    }
+    REQUIRE(!visible_mesh("content/meshes/text/play_controls.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/settings_controls.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/connect_music.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/music.mesh"));
+    yyjson_val *entities = snapshot_entities();
+    size_t i, count;
+    yyjson_val *entity;
+    yyjson_arr_foreach(entities, i, count, entity)
+    {
+        const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
+        if (!mesh || yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
+            continue;
+        }
+        REQUIRE(
+            strncmp(mesh, "content/meshes/text/audio_", sizeof "content/meshes/text/audio_" - 1)
+        );
+        REQUIRE(
+            strncmp(mesh, "content/meshes/text/music_", sizeof "content/meshes/text/music_" - 1)
+        );
+    }
     return true;
 }
 
@@ -508,6 +616,24 @@ TEST_CASE(authored_rules)
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
     REQUIRE(report(600));
+    return true;
+}
+
+TEST_CASE(sidebar_previews_follow_play_state)
+{
+    yyjson_mut_doc *doc = request("PreviewChecks", 48);
+    key(doc, 0, 0);
+    tap(doc, 1, KEY_4);
+    tap(doc, 5, KEY_C);
+    tap(doc, 10, KEY_P);
+    tap(doc, 16, KEY_ENTER);
+    tap(doc, 24, KEY_4);
+    tap(doc, 27, KEY_C);
+    tap(doc, 29, KEY_R);
+    tap(doc, 35, KEY_P);
+    tap(doc, 41, KEY_ENTER);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(16));
     return true;
 }
 
@@ -624,7 +750,78 @@ TEST_CASE(sprint_duet_and_disconnect)
     return true;
 }
 
-TEST_CASE(direct_launch_and_mode_keys)
+TEST_CASE(music_choice_precedes_play)
+{
+    yyjson_mut_doc *doc = request("Stillwater", 18);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_SPACE);
+    tap(doc, 6, KEY_P);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
+    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 0);
+    REQUIRE(yyjson_get_num(field("World", "Session", "elapsed")) == 0);
+    REQUIRE(yyjson_get_int(field("Board1", "BoardState", "pieces")) == 0);
+    REQUIRE(yyjson_get_int(field("Board2", "BoardState", "pieces")) == 0);
+    return true;
+}
+
+TEST_CASE(music_connection_controls)
+{
+    yyjson_mut_doc *doc = request("MusicOnboardingChecks", 100);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_SPACE);
+    tap(doc, 40, KEY_SPACE);
+    tap(doc, 66, KEY_4);
+    tap(doc, 85, KEY_P);
+    tap(doc, 90, KEY_M);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(24));
+    return true;
+}
+
+TEST_CASE(music_choices_use_world_space_pointer)
+{
+    static const struct
+    {
+        double x, y;
+        int provider, source;
+        bool starts;
+    } choices[] = {
+        { -160, 24, 1, 0, false }, { 0, 24, 2, 0, false },
+        { 160, 24, 3, 0, false },  { 0, -37, 0, 1, false },
+        { 0, -121, 0, 0, true },   { 600, 24, 0, 0, false },
+    };
+    for (int i = 0; i < (int)(sizeof choices / sizeof *choices); i++) {
+        yyjson_mut_doc *doc = request("Stillwater", 18);
+        key(doc, 0, 0);
+        click_world(doc, 12, choices[i].x, choices[i].y);
+        REQUIRE(snapshot(doc));
+        REQUIRE(
+            yyjson_get_int(field("World", "Session", "audio_provider")) ==
+            choices[i].provider
+        );
+        REQUIRE(
+            yyjson_get_int(field("World", "Session", "audio_source")) ==
+            choices[i].source
+        );
+        REQUIRE(
+            yyjson_get_bool(field("World", "Session", "audio_ready")) ==
+            choices[i].starts
+        );
+        REQUIRE(
+            yyjson_get_int(field("World", "Session", "screen")) ==
+            (choices[i].starts ? 1 : 0)
+        );
+        REQUIRE(
+            yyjson_get_int(field("World", "Session", "run")) ==
+            (choices[i].starts ? 1 : 0)
+        );
+        REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
+    }
+    return true;
+}
+
+TEST_CASE(score_choice_and_mode_keys)
 {
     /* A pooled cue stays dormant until its event payload is configured. */
     yyjson_mut_doc *doc = request("ReactionField", 2);
@@ -638,12 +835,14 @@ TEST_CASE(direct_launch_and_mode_keys)
 
     doc = request("Stillwater", 18);
     key(doc, 0, 0);
+    tap(doc, 1, KEY_4);
     tap(doc, 3, KEY_SPACE);
     tap(doc, 6, KEY_P);
     tap(doc, 9, KEY_ENTER);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
+    REQUIRE(active_hud());
     REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 1);
     REQUIRE(yyjson_get_bool(field("Board1", "BoardState", "ready")));
     REQUIRE(yyjson_get_int(field("Board1", "BoardState", "pieces")) == 1);
@@ -659,12 +858,14 @@ TEST_CASE(direct_launch_and_mode_keys)
     REQUIRE(yyjson_get_int(field("Board1", "ReactionQueue", "dropped")) == 0);
     doc = request("Stillwater", 18);
     key(doc, 0, 0);
+    tap(doc, 1, KEY_4);
     tap(doc, 3, KEY_2);
     tap(doc, 6, KEY_3);
     tap(doc, 9, KEY_4);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
+    REQUIRE(active_hud());
     REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 4);
     REQUIRE(yyjson_get_bool(field("Board2", "BoardState", "ready")));
     result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
@@ -675,6 +876,7 @@ TEST_CASE(direct_launch_and_mode_keys)
         yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
         yyjson_mut_obj_add_str(doc, saved, quiet_settings[i], i == 0 ? "0" : "1");
         key(doc, 0, 0);
+        tap(doc, 1, KEY_4);
         tap(doc, 3, KEY_SPACE);
         REQUIRE(snapshot(doc));
         result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
@@ -706,6 +908,35 @@ TEST_CASE(final_clear_wins_over_blocked_spawn)
         REQUIRE(snapshot(doc));
         REQUIRE(report(3));
         REQUIRE(yyjson_get_bool(field("World", "Session", "won")));
+        int mode = yyjson_get_int(field("World", "Session", "mode"));
+        REQUIRE(visible_mesh("content/meshes/text/complete.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/play_controls.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/settings_controls.mesh"));
+        if (mode == 2) {
+            REQUIRE(visible_mesh("content/meshes/text/elapsed.mesh"));
+            REQUIRE(visible_mesh("content/meshes/text/best.mesh"));
+            REQUIRE(!visible_mesh("content/meshes/text/score.mesh"));
+            int tenths = (int)(yyjson_get_num(field("World", "Session", "elapsed")) * 10);
+            char expected[17];
+            snprintf(expected, sizeof expected, "%d:%02d.%d", tenths / 600, tenths / 10 % 60, tenths % 10);
+            REQUIRE(number_meshes(20, -1, expected));
+            REQUIRE(number_meshes(20, 1, expected));
+        } else {
+            REQUIRE(visible_mesh("content/meshes/text/score.mesh"));
+            REQUIRE(visible_mesh("content/meshes/text/lines.mesh"));
+            REQUIRE(!visible_mesh("content/meshes/text/elapsed.mesh"));
+            REQUIRE(!visible_mesh("content/meshes/text/best.mesh"));
+            if (mode == 3) {
+                REQUIRE(number_meshes(24, -1, "1000"));
+                REQUIRE(number_meshes(24, 1, "0"));
+                REQUIRE(number_meshes(-46, -1, "20"));
+                REQUIRE(number_meshes(-46, 1, "0"));
+            } else {
+                REQUIRE(number_meshes(18, -1, "1000"));
+                REQUIRE(number_meshes(18, 1, "12"));
+            }
+        }
+        REQUIRE(stats_backings(mode));
         REQUIRE(modal_depth());
     }
     return true;
@@ -713,6 +944,32 @@ TEST_CASE(final_clear_wins_over_blocked_spawn)
 
 TEST_CASE(sprint_time_display)
 {
+    yyjson_mut_doc *doc = request("HudChecks", 18);
+    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    yyjson_mut_obj_add_str(doc, saved, "sprint", "123.4");
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_3);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 2);
+    REQUIRE(active_hud());
+    REQUIRE(visible_mesh("content/meshes/text/elapsed.mesh"));
+    REQUIRE(visible_mesh("content/meshes/text/best.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/no_best.mesh"));
+    REQUIRE(number_meshes(-195, 0, "2:03.4"));
+    char timer[17];
+    REQUIRE(read_number_meshes(-126, 0, timer));
+    int minutes, seconds, tenths, end = 0;
+    REQUIRE(sscanf(timer, "%d:%d.%d%n", &minutes, &seconds, &tenths, &end) == 3);
+    REQUIRE(timer[end] == 0 && minutes == 0 && seconds == 0 && tenths >= 0 && tenths < 10);
+    char expected[17];
+    snprintf(expected, sizeof expected, "%d:%02d.%d", minutes, seconds, tenths);
+    REQUIRE(!strcmp(timer, expected));
+    double current = yyjson_get_num(field("World", "Session", "elapsed"));
+    REQUIRE(current > 0 && current < 1);
+    /* A tenth-second readout refreshed at 10 Hz can trail by under 0.2 s. */
+    REQUIRE(current >= tenths * .1 && current - tenths * .1 < .2);
+    REQUIRE(stats_backings(2));
+
     double elapsed = 0;
     for (int i = 0; i < 2; i++) {
         yyjson_mut_doc *doc = request("HudChecks", i == 0 ? 48 : 90);
@@ -735,26 +992,25 @@ TEST_CASE(sprint_time_display)
         } else {
             REQUIRE(current == elapsed);
         }
-        REQUIRE(visible_mesh("content/meshes/text/elapsed.mesh"));
-        REQUIRE(visible_mesh("content/meshes/text/best.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/elapsed.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/best.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/no_best.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/chapter_controls.mesh"));
-        char expected[16];
-        snprintf(expected, sizeof expected, "0:00.%d", (int)(current * 10));
-        REQUIRE(timer_meshes(-126, expected));
-        REQUIRE(timer_meshes(-195, "2:03.4"));
+        REQUIRE(number_meshes(-126, 0, ""));
+        REQUIRE(number_meshes(-195, 0, ""));
         REQUIRE(stats_backings(2));
         REQUIRE(modal_depth());
     }
-    yyjson_mut_doc *doc = request("HudChecks", 18);
+    doc = request("HudChecks", 18);
     key(doc, 0, 0);
     tap(doc, 3, KEY_3);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_num(field("World", "Session", "sprint_best")) == 0);
     REQUIRE(visible_mesh("content/meshes/text/no_best.mesh"));
+    REQUIRE(active_hud());
     REQUIRE(stats_backings(2));
     doc = request("HudChecks", 18);
-    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
     yyjson_mut_obj_add_str(doc, saved, "chapter", "3");
     key(doc, 0, 0);
     tap(doc, 3, KEY_P);
@@ -783,16 +1039,16 @@ TEST_CASE(audio_source_status_labels)
 {
     static const struct
     {
-        const char *source, *status, *signal, *quiet, *action, *label, *hint;
+        const char *source, *status, *signal, *quiet, *action, *label;
     } states[] = {
-        { "0", "0", "0", "0", "music", "audio_score", NULL },
-        { "1", "1", "0", "0", "audio_waiting", "audio_share_hint", "audio_gesture_hint" },
-        { "1", "2", "0", "0", "listening", "audio_connected", NULL },
-        { "1", "2", "1", "0", "listening", "audio_reactive", NULL },
-        { "1", "2", "0", "1", "listening", "audio_quiet", "audio_quiet_hint" },
-        { "0", "3", "0", "0", "audio_unavailable", "audio_no_source", "audio_restored" },
-        { "0", "4", "0", "0", "audio_unavailable", "audio_cancelled", "audio_restored" },
-        { "0", "5", "0", "0", "audio_unavailable", "audio_ended", "audio_restored" },
+        { "0", "0", "0", "0", "music_listen", "music_intro" },
+        { "1", "1", "0", "0", "music_listen", "audio_share_hint" },
+        { "1", "2", "0", "0", "music_listen", "music_play" },
+        { "1", "2", "1", "0", "music_listen", "music_play" },
+        { "1", "2", "0", "1", "music_listen", "music_play" },
+        { "1", "3", "0", "0", "music_retry", "audio_no_source" },
+        { "1", "4", "0", "0", "music_retry", "audio_cancelled" },
+        { "1", "5", "0", "0", "music_retry", "audio_ended" },
     };
     for (int i = 0; i < (int)(sizeof states / sizeof *states); i++) {
         yyjson_mut_doc *doc = request("AudioHudChecks", 18);
@@ -801,39 +1057,41 @@ TEST_CASE(audio_source_status_labels)
         yyjson_mut_obj_add_str(doc, saved, "audio_status", states[i].status);
         yyjson_mut_obj_add_str(doc, saved, "audio_signal", states[i].signal);
         yyjson_mut_obj_add_str(doc, saved, "audio_quiet", states[i].quiet);
-        yyjson_mut_obj_add_str(doc, saved, "screen", "2");
+        yyjson_mut_obj_add_str(doc, saved, "screen", "0");
         REQUIRE(snapshot(doc));
         char mesh[128];
         snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", states[i].action);
         REQUIRE(visible_mesh(mesh));
         snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", states[i].label);
         REQUIRE(visible_mesh(mesh));
-        if (states[i].hint) {
-            snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", states[i].hint);
-            REQUIRE(visible_mesh(mesh));
-        }
-        REQUIRE(visible_mesh("content/meshes/text/audio_browser_help.mesh"));
-        REQUIRE(visible_mesh("content/meshes/text/audio_desktop_help.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/music_youtube.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/music_spotify.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/music_tidal.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/music_score.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/play_controls.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/score.mesh"));
+        REQUIRE(stats_backings(0));
         REQUIRE(modal_depth());
     }
-    for (int selected = 1; selected >= 0; selected--) {
+    for (int capture = 0; capture < 2; capture++) {
         yyjson_mut_doc *doc = request("HudChecks", 18);
         key(doc, 0, 0);
-        if (!selected) {
+        if (capture) {
             tap(doc, 3, KEY_M);
         }
         tap(doc, 16, KEY_M);
         REQUIRE(snapshot(doc));
-        REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == selected);
-        REQUIRE(yyjson_get_int(field("World", "Session", "audio_status")) == selected);
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
+        REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_ready")));
+        REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == capture);
+        REQUIRE(yyjson_get_int(field("World", "Session", "audio_status")) == capture);
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_signal")));
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_quiet")));
         REQUIRE(yyjson_get_num(field("World", "VisualState", "energy")) == 0);
         REQUIRE(visible_mesh(
-            selected ? "content/meshes/text/audio_waiting.mesh" : "content/meshes/text/music.mesh"
+            capture ? "content/meshes/text/audio_share_hint.mesh" : "content/meshes/text/music_intro.mesh"
         ));
-        REQUIRE(!visible_mesh("content/meshes/text/audio_browser_help.mesh"));
-        REQUIRE(!visible_mesh("content/meshes/text/audio_desktop_help.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/pause_hint.mesh"));
     }
     return true;
 }
@@ -858,7 +1116,7 @@ TEST_CASE(setting_value_labels)
         REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
         REQUIRE(visible_mesh(settings[i].label));
         if (settings[i].key == KEY_0) {
-            REQUIRE(timer_meshes(267, "90"));
+            REQUIRE(number_meshes(267, 0, "90"));
             REQUIRE(visible_mesh("content/meshes/text/setting_percent.mesh"));
         }
     }
@@ -871,10 +1129,23 @@ TEST_CASE(setting_value_labels)
         REQUIRE(snapshot(doc));
         REQUIRE(yyjson_get_num(field("World", "Session", "master")) == maximum);
         REQUIRE(visible_mesh("content/meshes/text/setting_volume.mesh"));
-        REQUIRE(timer_meshes(267, maximum ? "100" : "0"));
+        REQUIRE(number_meshes(267, 0, maximum ? "100" : "0"));
         REQUIRE(visible_mesh("content/meshes/text/setting_percent.mesh"));
     }
-    yyjson_mut_doc *doc = request("HudChecks", 180);
+    yyjson_mut_doc *doc = request("HudChecks", 18);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_P);
+    tap(doc, 16, KEY_0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 2);
+    REQUIRE(visible_mesh("content/meshes/text/setting_volume.mesh"));
+    REQUIRE(visible_mesh("content/meshes/text/setting_percent.mesh"));
+    REQUIRE(number_meshes(267, 0, "90"));
+    REQUIRE(!visible_mesh("content/meshes/text/score.mesh"));
+    REQUIRE(stats_backings(0));
+    REQUIRE(modal_depth());
+
+    doc = request("HudChecks", 180);
     key(doc, 0, 0);
     tap(doc, 16, KEY_F);
     REQUIRE(snapshot(doc));
@@ -894,6 +1165,7 @@ TEST_CASE(immediate_session_labels)
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(visible_mesh("content/meshes/text/endless.mesh"));
     REQUIRE(!visible_mesh("content/meshes/text/journey.mesh"));
+    REQUIRE(active_hud());
     return true;
 }
 
@@ -990,7 +1262,7 @@ TEST_CASE(authored_environment_consumer)
 {
     yyjson_mut_doc *doc = request("ConsumerChecks", 44);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(35));
+    REQUIRE(report(64));
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
     return true;
 }
@@ -1001,24 +1273,26 @@ int main(int argc, char **argv)
                           (argc == 4 && !strcmp(argv[1], "--reactions"));
     bool consumer_only = argc == 4 && !strcmp(argv[1], "--consumer");
     bool hud_only = argc == 4 && !strcmp(argv[1], "--hud");
+    bool onboarding_only = argc == 4 && !strcmp(argv[1], "--onboarding");
+    bool previews_only = argc == 4 && !strcmp(argv[1], "--previews");
     const char *controller_path = getenv("STILLWATER_CTL");
     const char *project_path = getenv("STILLWATER_PROJECT");
-    if (argc == 4 && (!strcmp(argv[1], "--all") || reactions_only ||
-                      consumer_only || hud_only)) {
+    if (argc == 4 && (!strcmp(argv[1], "--all") || reactions_only || consumer_only ||
+                      hud_only || onboarding_only || previews_only)) {
         controller_path = argv[2];
         project_path = argv[3];
     } else if (argc != 1 || !controller_path || !project_path) {
-        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud /path/to/chibi_ctl /path/to/game\n", argv[0]);
+        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews /path/to/chibi_ctl /path/to/game\n", argv[0]);
         return 2;
     }
     assert(realpath(controller_path, controller) && realpath(project_path, project));
     signal(SIGALRM, timeout_handler);
     alarm(58);
     prepare();
-    if (!hud_only) {
+    if (!hud_only && !onboarding_only && !previews_only) {
         RUN_TEST_CASE(authored_environment_consumer);
     }
-    if (!consumer_only && !hud_only) {
+    if (!consumer_only && !hud_only && !onboarding_only && !previews_only) {
         RUN_TEST_CASE(ordered_player_reactions);
         RUN_TEST_CASE(ordered_session_reactions);
         RUN_TEST_CASE(ordered_clear_reactions);
@@ -1026,7 +1300,14 @@ int main(int argc, char **argv)
     if (reactions_only) {
         RUN_TEST_CASE(topout_and_rescue);
     }
-    if (!reactions_only && !consumer_only && !hud_only) {
+    if (onboarding_only ||
+        (!reactions_only && !consumer_only && !hud_only && !previews_only)) {
+        RUN_TEST_CASE(music_choice_precedes_play);
+        RUN_TEST_CASE(music_connection_controls);
+        RUN_TEST_CASE(music_choices_use_world_space_pointer);
+    }
+    if (!reactions_only && !consumer_only && !hud_only && !onboarding_only &&
+        !previews_only) {
         RUN_TEST_CASE(authored_rules);
         RUN_TEST_CASE(live_keyboard_boards);
         RUN_TEST_CASE(live_controller_boards);
@@ -1035,9 +1316,12 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(journey_settings_and_reopen);
         RUN_TEST_CASE(sprint_duet_and_disconnect);
         RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
-        RUN_TEST_CASE(direct_launch_and_mode_keys);
+        RUN_TEST_CASE(score_choice_and_mode_keys);
     }
-    if (!reactions_only && !consumer_only) {
+    if (!reactions_only && !consumer_only && !onboarding_only) {
+        RUN_TEST_CASE(sidebar_previews_follow_play_state);
+    }
+    if (!reactions_only && !consumer_only && !onboarding_only && !previews_only) {
         RUN_TEST_CASE(sprint_time_display);
         RUN_TEST_CASE(audio_source_status_labels);
         RUN_TEST_CASE(setting_value_labels);

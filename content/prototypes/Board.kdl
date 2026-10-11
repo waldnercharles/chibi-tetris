@@ -2,7 +2,7 @@ name "Board"
 (array)includes "ReactionQueue"
 components {
     (object)BoardState
-    Geometry3D depth=8.0 height=488.0 width=248.0
+    Geometry3D depth=1.2 height=488.0 width=248.0
     RenderState hidden=#true
     Shader material="WellBacking"
     Transform3D {

@@ -2,7 +2,13 @@ version 1
 name "HudChecks"
 presentation "3d"
 (array)entities {
-    - name="World" prototype="World"
+    - {
+        name "World"
+        prototype "World"
+        components {
+            Session audio_ready=#true
+        }
+    }
     - name="Camera" prototype="Camera"
     - name="Hud" prototype="Hud"
     - {

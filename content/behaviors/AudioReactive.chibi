@@ -1,51 +1,158 @@
-// The audio host measures PCM. This behavior only maps that snapshot to art.
+// The host measures PCM. Provider launch and capture are separate user actions.
 behavior AudioReactive {
-    notice_time := 0
-    notice_status: int = 0
     signal_time := 0
     quiet_time := 0
 
     on Begin {
         set_audio_source(0)
+        self.Session.audio_choice = 3
+    }
+
+    function PauseForConnection() {
+        if self.Session.screen != 0 {
+            self.Session.audio_return_screen = self.Session.screen
+        }
+        self.Session.screen = 0
+        self.Session.audio_ready = false
+        set_music_volume(0)
+    }
+
+    function ChooseMusic() {
+        PauseForConnection()
+        cancel_open_url()
+        set_audio_source(0)
+        self.Session.audio_source = 0
+        self.Session.audio_status = 0
+        self.Session.audio_signal = false
+        self.Session.audio_quiet = false
+        self.Session.audio_choice = 3
+        signal_time = 0
+        quiet_time = 0
+    }
+
+    function SelectProvider(provider: int) {
+        ChooseMusic()
+        self.Session.audio_provider = provider
+        match (provider) {
+            case 1 {
+                open_url("https://music.youtube.com/")
+            }
+            case 2 {
+                open_url("https://open.spotify.com/")
+            }
+            case 3 {
+                open_url("https://listen.tidal.com/")
+            }
+        }
+    }
+
+    function Listen() {
+        PauseForConnection()
+        cancel_open_url()
+        previous := self.Session.audio_source
+        // Selecting the same host source is a no-op. Advance through score so
+        // every retry gets a new capture generation and permission request.
+        set_audio_source(0)
+        set_audio_source(1)
+        self.Session.audio_source = 1
+        self.Session.audio_status = 1
+        self.Session.audio_signal = false
+        self.Session.audio_quiet = false
+        self.Session.audio_choice = 3
+        signal_time = 0
+        quiet_time = 0
+        ReactionRules.Emit(self, 20, 1, previous, 1, 1 - previous, 1, 0)
+    }
+
+    function UseGameScore() {
+        PauseForConnection()
+        cancel_open_url()
+        previous := self.Session.audio_source
+        set_audio_source(0)
+        self.Session.audio_source = 0
+        self.Session.audio_status = 0
+        self.Session.audio_provider = 0
+        self.Session.audio_signal = false
+        self.Session.audio_quiet = false
+        self.Session.audio_ready = true
+        set_music_volume(self.Session.music)
+        signal_time = 0
+        quiet_time = 0
+        ReactionRules.Emit(self, 20, 1, previous, 0, -previous, 0, 0)
+    }
+
+    function Controls() {
+        if self.Session.screen != 0 {
+            if input.AudioSource.pressed {
+                ChooseMusic()
+            }
+            return
+        }
+        if input.P1Left.pressed {
+            self.Session.audio_choice = (self.Session.audio_choice + 4) % 5
+        }
+        if input.P1Right.pressed {
+            self.Session.audio_choice = (self.Session.audio_choice + 1) % 5
+        }
+        request := self.Session.audio_request
+        self.Session.audio_request = 0
+        if input.Confirm.pressed {
+            request = self.Session.audio_choice + 1
+            if self.Session.audio_choice == 3 {
+                request = 5
+            }
+            if self.Session.audio_choice == 4 {
+                request = 4
+            }
+        }
+        if input.JourneyMode.pressed {
+            request = 1
+        }
+        if input.EndlessMode.pressed {
+            request = 2
+        }
+        if input.SprintMode.pressed {
+            request = 3
+        }
+        if input.AudioSource.pressed {
+            request = 5
+        }
+        if input.DuetMode.pressed {
+            request = 4
+        }
+        match (request) {
+            case 1 {
+                SelectProvider(1)
+            }
+            case 2 {
+                SelectProvider(2)
+            }
+            case 3 {
+                SelectProvider(3)
+            }
+            case 4 {
+                UseGameScore()
+            }
+            case 5 {
+                Listen()
+            }
+        }
     }
 
     on Tick(dt) {
         previous_status := self.Session.audio_status
-        if input.AudioSource.pressed {
-            previous_source := self.Session.audio_source
-            self.Session.audio_source = 1 - self.Session.audio_source
-            set_audio_source(self.Session.audio_source)
-            ReactionRules.Emit(self, 20, 1, previous_source, self.Session.audio_source, self.Session.audio_source - previous_source, self.Session.audio_source, 0)
-            volume := self.Session.music
-            if self.Session.audio_source == 1 {
-                volume = 0
-            }
-            set_music_volume(volume)
-            notice_time = 0
-            signal_time = 0
-            quiet_time = 0
-        }
+        Controls()
         audio := get_audio_analysis()
         current_source := audio.Source == self.Session.audio_source
-        if current_source && self.Session.audio_source == 1 && audio.Status >= 3 {
-            notice_status = audio.Status
-            notice_time = 6
-            self.Session.audio_source = 0
-            set_audio_source(0)
-            set_music_volume(self.Session.music)
-            ReactionRules.Emit(self, 20, 1, 1, 0, -1, 0, 0)
-            current_source = false
-        }
         self.Session.audio_status = 0
         if self.Session.audio_source == 1 {
             self.Session.audio_status = 1
+            if current_source {
+                self.Session.audio_status = audio.Status
+            }
         }
-        if current_source && self.Session.audio_source == 1 {
-            self.Session.audio_status = audio.Status
-        }
-        if notice_time > 0 {
-            self.Session.audio_status = notice_status
-            notice_time = max(0, notice_time - dt)
+        if self.Session.audio_source == 1 && self.Session.audio_status >= 3 {
+            PauseForConnection()
         }
         if previous_status != self.Session.audio_status {
             ReactionRules.Emit(self, 21, 1, previous_status, self.Session.audio_status, 0, self.Session.audio_status, 0)
@@ -66,6 +173,7 @@ behavior AudioReactive {
             if audio.Active && audio.Level > 0.001 {
                 quiet_time = 0
                 signal_time = 0.5
+                self.Session.audio_ready = true
             }
         } else {
             quiet_time = 0

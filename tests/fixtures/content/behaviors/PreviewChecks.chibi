@@ -1,0 +1,73 @@
+// Observe actual sidebar meshes while production Shell changes play state.
+behavior PreviewChecks {
+    world: entity
+    frame: int = 0
+    solo_previews: int = 0
+    duet_previews: int = 0
+
+    on Begin {
+        world = get_global_variable("World")
+    }
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function VisibleTiles(width: number, side: int) -> (count: int) {
+        count = 0
+        tiles := find_entities_with_component("Geometry3D")
+        for tile in tiles {
+            if tile.Geometry3D.width != width || tile.RenderState.hidden {
+                continue
+            }
+            if side == 0 || tile.Transform3D.position.x * side > 0 {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    on Tick {
+        match (frame) {
+            case 8 {
+                Check(world.Session.screen == 1 && world.Session.mode == 0, "solo preview baseline is playing")
+                solo_previews = VisibleTiles(16, 0)
+                Check(solo_previews == 24, "solo play shows the held piece and all five next pieces")
+                Check(VisibleTiles(22, 0) > 0, "solo play has visible board context")
+            }
+            case 14 {
+                Check(world.Session.screen == 2, "solo pause uses the production pause action")
+                Check(VisibleTiles(16, 0) == 0, "solo pause hides every held and next-piece tile")
+                Check(VisibleTiles(22, 0) > 0, "solo pause preserves board context")
+            }
+            case 20 {
+                Check(world.Session.screen == 1, "solo resume returns to play")
+                Check(VisibleTiles(16, 0) == solo_previews, "solo resume restores held and next-piece tiles")
+            }
+            case 33 {
+                Check(world.Session.screen == 1 && world.Session.mode == 3, "duet preview baseline is playing")
+                duet_previews = VisibleTiles(16, 0)
+                Check(duet_previews == solo_previews * 2, "duet play shows both held pieces and both queues")
+                Check(VisibleTiles(16, -1) > 0 && VisibleTiles(16, 1) > 0, "duet previews belong to both boards")
+            }
+            case 39 {
+                Check(world.Session.screen == 2, "duet pause uses the production pause action")
+                Check(VisibleTiles(16, 0) == 0, "duet pause hides both held pieces and both queues")
+                Check(VisibleTiles(22, -1) > 0 && VisibleTiles(22, 1) > 0, "duet pause preserves both boards")
+            }
+            case 45 {
+                Check(world.Session.screen == 1, "duet resume returns to play")
+                Check(VisibleTiles(16, 0) == duet_previews, "duet resume restores both held pieces and queues")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

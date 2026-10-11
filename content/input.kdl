@@ -123,3 +123,6 @@ VolumeUp {
 AudioSource {
     (array)sources "M"
 }
+Select {
+    (array)sources "Mouse Left"
+}

@@ -2,7 +2,7 @@ name "HudBacking"
 components {
     Geometry3D depth=2.0 height=128.0 width=166.0
     RenderState hidden=#true
-    Shader material="WellBacking"
+    Shader material="HudBacking"
     Transform3D {
         position z=42.0
         scale x=1.0 y=1.0 z=1.0

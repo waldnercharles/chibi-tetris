@@ -1,7 +1,13 @@
 version 1
 name "CompletionChecks"
 (array)entities {
-    - name="World" prototype="World"
+    - {
+        name "World"
+        prototype "World"
+        components {
+            Session audio_ready=#true
+        }
+    }
     - name="Hud" prototype="Hud"
     - {
         name "Board1"

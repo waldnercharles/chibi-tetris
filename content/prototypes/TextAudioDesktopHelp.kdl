@@ -1,4 +1,0 @@
-name "TextAudioDesktopHelp"
-components {
-    MeshAsset source="content/meshes/text/audio_desktop_help.mesh"
-}

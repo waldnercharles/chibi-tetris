@@ -1,0 +1,41 @@
+version 3
+name "HudBacking"
+domain "material"
+id_counter 20000
+description "A translucent blue backing with a broad quiet center for text and a smooth fade to clear around its perimeter."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 100
+                type "Shader Surface Output"
+                inputs {
+                    "Base Color" {
+                        default x=0.009 y=0.017 z=0.028
+                    }
+                    Roughness 1.0
+                    Unlit #true
+                }
+            }
+            - id=200 type="Shader UV"
+            - {
+                id 300
+                type "Behavior Expression"
+                reference_name "0.46 * (1 - smoothstep(0.52, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.52, 1, abs(UV.y * 2 - 1)))"
+                inputs {
+                    UV id=301 type="struct" type_name="ShaderVec2"
+                }
+                outputs {
+                    Result id=302 type="float"
+                }
+            }
+        }
+        (array)edges {
+            - from="200.UV" to="300.UV"
+            - from="300.Result" to="100.Opacity"
+        }
+    }
+    - id=10000 kind="function" math_expression="0.46 * (1 - smoothstep(0.52, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.52, 1, abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=11000
+}

@@ -1,25 +1,41 @@
 version 3
 name "WellBacking"
 domain "material"
-id_counter 13
-description "A dark opaque well backing keeps the rule grid readable without a specular wash."
+id_counter 20000
+description "A translucent blue haze keeps the board center readable and fades smoothly to clear at the edges. It tints the particle field without blurring it."
 (array)graphs {
     - {
         kind "event"
         name ""
         (array)nodes {
             - {
-                id 1
+                id 100
                 type "Shader Surface Output"
                 inputs {
                     "Base Color" {
-                        default x=0.0004 y=0.0015 z=0.004
+                        default x=0.009 y=0.017 z=0.028
                     }
                     Roughness 1.0
                     Unlit #true
-                    "Alpha Mode" 1
+                }
+            }
+            - id=200 type="Shader UV"
+            - {
+                id 300
+                type "Behavior Expression"
+                reference_name "0.58 * (1 - smoothstep(0.12, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.72, 1, abs(UV.y * 2 - 1)))"
+                inputs {
+                    UV id=301 type="struct" type_name="ShaderVec2"
+                }
+                outputs {
+                    Result id=302 type="float"
                 }
             }
         }
+        (array)edges {
+            - from="200.UV" to="300.UV"
+            - from="300.Result" to="100.Opacity"
+        }
     }
+    - id=10000 kind="function" math_expression="0.58 * (1 - smoothstep(0.12, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.72, 1, abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=11000
 }

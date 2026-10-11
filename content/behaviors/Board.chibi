@@ -366,7 +366,9 @@ behavior Board {
         }
         if soft && row > start_row {
             Impact()
+            record := self.ReactionQueue.write
             ReactionRules.Emit(self, 4, 1, self.BoardState.impact_x, 228 - (start_row - 1) * 24, 1, row - start_row, current)
+            CaptureSpan(record)
         }
         grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
         if grounded {
@@ -436,7 +438,21 @@ behavior Board {
 
     function Emit(kind: int, result: int, direction: int, amount: int, detail: int) {
         Impact()
+        record := self.ReactionQueue.write
         ReactionRules.Emit(self, kind, result, self.BoardState.impact_x, self.BoardState.impact_y, direction, amount, detail)
+        CaptureSpan(record)
+    }
+
+    function CaptureSpan(record: entity) {
+        minimum: int = 4
+        maximum: int = 0
+        for block in 0..3 {
+            cell := Pieces.Cell(current, rotation, block)
+            minimum = min(minimum, cell.x)
+            maximum = max(maximum, cell.x)
+        }
+        record.ReactionEvent.width = (maximum - minimum + 1) * 24
+        record.ReactionEvent.center_offset = (minimum + maximum - 2) * 12
     }
 
     // Gameplay rows grow downward. The well stands in the world's XY plane.
@@ -539,6 +555,13 @@ behavior Board {
     }
 
     function DrawPreviews() {
+        if world.Session.screen != 1 {
+            for i in 208..231 {
+                Hide(i)
+            }
+            preview_dirty = false
+            return
+        }
         Preview(208, held, origin - 70, -186, hold_used)
         for (i in 0..4) {
             Preview(212 + i * 4, get(queue, i), origin + 310, -182 + i * 78, false)
@@ -631,6 +654,9 @@ behavior Board {
             repeat_blocked = false
             repeat_direction = 0
             repeat_clock = 0
+        }
+        if old_screen != world.Session.screen {
+            preview_dirty = true
         }
         old_screen = world.Session.screen
         self.BoardState.current = current

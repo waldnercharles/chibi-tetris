@@ -1,4 +1,4 @@
-// Shared session and user settings. Screen: 1 play, 2 pause, 3 completed run.
+// Shared session and user settings. Screen: 0 music, 1 play, 2 pause, 3 completed run.
 component Session {
     screen: int
     mode: int
@@ -9,6 +9,15 @@ component Session {
     chapter_lines: int
     audio_source: int
     audio_status: int
+    // Provider launch is a request, never proof of sign-in or captured audio.
+    audio_provider: int
+    // Choices: YouTube, Spotify, TIDAL, share existing audio, game score.
+    audio_choice: int
+    // Commands: 0 none, 1 YouTube, 2 Spotify, 3 TIDAL, 4 score, 5 share.
+    audio_request: int
+    audio_return_screen: int
+    // Latched after measured external signal or an explicit game-score choice.
+    audio_ready: bool
     audio_signal: bool
     audio_quiet: bool
     run: int

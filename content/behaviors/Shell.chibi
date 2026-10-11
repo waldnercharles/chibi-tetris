@@ -1,4 +1,4 @@
-// Screen 1 plays, 2 pauses and 3 holds a completed run in the world.
+// Screen 0 chooses music, 1 plays, 2 pauses and 3 holds a completed run.
 behavior Shell {
     board1: entity
     board2: entity
@@ -37,7 +37,12 @@ behavior Shell {
         self.Session.ghost = read_saved_number("ghost", 1).Number != 0
         Mix()
         initialized = true
-        Start(0)
+        if self.Session.audio_ready {
+            Start(0)
+            return
+        }
+        self.Session.screen = 0
+        set_music_volume(0)
     }
 
     after writer.Failed {
@@ -47,7 +52,7 @@ behavior Shell {
     function Mix() {
         set_master_volume(self.Session.master)
         set_sound_volume(self.Session.sound)
-        if self.Session.audio_source == 0 {
+        if self.Session.audio_ready && self.Session.audio_source == 0 {
             set_music_volume(self.Session.music)
         }
     }
@@ -86,6 +91,10 @@ behavior Shell {
     }
 
     function Start(mode: int) {
+        if !self.Session.audio_ready {
+            self.Session.screen = 0
+            return
+        }
         old_mode := self.Session.mode
         self.Session.mode = mode
         self.Session.stage = 0
@@ -102,6 +111,10 @@ behavior Shell {
     }
 
     function RestartRun() {
+        if !self.Session.audio_ready {
+            self.Session.screen = 0
+            return
+        }
         self.Session.stage = startingChapter
         self.Session.run += 1
         self.ReactionQueue.run = self.Session.run
@@ -133,6 +146,10 @@ behavior Shell {
     }
 
     function ResumePlay() {
+        if !self.Session.audio_ready {
+            self.Session.screen = 0
+            return
+        }
         ReactionRules.Emit(self, 14, 1, self.Session.screen, 1, 0, 1, 0)
         self.Session.screen = 1
         self.Session.disconnected = false
@@ -141,7 +158,7 @@ behavior Shell {
     }
 
     function ChangeChapter(direction: int) {
-        if self.Session.mode != 0 || self.Session.screen == 1 {
+        if !self.Session.audio_ready || self.Session.mode != 0 || self.Session.screen == 1 {
             ReactionRules.Emit(self, 17, 0, self.Session.stage, self.Session.stage, direction, self.Session.stage, 0)
             return
         }
@@ -298,6 +315,22 @@ behavior Shell {
         }
         clock += dt
         Preferences()
+        if self.Session.screen == 0 {
+            if !self.Session.audio_ready {
+                return
+            }
+            if self.Session.run == 0 {
+                Start(0)
+                return
+            }
+            self.Session.screen = self.Session.audio_return_screen
+            if self.Session.screen < 1 || self.Session.screen > 3 {
+                self.Session.screen = 1
+            }
+            pad1 = controller_connected(0)
+            pad2 = controller_connected(1)
+            return
+        }
         if input.JourneyMode.pressed {
             Start(0)
             return

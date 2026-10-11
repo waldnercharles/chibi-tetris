@@ -1,7 +1,7 @@
 name "HudText"
 components {
     Geometry3D depth=1.0 height=1.0 width=1.0
-    Material emission_color=0x85c6d4ff emission_intensity=0.38 emission_multiplier=1.0 scene=0xc6daddff
+    Material emission_color=0x85c6d4ff emission_intensity=0.16 emission_multiplier=1.0 scene=0xdbe4e7ff
     MeshAsset source="content/meshes/text/digit_0.mesh"
     RenderState hidden=#true
     Transform3D {

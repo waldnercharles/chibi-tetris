@@ -2,6 +2,22 @@
 
 This record covers the 3D Stillwater revision and the matching engine and packages in [toolchain.json](../toolchain.json). Publication verifies the live release separately from local exports.
 
+## Music choice and fluid-motion revision
+
+Filled Geist meshes replace the stroke lettering. Controls move into pause, results retain their scores and times, and translucent board and HUD materials fade toward their edges. The material tints the background rather than sampling a scene blur. Background particles retain their identities and brightness; smoothed music controls and integrated input impulses move their trajectories. Hard drops produce five curved strands centered on the occupied piece, followed by a spreading ripple.
+
+Music selection now precedes play. YouTube, Spotify and TIDAL choices request their own web players. A separate audio-sharing action supplies measured samples; service launch is not account sign-in. Gameplay waits for a non-silent external signal or an explicit choice of the game score. Permission failures keep the chooser open. Reconnecting preserves the board, elapsed time and previous pause or result screen.
+
+The game dispatcher passed 21 C/pico_unit cases and 1,239 assertions in 35.342 seconds under one 60-second production deadline. The startup gate failed against the prior published game before implementation. Cases cover pointer choices, retry and fallback, preserved runs, clean play/pause/result HUDs, active and frozen Sprint digits, captured drop widths and centers, complete particle-shape freezing and smooth resumption. A separate regression failed on the prior Solo and Duet pause previews, then passed when hold and next-piece meshes were hidden outside play and restored on resume. Project validation reports 104 assets, zero errors and zero warnings. Changed authored sources and fixtures were formatted with the controller.
+
+The glyph generator verifies finite geometry, front-face winding, normals and tangents, encoded mesh round trips, and sampled fill coverage against the font contours. Generation passed in 0.452 seconds; its separate outline proof was visually inspected. The fonts and the build-time tessellator retain their licenses and provenance in [LICENSES.md](../LICENSES.md).
+
+A bounded native preview simulated 60 CPU frames and rendered two warmup frames plus one saved 640 × 360 frame. It completed in 1.588 seconds using Metal in a hidden Cocoa window, with 842 entities and 150,144 particles including drop feedback. The saved frame took 8.723 ms; this is a single capture observation, not sustained native FPS. The [Journey image](screenshots/style-journey.png) shows the new font, backing and dense braided drop wake. Independent review found no remaining authored-state, pool ownership or shader-input issues.
+
+Native and web exports passed. The packaged macOS application completed four hidden frames and three simulation steps in 1.927 seconds under a 30-second deadline. Local browser checks covered the music gate, provider launch, the real sharing request, explicit score selection, reconnecting to an existing run, movement, rotation, hold, both Duet drops, and clean pause/resume previews. The final 2560 × 1440 browser export measured 58.80 FPS over 2.5 seconds after warmup, with a 16.7 ms median and 17.6 ms 95th percentile. The console contained no product errors. These short samples do not establish sustained or cross-device performance. Completed external audio capture and human listening remain unverified; opening a provider does not establish a connection to its audio.
+
+Engine `e9d23b04e` includes reusable host URL actions and world-space pointer input. Independent review covered request ownership, browser activation and cancellation, input recording/replay, scenario/controller parsing, native source bindings and package exports. A quick-input timing issue was fixed before packaging. Packaging then exposed a missing ownership entry; a C regression failed on the omission and passed after the fix. Native authoring and test builds passed in Release without sanitizers. Final admitted checks passed: all 39 native selectors in 11.232 seconds, including feature coverage; language 178 cases and 10,510 assertions in 0.996 seconds; tooling 92 cases and 22,540 assertions in 21.402 seconds. Each ran under its own production 60-second deadline. The focused native viewport GPU check passed in 0.692 seconds. These additions require no project format migration. Quarantined full render and Studio suites remain unrun.
+
 ## Cosmic particle revision
 
 The underwater scenery is replaced by two instanced 3D mesh fields. The full setting starts with 131,072 vortex particles and 16,384 stars; action feedback uses 96 reusable fields and eight lights. The scene has 842 entities. Particle positions are computed on the GPU from authored shader-library functions. The CPU updates field controls, not individual particles.
@@ -88,9 +104,9 @@ The final native-startup and browser checks completed together in 18.949 seconds
 
 The preceding browser interaction check exercised Sprint's elapsed clock and local save/reload. Lowering volume wrote 0.7; reloading and lowering it again wrote 0.6, demonstrating restored preferences. That check completed in 22.543 seconds under its 45-second deadline. Its only subsequent game change was dormant stream initialization, which the final player check covered. The linked screenshots are from the final browser export. These checks do not establish sustained frame rate or platform-wide compatibility.
 
-## Audio capture
+## Earlier audio capture checks
 
-M requests external audio. Browser capture uses a user-triggered sharing chooser; native capture uses a recognized loopback device or the exact device selected with `CHIBI_AUDIO_INPUT`. Failure restores the bundled score. No account credentials or music-service APIs are involved. [audio.md](audio.md#music-reaction-and-capture) explains routing and source status.
+The earlier revision used M to request external audio and restored the score after a failure. The current revision instead retains the music chooser until an explicit choice succeeds. Browser capture uses a user-triggered sharing chooser; native capture uses a recognized loopback device or the exact device selected with `CHIBI_AUDIO_INPUT`. No account credentials or music-service APIs are involved. [audio.md](audio.md#music-reaction-and-capture) explains routing and source status.
 
 PCM analysis and host lifecycle checks passed. An earlier browser build reached the capture request after M. A completed external capture, acoustic output, latency, runtime mix balance and human listening review have not been verified. Audio-file measurements and provenance are recorded separately in [audio.md](audio.md).
 

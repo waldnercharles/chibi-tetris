@@ -7,6 +7,15 @@ behavior ConsumerChecks {
     stars: entity
     frame: int = 0
     frozen_time := 0
+    frozen_flow := 0
+    frozen_turn := 0
+    ambient_velocity := 0
+    prior_flow := 0
+    prior_turn := 0
+    input_velocity := 0
+    frozen_bands := vec3(0, 0, 0)
+    frozen_response := vec3(0, 0, 0)
+    frozen_reaction := 0
 
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
@@ -70,14 +79,28 @@ behavior ConsumerChecks {
         }
     }
 
+    function FrozenControls() {
+        bands := world.VisualState.field_bands
+        response := world.VisualState.field_response
+        Check(bands.x == frozen_bands.x && bands.y == frozen_bands.y && bands.z == frozen_bands.z, "stopped fields retain every band uniform without a transition jump")
+        Check(response.x == frozen_response.x && response.y == frozen_response.y && response.z == frozen_response.z, "stopped fields retain energy beat and chapter uniforms")
+        Check(world.VisualState.flow_energy == frozen_reaction, "stopped fields retain their input deformation")
+    }
+
     function Batch(board: entity, center: number) {
         for i in 0..11 {
             ReactionRules.Emit(board, 1, 1, center + i * 4, 160, 1, 1, 3)
         }
         ReactionRules.Emit(board, 2, 1, center, 130, 1, 0, 3)
         ReactionRules.Emit(board, 7, 1, center, 105, 0, 2, 3)
+        drop := board.ReactionQueue.write
         ReactionRules.Emit(board, 6, 1, center, 80, 0, 8, 3)
+        drop.ReactionEvent.width = 48
+        drop.ReactionEvent.center_offset = 12
+        lock := board.ReactionQueue.write
         ReactionRules.Emit(board, 8, 1, center, -112, 0, 0, 3)
+        lock.ReactionEvent.width = 48
+        lock.ReactionEvent.center_offset = 12
         // Four original rows plus four combo arcs expand two records to eight cues.
         rows := cast<int>(0)
         for row in 18..21 {
@@ -89,17 +112,47 @@ behavior ConsumerChecks {
 
     on Tick {
         match (frame) {
+            case 4 {
+                ambient_velocity = world.VisualState.flow_velocity
+                prior_flow = world.VisualState.flow_phase
+                Check(ambient_velocity > 0 && ambient_velocity < 0.3, "silence retains a slow ambient current")
+                bands := world.VisualState.field_bands
+                response := world.VisualState.field_response
+                Check(bands.x == 0 && bands.y == 0 && bands.z == 0, "silent startup uses zero shader band defaults")
+                Check(response.x == 0 && response.y == 0 && response.z == 0, "silent startup uses zero response defaults")
+                world.VisualState.energy = 0.9
+                world.VisualState.bass = 0.8
+                world.VisualState.beat = 1
+            }
+            case 5 {
+                Check(world.VisualState.flow_velocity > ambient_velocity && world.VisualState.flow_velocity < 0.65, "audio accelerates the current without an immediate full-speed step")
+                Check(world.VisualState.flow_energy > 0 && world.VisualState.flow_energy < 0.15, "a musical onset enters through a smooth displacement envelope")
+                Check(world.VisualState.flow_phase > prior_flow && world.VisualState.flow_phase - prior_flow < 0.02, "audio changes velocity without jumping the integrated particle phase")
+            }
+            case 7 {
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                world.VisualState.beat = 0
+            }
             case 8 {
                 Check(ActiveCues() == 0, "fresh environment has no unconfigured cues")
+                input_velocity = world.VisualState.flow_velocity
+                prior_flow = world.VisualState.flow_phase
+                prior_turn = world.VisualState.flow_turn
                 Batch(first, -300)
                 Batch(second, 300)
                 ReactionRules.Emit(world, 17, 0, 0, 0, -1, 0, 0)
             }
             case 10 {
+                Check(world.VisualState.flow_velocity > input_velocity + 1, "accepted board input drives the surrounding current")
+                Check(world.VisualState.flow_phase > prior_flow && world.VisualState.flow_phase - prior_flow < 0.15, "a dense input batch retains a continuous bounded trajectory")
+                Check(world.VisualState.flow_turn > prior_turn, "rightward movement and rotation impart signed circulation")
+                Check(world.VisualState.flow_energy > 0 && world.VisualState.flow_energy < 0.4, "input displacement grows smoothly instead of flashing to full strength")
                 Check(ActiveCues() == 51, "both expanded Duet batches survive until their first render")
                 Check(CuesAt(-300, 160) == 1, "first board action retains its own origin")
                 Check(CuesAt(300, 160) == 1, "second board action retains its own origin")
-                Check(CuesAt(-300, -112) == 3, "hard drop landing lock and combo keep the recorded landing")
+                Check(CuesAt(-288, 80) == 1 && CuesAt(-288, -112) == 2, "drop wake and both landing ripples use the captured occupied center")
+                Check(CuesAt(-300, -112) == 1, "combo retains the original action origin")
                 Check(CuesAt(-254, -156) == 1 && CuesAt(254, -156) == 1, "clear cues retain each board and original row")
                 Check(CuesAt(180, 270) == 1, "rejected chapter receives one local confirmation")
                 Check(CuesAt(-170, 0) == 0 && CuesAt(170, 0) == 0, "rejected chapter never celebrates")
@@ -120,43 +173,62 @@ behavior ConsumerChecks {
             }
             case 14 {
                 Check(ActiveCues() == 3, "consumed records do not replay on later ticks")
+                frozen_bands = world.VisualState.field_bands
+                frozen_response = world.VisualState.field_response
+                frozen_reaction = world.VisualState.flow_energy
+                Check(frozen_bands.x > 0 && frozen_response.x > 0 && frozen_reaction > 0, "freeze begins with nonzero audio and input deformation")
                 world.Session.reduced_motion = true
                 ReactionRules.Emit(first, 1, 1, -333, 77, -1, 1, 3)
                 ReactionRules.Emit(first, 6, 1, -310, 50, 0, 3, 3)
             }
             case 16 {
+                FrozenControls()
                 QuietCues(3)
                 Check(CuesAt(-333, 77) == 1 && CuesAt(-310, -22) == 1, "quiet confirmations retain their event origins")
                 frozen_time = vortex.ParticleField3D.time
+                frozen_flow = world.VisualState.flow_phase
+                frozen_turn = world.VisualState.flow_turn
                 world.VisualState.energy = 0.9
                 world.VisualState.bass = 0.8
                 world.VisualState.treble = 0.7
+                world.VisualState.mid = 0.6
+                world.VisualState.beat = 0.8
+                world.Session.stage = 1
             }
             case 23 {
+                FrozenControls()
                 Check(ActiveCues() == 0, "quiet confirmations expire without replay")
                 Check(vortex.ParticleField3D.time == frozen_time && stars.ParticleField3D.time == frozen_time, "reduced motion freezes both background clocks despite audio")
+                Check(world.VisualState.flow_phase == frozen_flow && world.VisualState.flow_turn == frozen_turn, "reduced motion freezes both integrated flow coordinates")
                 world.Session.reduced_motion = false
                 world.Session.effects = 0
                 ReactionRules.Emit(first, 1, 0, -290, 65, -1, 0, 3)
                 ReactionRules.Emit(world, 20, 1, 0, 1, 1, 1, 0)
             }
             case 25 {
+                FrozenControls()
                 QuietCues(2)
                 Check(vortex.ParticleField3D.count == 0 && stars.ParticleField3D.count == 512, "effects off keeps only the sparse background")
                 Check(vortex.ParticleField3D.time == frozen_time, "effects off does not resume background travel")
+                Check(world.VisualState.flow_phase == frozen_flow && world.VisualState.flow_turn == frozen_turn, "effects off retains the same particle trajectories")
                 world.Session.effects = 2
                 world.Session.screen = 2
                 ReactionRules.Emit(world, 13, 1, 1, 2, 0, 2, 0)
             }
             case 29 {
+                FrozenControls()
                 Check(vortex.ParticleField3D.time == frozen_time && stars.ParticleField3D.time == frozen_time, "pause freezes background travel after restoring full effects")
+                Check(world.VisualState.flow_phase == frozen_flow && world.VisualState.flow_turn == frozen_turn, "pause retains the complete particle shape")
                 Check(CuesAt(180, 270) == 1, "pause has fresh feedback while gameplay travel is frozen")
                 world.Session.screen = 1
                 ReactionRules.Emit(world, 14, 1, 2, 1, 0, 1, 0)
             }
             case 31 {
                 Check(vortex.ParticleField3D.time > frozen_time, "resume restarts background travel")
+                Check(world.VisualState.flow_phase > frozen_flow && world.VisualState.flow_phase - frozen_flow < 0.2, "resume continues from the frozen phase without a time jump")
                 Check(CuesAt(180, 270) >= 1, "resume receives its own confirmation")
+                response := world.VisualState.field_response
+                Check(response.x > frozen_response.x && response.x - frozen_response.x < 0.2 && response.z > frozen_response.z, "resume smoothly follows the latest audio and chapter from the frozen shape")
             }
             case 42 {
                 Check(ActiveCues() == 0, "all consumed input cues finish without replay")

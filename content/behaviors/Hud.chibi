@@ -13,6 +13,9 @@ behavior Hud {
     audio_status: int = -1
     audio_signal := false
     audio_quiet := false
+    audio_choice: int = -1
+    hover_choice: int = -1
+    pointer_choice: int = -1
     screen: int = -1
     world_serial: int = -1
     setting_serial: int = 0
@@ -51,6 +54,8 @@ behavior Hud {
         label.MeshAsset.source = format_text("content/meshes/text/{}.mesh", name)
         label.Transform3D.position = vec3(x, y, 46)
         label.Transform3D.scale = vec3(size, size, size)
+        label.Material.scene = 0xdbe4e7ff
+        label.Material.emission_intensity = 0.16
         label.RenderState.hidden = false
     }
 
@@ -120,6 +125,161 @@ behavior Hud {
         Label(first + 10, format_text("digit_{}", tenths % 10), left + cast<number>(digits + 4) * size * 0.8, y, size)
     }
 
+    function Choice(slot: int, name: string, choice: int, x: number, y: number, size: number) {
+        ModalLabel(slot, name, x, y, size)
+        label := get(labels, slot)
+        label.Material.scene = 0xaebec7ff
+        if hover_choice == choice {
+            label.Material.scene = 0xd2edf5ff
+            label.Material.emission_intensity = 0.28
+        }
+        if world.Session.audio_choice == choice {
+            label.Material.scene = 0xa9e7ffff
+            label.Material.emission_intensity = 0.42
+        }
+    }
+
+    function DrawConnection() {
+        panel.Geometry3D.width = 610
+        panel.Geometry3D.height = 370
+        ModalLabel(0, "stillwater", 0, 139, 36)
+        ModalLabel(11, "connect_music", 0, 75, 20)
+        Choice(12, "music_youtube", 0, -160, 24, 13)
+        Choice(13, "music_spotify", 1, 0, 24, 13)
+        Choice(14, "music_tidal", 2, 160, 24, 13)
+        action_label := "music_listen"
+        hint := "music_intro"
+        if world.Session.audio_source == 1 {
+            hint = "music_play"
+            if world.Session.audio_status == 1 {
+                hint = "audio_share_hint"
+            }
+        }
+        if world.Session.audio_status >= 3 {
+            action_label = "music_retry"
+            match (world.Session.audio_status) {
+                case 3 {
+                    hint = "audio_no_source"
+                }
+                case 4 {
+                    hint = "audio_cancelled"
+                }
+                case 5 {
+                    hint = "audio_ended"
+                }
+            }
+        }
+        Choice(15, action_label, 3, 0, -37, 14)
+        ModalLabel(16, hint, 0, -77, 9)
+        Choice(17, "music_score", 4, 0, -121, 10)
+    }
+
+    function ReadPointer() {
+        hover_choice = -1
+        if world.Session.screen != 0 {
+            return
+        }
+        ray := get_pointer_ray()
+        if !ray.Active || abs(ray.Direction.z) < 0.0001 {
+            return
+        }
+        distance := (70 - ray.Origin.z) / ray.Direction.z
+        if distance < 0 {
+            return
+        }
+        point := ray.Origin + ray.Direction * distance
+        choice: int = -1
+        if abs(point.y - 24) < 18 {
+            for i in 0..2 {
+                if abs(point.x - (-160 + i * 160)) < 68 {
+                    choice = i
+                }
+            }
+        }
+        if abs(point.x) < 165 && abs(point.y + 37) < 19 {
+            choice = 3
+        }
+        if abs(point.x) < 105 && abs(point.y + 121) < 17 {
+            choice = 4
+        }
+        if choice < 0 {
+            return
+        }
+        hover_choice = choice
+        if input.Select.pressed {
+            world.Session.audio_choice = choice
+            world.Session.audio_request = choice + 1
+            if choice == 3 {
+                world.Session.audio_request = 5
+            }
+            if choice == 4 {
+                world.Session.audio_request = 4
+            }
+        }
+    }
+
+    function DrawPause() {
+        panel.Geometry3D.width = 580
+        panel.Geometry3D.height = 296
+        title := "paused"
+        if world.Session.disconnected {
+            title = "controller_lost"
+        }
+        ModalLabel(11, title, 0, 90, 24)
+        ModalLabel(12, "press_enter", 0, 47, 12)
+        ModalLabel(13, "play_controls", 0, -10, 9)
+        ModalLabel(14, "settings_controls", 0, -48, 8)
+        if world.Session.mode == 0 {
+            ModalLabel(19, "chapter_controls", 0, -83, 9)
+        }
+        ModalLabel(15, "music", 0, -117, 9)
+    }
+
+    function DrawResult() {
+        panel.Geometry3D.width = 580
+        panel.Geometry3D.height = 360
+        title := "game_over"
+        if world.Session.won {
+            title = "complete"
+        }
+        ModalLabel(11, title, 0, 124, 24)
+        if world.Session.mode == 2 {
+            ModalLabel(64, "elapsed", -140, 58, 11)
+            Time(66, world.Session.elapsed, -140, 20, 22)
+            ModalLabel(65, "best", 140, 58, 11)
+            if world.Session.sprint_best > 0 {
+                Time(77, world.Session.sprint_best, 140, 20, 22)
+            } else {
+                ModalLabel(77, "no_best", 140, 20, 12)
+            }
+        } else {
+            if world.Session.mode == 3 {
+                ModalLabel(3, "score", -145, 58, 11)
+                ModalLabel(4, "score", 145, 58, 11)
+                Number(20, 10, board1.BoardState.score, -145, 24, 24)
+                Number(40, 10, board2.BoardState.score, 145, 24, 24)
+                ModalLabel(5, "lines", -145, -18, 10)
+                ModalLabel(6, "lines", 145, -18, 10)
+                Number(30, 10, board1.BoardState.lines, -145, -46, 20)
+                Number(50, 10, board2.BoardState.lines, 145, -46, 20)
+            } else {
+                ModalLabel(3, "score", -130, 58, 11)
+                Number(20, 10, board1.BoardState.score, -130, 18, 26)
+                ModalLabel(4, "lines", 130, 58, 11)
+                Number(30, 10, board1.BoardState.lines, 130, 18, 26)
+            }
+        }
+        for i in 20..87 {
+            label := get(labels, i)
+            label.Transform3D.position.z = 70
+        }
+        ModalLabel(12, "press_enter", 0, -90, 12)
+        if world.Session.mode == 0 {
+            ModalLabel(19, "chapter_controls", 0, -122, 9)
+        }
+        ModalLabel(15, "music", 0, -154, 9)
+    }
+
     function Draw() {
         for i in 0..96 {
             Hide(i)
@@ -127,108 +287,70 @@ behavior Hud {
         for backing in backings {
             backing.RenderState.hidden = true
         }
-        timer_backing.RenderState.hidden = world.Session.mode != 2
+        timer_backing.RenderState.hidden = world.Session.mode != 2 || world.Session.screen == 0
+        panel.RenderState.hidden = world.Session.screen == 1
+        if world.Session.screen == 0 {
+            DrawConnection()
+            RememberState()
+            return
+        }
         Label(0, "stillwater", 0, 296, 24)
-        Label(1, get(modes, world.Session.mode), -40, 264, 11)
-        Label(2, "chapter", 34, 264, 9)
-        Number(60, 1, world.Session.stage + 1, 64, 264, 12)
+        Label(1, get(modes, world.Session.mode), -40, 264, 9)
+        Label(2, "chapter", 34, 264, 7)
+        Number(60, 1, world.Session.stage + 1, 64, 264, 10)
         BoardLabels(0, board1)
         if world.Session.mode == 2 {
-            Label(64, "elapsed", -205, -98, 12)
+            Label(64, "elapsed", -205, -98, 10)
             Time(66, world.Session.elapsed, -205, -126, 20)
-            Label(65, "best", -205, -167, 12)
+            Label(65, "best", -205, -167, 10)
             if world.Session.sprint_best > 0 {
                 Time(77, world.Session.sprint_best, -205, -195, 18)
             } else {
-                Label(77, "no_best", -205, -195, 14)
+                Label(77, "no_best", -205, -195, 10)
             }
         }
         if world.Session.mode != 3 && world.Session.goal > 0 {
-            Label(17, "remaining", 14, -258, 10)
+            Label(17, "remaining", 14, -258, 8)
             Number(62, 2, max(0, world.Session.goal - world.Session.chapter_lines), -45, -258, 12)
         }
         if world.Session.mode == 3 {
             BoardLabels(1, board2)
-            Label(18, "rescue", 0, -258, 10)
+            Label(18, "rescue", 0, -258, 9)
             Number(61, 1, world.Session.charge, 42, -258, 12)
         }
-        Label(13, "play_controls", 0, -283, 11)
-        if world.Session.screen != 1 {
-            Label(14, "settings_controls", 0, -310, 10)
+        if world.Session.screen == 1 {
+            Label(13, "pause_hint", 0, -294, 8)
         }
-        audio := "music"
-        status := "audio_score"
-        hint := ""
-        if world.Session.audio_source == 1 {
-            audio = "listening"
-            status = "audio_connected"
-            if world.Session.audio_signal {
-                status = "audio_reactive"
+        if world.Session.screen >= 2 {
+            for i in 1..96 {
+                Hide(i)
             }
-            if world.Session.audio_quiet {
-                status = "audio_quiet"
-                hint = "audio_quiet_hint"
+            for backing in backings {
+                backing.RenderState.hidden = true
             }
-            if world.Session.audio_status == 1 {
-                audio = "audio_waiting"
-                status = "audio_share_hint"
-                hint = "audio_gesture_hint"
+            timer_backing.RenderState.hidden = true
+            if world.Session.screen == 3 {
+                DrawResult()
+            } else {
+                DrawPause()
             }
-        }
-        match (world.Session.audio_status) {
-            case 3 {
-                status = "audio_no_source"
-            }
-            case 4 {
-                status = "audio_cancelled"
-            }
-            case 5 {
-                status = "audio_ended"
-            }
-        }
-        if world.Session.audio_source == 0 && world.Session.audio_status >= 3 {
-            audio = "audio_unavailable"
-            hint = "audio_restored"
-        }
-        Label(15, audio, 375, 287, 9)
-        Label(88, status, 375, 268, 7)
-        if hint != "" {
-            Label(89, hint, 375, 251, 6.5)
-        }
-        if world.Session.screen != 1 {
-            Label(90, "audio_browser_help", 375, 223, 6.5)
-            Label(91, "audio_desktop_help", 375, 207, 6.5)
         }
         if world.Session.save_failed {
-            Label(16, "saving_failed", -375, 287, 10)
+            Label(16, "saving_failed", -375, 287, 9)
         }
         if setting_time > 0 {
             DrawSetting()
         }
-        panel.RenderState.hidden = world.Session.screen == 1
-        if world.Session.screen != 1 && world.Session.mode == 0 {
-            ModalLabel(19, "chapter_controls", 0, -40, 10)
-        }
-        if world.Session.screen == 2 {
-            title := "paused"
-            if world.Session.disconnected {
-                title = "controller_lost"
-            }
-            ModalLabel(11, title, 0, 22, 22)
-            ModalLabel(12, "press_enter", 0, -16, 12)
-        }
-        if world.Session.screen == 3 {
-            title := "game_over"
-            if world.Session.won {
-                title = "complete"
-            }
-            ModalLabel(11, title, 0, 22, 22)
-            ModalLabel(12, "press_enter", 0, -16, 12)
-        }
+        RememberState()
+    }
+
+    function RememberState() {
         audio_source = world.Session.audio_source
         audio_status = world.Session.audio_status
         audio_signal = world.Session.audio_signal
         audio_quiet = world.Session.audio_quiet
+        audio_choice = world.Session.audio_choice
+        pointer_choice = hover_choice
         screen = world.Session.screen
         world_serial = world.ReactionQueue.serial
     }
@@ -306,9 +428,10 @@ behavior Hud {
         if !ready {
             return
         }
+        ReadPointer()
         refresh += dt
         changed := ReadSettings(dt)
-        changed = changed || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
+        changed = changed || pointer_choice != hover_choice || audio_choice != world.Session.audio_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
         if refresh < 0.1 && !changed {
             return
         }

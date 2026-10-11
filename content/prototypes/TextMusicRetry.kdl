@@ -1,0 +1,4 @@
+name "TextMusicRetry"
+components {
+    MeshAsset source="content/meshes/text/music_retry.mesh"
+}

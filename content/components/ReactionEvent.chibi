@@ -9,4 +9,8 @@ component ReactionEvent {
     direction: int
     amount: int
     detail: int
+    // Occupied horizontal span at the action, before a drop spawns its successor.
+    width: number
+    // Offset from the recorded action pivot to the occupied horizontal center.
+    center_offset: number
 }

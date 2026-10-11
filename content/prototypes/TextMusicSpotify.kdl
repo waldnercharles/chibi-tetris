@@ -1,0 +1,4 @@
+name "TextMusicSpotify"
+components {
+    MeshAsset source="content/meshes/text/music_spotify.mesh"
+}

@@ -83,6 +83,18 @@ behavior ReactionChecks {
                 Check(drop.ReactionEvent.y == 228 && drop.ReactionEvent.amount > 0, "drop retains starting height and distance")
                 Check(lock.ReactionEvent.y == drop.ReactionEvent.y - drop.ReactionEvent.amount * 24, "lock retains landing height before next spawn")
                 Check(board.BoardState.row == 1 && lock.ReactionEvent.y != 228, "spawn cannot overwrite the recorded landing")
+                width := 48
+                if drop.ReactionEvent.detail == 1 {
+                    width = 24
+                }
+                Check(drop.ReactionEvent.width == width && rotate.ReactionEvent.width == width, "drop captures the rotated piece width before the successor spawns")
+                Check(lock.ReactionEvent.width == drop.ReactionEvent.width, "landing retains the same occupied width as its drop wake")
+                center_offset := 12
+                if drop.ReactionEvent.detail == 1 {
+                    center_offset = 24
+                }
+                Check(drop.ReactionEvent.center_offset == center_offset && rotate.ReactionEvent.center_offset == center_offset, "rotated wake uses the occupied center instead of the fixed piece pivot")
+                Check(lock.ReactionEvent.center_offset == drop.ReactionEvent.center_offset, "landing retains its drop center before the successor spawns")
             }
             case 7 {
                 hold := ReactionRules.Read(board, serial)

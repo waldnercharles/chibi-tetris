@@ -1,4 +1,0 @@
-name "TextAudioReactive"
-components {
-    MeshAsset source="content/meshes/text/audio_reactive.mesh"
-}

@@ -1,4 +1,0 @@
-name "TextAudioScore"
-components {
-    MeshAsset source="content/meshes/text/audio_score.mesh"
-}

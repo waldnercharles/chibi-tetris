@@ -16,6 +16,11 @@ behavior Environment {
     ready := false
     time := 0
     reaction := 0
+    impulse := 0
+    flow := 0
+    flow_velocity := 0.16
+    turn := 0
+    turn_velocity := 0
     energy := 0
     bass := 0
     mid := 0
@@ -27,6 +32,7 @@ behavior Environment {
     visual_run: int = -1
     quality: int = -1
     was_moving := true
+    cue_width := 48
 
     on Begin {
         world = get_global_variable("World")
@@ -64,7 +70,17 @@ behavior Environment {
         }
     }
 
-    // Patterns: sparks, dash, crescent, corridor, halo, row, hold, brackets.
+    // Events add velocity; the shared flow retains position and momentum.
+    function Push(strength: number, direction: number) {
+        if world.Session.effects == 0 || world.Session.reduced_motion {
+            return
+        }
+        impulse = min(1, impulse + strength)
+        flow_velocity = min(3, flow_velocity + strength * 1.2)
+        turn_velocity = clamp(turn_velocity + direction * strength, -0.8, 0.8)
+    }
+
+    // Patterns: sparks, dash, crescent, flowing wake, ripple, row, hold, brackets.
     function Cue(pattern: int, x: number, y: number, direction: int, travel: int, strength: number, life: number, hue: number) {
         // Reuse expired cues first; only retire the oldest visible cue if full.
         oldest := slot
@@ -97,6 +113,9 @@ behavior Environment {
         if strength >= 0.8 {
             count = 768
         }
+        if pattern == 3 && strength >= 0.4 {
+            count = 1024
+        }
         if world.Session.effects == 1 {
             count = max(24, count / 2)
         }
@@ -108,6 +127,14 @@ behavior Environment {
         field.ParticleField3D.count = count
         field.ParticleField3D.seed += 37
         field.ParticleField3D.time = 0
+        // Adjacent solid grains overlap along the curved wake at either quality.
+        field.Geometry3D.height = 1
+        if pattern == 3 && !quiet {
+            field.Geometry3D.height = 1.8
+            if world.Session.effects == 1 {
+                field.Geometry3D.height = 3.2
+            }
+        }
         set_material_parameter(field, "Pattern", cast<number>(pattern))
         set_material_parameter(field, "Direction", cast<number>(direction))
         set_material_parameter(field, "Travel", cast<number>(travel))
@@ -115,13 +142,16 @@ behavior Environment {
         set_material_parameter(field, "Life", life)
         set_material_parameter(field, "Quiet", cast<number>(ReactionRules.Flag(quiet)))
         set_material_parameter(field, "Hue", hue)
+        set_material_parameter(field, "Width", cue_width)
         lives[slot] = life
         slot = (slot + 1) % 96
     }
 
     function BoardEvent(board: entity, record: entity) {
+        cue_width = max(24, record.ReactionEvent.width)
         kind := record.ReactionEvent.kind
         x := record.ReactionEvent.x
+        piece_x := x + record.ReactionEvent.center_offset
         y := record.ReactionEvent.y
         amount := record.ReactionEvent.amount
         direction := record.ReactionEvent.direction
@@ -132,31 +162,37 @@ behavior Environment {
         match (kind) {
             case 1 {
                 Cue(1, x, y, direction, 0, 0.03, 0.1, 0)
+                Push(0.12, cast<number>(direction))
             }
             case 2 {
                 Cue(2, x, y, direction, 0, 0.1, 0.12, 1)
+                Push(0.22, cast<number>(direction) * 1.5)
             }
             case 3 {
-                Cue(3, x, y, 1, 2, 0.03, 0.1, 0)
+                Cue(3, piece_x, y, 1, 2, 0.12, 0.22, 0)
+                Push(0.1, 0)
             }
             case 4 {
-                Cue(3, x, y, 1, max(1, amount), 0.05, 0.1, 0)
+                Cue(3, piece_x, y, 1, max(1, amount), 0.14, 0.22, 0)
+                Push(0.07, 0)
             }
             case 5 {
-                Cue(4, x, y, 1, 0, 0.03, 0.08, 0)
+                Cue(4, piece_x, y, 1, 0, 0.08, 0.18, 0)
             }
             case 6 {
-                Cue(3, x, y, 1, amount, 0.45, 0.16, 0)
-                Cue(4, x, y - amount * 24, 1, 0, 0.6, 0.2, 0.2)
-                Light(x, y - amount * 24, 0.7, 0)
-                reaction = min(1, reaction + 0.18)
+                Cue(3, piece_x, y, 1, amount, 0.65, 0.38, 0)
+                Cue(4, piece_x, y - amount * 24, 1, 0, 0.5, 0.4, 0.2)
+                Light(piece_x, y - amount * 24, 0.7, 0)
+                Push(0.68, 0.22)
             }
             case 7 {
                 Cue(6, x, y, -1, 0, 0.2, 0.14, 1)
+                Push(0.2, -1)
             }
             case 8 {
-                Cue(4, x, y, 1, 0, 0.2, 0.12, 0.2)
-                Light(x, y, 0.2, 0)
+                Cue(4, piece_x, y, 1, 0, 0.2, 0.12, 0.2)
+                Light(piece_x, y, 0.2, 0)
+                Push(0.14, 0)
             }
             case 9 {
                 center := 0
@@ -170,7 +206,7 @@ behavior Environment {
                     }
                 }
                 Light(x, y, 0.5 + cast<number>(amount) * 0.2, 0)
-                reaction = min(1, reaction + 0.3 + cast<number>(amount) * 0.1)
+                Push(0.4 + cast<number>(amount) * 0.12, 0.4)
             }
             case 10 {
                 for arc in 0..3 {
@@ -178,22 +214,23 @@ behavior Environment {
                         Cue(4, x, y + arc * 16, 1, 0, 0.4, 0.24, 1)
                     }
                 }
-                reaction = min(1, reaction + 0.2)
+                Push(0.25, 0.5)
             }
             case 11 {
                 Cue(0, x, y, -1, 0, 0.85, 0.3, 2)
                 Light(x, y, 0.9, 2)
-                reaction = 0.7
+                Push(0.7, -0.4)
             }
             case 12 {
                 Cue(0, x, 0, 1, 0, 1, 0.4, 0.4)
                 Light(x, 0, 1, 0)
-                reaction = 1
+                Push(1, 0.6)
             }
         }
     }
 
     function SessionEvent(record: entity) {
+        cue_width = 48
         kind := record.ReactionEvent.kind
         hue := 0.2
         if record.ReactionEvent.result == 0 {
@@ -203,7 +240,7 @@ behavior Environment {
         if kind == 15 || kind == 16 || kind == 17 || kind == 19 {
             Cue(4, -170, 0, 1, 0, 0.85, 0.28, 1)
             Cue(4, 170, 0, -1, 0, 0.85, 0.28, 0)
-            reaction = 0.7
+            Push(0.7, 0.3)
             return
         }
         Cue(2, 180, 270, 1, 0, 0.16, 0.12, hue)
@@ -246,13 +283,15 @@ behavior Environment {
 
     function FieldAudio(field: entity) {
         field.ParticleField3D.time = time
-        set_material_parameter(field, "Energy", energy)
-        set_material_parameter(field, "Bass", bass)
-        set_material_parameter(field, "Mid", mid)
-        set_material_parameter(field, "Treble", treble)
-        set_material_parameter(field, "Beat", beat)
-        set_material_parameter(field, "Reaction", reaction)
-        set_material_parameter(field, "Chapter", chapter)
+        set_material_parameter(field, "Energy", world.VisualState.field_response.x)
+        set_material_parameter(field, "Bass", world.VisualState.field_bands.x)
+        set_material_parameter(field, "Mid", world.VisualState.field_bands.y)
+        set_material_parameter(field, "Treble", world.VisualState.field_bands.z)
+        set_material_parameter(field, "Beat", world.VisualState.field_response.y)
+        set_material_parameter(field, "Reaction", world.VisualState.flow_energy)
+        set_material_parameter(field, "Chapter", world.VisualState.field_response.z)
+        set_material_parameter(field, "Flow", flow)
+        set_material_parameter(field, "Turn", turn)
     }
 
     on Tick(dt) {
@@ -271,12 +310,13 @@ behavior Environment {
                 light := get(lights, i)
                 light.PointLight.intensity = 0
             }
-            reaction = 0
+            impulse = 0
         }
         effects := world.Session.effects
         moving := effects > 0 && !world.Session.reduced_motion
-        if moving && world.Session.screen != 2 {
-            time += delta * (0.8 + energy * 0.28)
+        advancing := moving && world.Session.screen < 2
+        if advancing {
+            time += delta
         }
         if !moving && was_moving {
             for i in 0..95 {
@@ -298,21 +338,20 @@ behavior Environment {
                 stars.ParticleField3D.count = 512
             }
         }
-        blend := min(1, delta * 12)
-        energy += (world.VisualState.energy - energy) * blend
-        bass += (world.VisualState.bass - bass) * blend
-        mid += (world.VisualState.mid - mid) * blend
-        treble += (world.VisualState.treble - treble) * blend
-        beat = max(world.VisualState.beat, beat - delta * 5.5)
-        chapter += (cast<number>(world.Session.stage) - chapter) * min(1, delta * 1.8)
-        reaction = max(0, reaction - delta * 2.8)
+        // Retain the entire shape when stopped, including musical deformation.
+        if advancing {
+            blend := 1 - exp(-delta * 4)
+            energy += (world.VisualState.energy - energy) * blend
+            bass += (world.VisualState.bass - bass) * blend
+            mid += (world.VisualState.mid - mid) * blend
+            treble += (world.VisualState.treble - treble) * blend
+            beat += (world.VisualState.beat - beat) * (1 - exp(-delta * 5))
+            chapter += (cast<number>(world.Session.stage) - chapter) * min(1, delta * 1.8)
+        }
+        impulse *= exp(-delta * 1.8)
         if !moving {
-            energy = 0
-            bass = 0
-            mid = 0
-            treble = 0
-            beat = 0
-            reaction = 0
+            impulse = 0
+            turn_velocity = 0
         }
         for i in 0..95 {
             field := get(fields, i)
@@ -336,16 +375,26 @@ behavior Environment {
         if world.VisualState.beat < 0.12 {
             onset_ready = true
         }
-        if moving && world.Session.screen != 2 && onset_ready && onset_cooldown == 0 && world.VisualState.beat > 0.25 {
+        if advancing && onset_ready && onset_cooldown == 0 && world.VisualState.beat > 0.25 {
             onset_ready = false
             onset_cooldown = 0.16
-            reaction = max(reaction, 0.14 + bass * 0.2)
+            Push(0.15 + bass * 0.18, 0)
             Light(-160, -40, bass * 0.35, 0)
             Light(160, 70, treble * 0.3, 1)
         }
-        if !moving {
-            reaction = 0
+        if advancing {
+            reaction += (impulse - reaction) * (1 - exp(-delta * 5))
+            flow_velocity += (0.16 + energy * 0.5 + bass * 0.65 + beat * 0.35 - flow_velocity) * (1 - exp(-delta * 1.6))
+            turn_velocity *= exp(-delta * 1.4)
+            flow += flow_velocity * delta
+            turn += turn_velocity * delta
         }
+        world.VisualState.flow_phase = flow
+        world.VisualState.flow_velocity = flow_velocity
+        world.VisualState.flow_energy = reaction
+        world.VisualState.flow_turn = turn
+        world.VisualState.field_bands = vec3(bass, mid, treble)
+        world.VisualState.field_response = vec3(energy, beat, chapter)
         FieldAudio(vortex)
         FieldAudio(stars)
         self.Environment.bloom_strength = 0.3 + energy * 0.045 + reaction * 0.05

@@ -1,27 +1,32 @@
-/* Original Stillwater stroke lettering, drawn for this game without font or
- * third-party geometry. The generated meshes are dedicated to CC0 1.0.
+/* Geist outlines become filled, shallow extruded meshes in the 3D scene.
+ * Font copyright and SIL Open Font License: fonts/Geist-OFL.txt.
  *
- * Run from the project root after installing the pinned SDK:
+ * Run from the project root with the pinned SDK installed:
  * cc -std=c11 -O2 -Wall -Wextra -Werror \
  *   -I.chibi/sdk/include/chibi/mesh_runtime \
  *   -I.chibi/sdk/include/chibi/support -I.chibi/sdk/include/chibi/math \
- *   tools/glyphs.c -L.chibi/sdk/lib -lchibi_mesh_runtime -lchibi_types \
+ *   -isystem .chibi/sdk/include/chibi/desktop_vendor/cute/2/stb \
+ *   -Itools/vendor/libtess2/Include \
+ *   tools/glyphs.c tools/vendor/libtess2/Source/{bucketalloc,dict,geom,mesh,priorityq,sweep,tess}.c \
+ *   -L.chibi/sdk/lib -lchibi_mesh_runtime -lchibi_types \
  *   -lchibi_support -Wl,-dead_strip -lm -o build/glyphs
  * ./build/glyphs
  * ./build/glyphs --block
  * ./build/glyphs --preview build/glyphs.svg
  * rm build/glyphs
  * On Linux, replace -Wl,-dead_strip with -Wl,--gc-sections.
- * Pass the project directory as the last argument when running elsewhere.
  *
- * Each label is one prepared indexed mesh. A stroke is a closed box with
- * separate face normals. XY bounds are centered, height is exactly one unit,
- * depth is 0.08, and the readable front faces +Z. Printed widths include the
- * strokes, with no hidden padding. Digits use the same glyph metrics; callers
- * can space digit entities at 0.8 times their height for tabular numbers.
+ * Each label is one indexed mesh, centered in XY with a one-unit cap frame.
+ * Readable front faces +Z. Extrusion is 0.08 units. Digits are spaced at
+ * 0.8 times their height by the authored HUD. No font raster is rendered.
  */
 #include "runtime/geometry/mesh_prepared.h"
 #include "support/array.h"
+#include "support/xalloc.h"
+#include "vendor/libtess2/Include/tesselator.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include <stb_truetype.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -34,8 +39,13 @@
 #include <unistd.h>
 
 #define COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
-#define STROKE_WIDTH .12f
 #define DEPTH .08f
+#define CURVE_TOLERANCE .0025f
+#define FILL_SAMPLE_AXIS 24
+#define FILL_SIDE_EPSILON .000001f
+#define FACE_AREA_EPSILON 1e-10f
+
+static stbtt_fontinfo regular, medium, numeric;
 
 typedef struct
 {
@@ -44,58 +54,14 @@ typedef struct
 
 typedef struct
 {
-    char letter;
-    float advance;
-    const char *paths;
-} Glyph;
-
-/* Most letters use a 6 by 10 grid; M and W are wider. A space lifts the pen;
- * each subsequent coordinate pair extends its stroke. Lowercase 'a' means
- * ten on the vertical axis. */
-static const Glyph glyphs[] = {
-    { 'A', .76f, "003a60 1454" },
-    { 'B', .76f, "000a4a68674505 4563624000" },
-    { 'C', .76f, "684a2a0802204062" },
-    { 'D', .76f, "000a3a67633000" },
-    { 'E', .72f, "6a0a0060 0545" },
-    { 'F', .72f, "000a6a 0545" },
-    { 'G', .76f, "684a2a08022040626535" },
-    { 'H', .76f, "000a 606a 0565" },
-    { 'I', .54f, "0a4a 2a20 0040" },
-    { 'J', .76f, "3a6a62402002" },
-    { 'K', .76f, "000a 6a0460" },
-    { 'L', .70f, "0a0060" },
-    { 'M', .96f, "000a468a80" },
-    { 'N', .78f, "000a606a" },
-    { 'O', .78f, "204062684a2a080220" },
-    { 'P', .76f, "000a4a68674505" },
-    { 'Q', .90f, "204062684a2a080220 4370" },
-    { 'R', .78f, "000a4a68674505 3560" },
-    { 'S', .74f, "684a2a080725456362402002" },
-    { 'T', .74f, "0a6a 3a30" },
-    { 'U', .78f, "0a022040626a" },
-    { 'V', .78f, "0a306a" },
-    { 'W', 1.00f, "0a2045608a" },
-    { 'X', .76f, "006a 0a60" },
-    { 'Y', .76f, "0a356a 3530" },
-    { 'Z', .76f, "0a6a0060" },
-    { '0', .78f, "204062684a2a080220" },
-    { '1', .78f, "183a30 1060" },
-    { '2', .78f, "082a4a68670060" },
-    { '3', .78f, "0a4a68674535 456362402002" },
-    { '4', .78f, "5a0464 5a50" },
-    { '5', .78f, "6a0a05456362402002" },
-    { '6', .78f, "684a2a0802204062634505" },
-    { '7', .78f, "0a6a10" },
-    { '8', .78f, "2507082a4a68674525 250302204062634525" },
-    { '9', .78f, "452507082a4a6862402002 4565" },
-};
+    Point a, b;
+} Edge;
 
 static const struct
 {
     const char *name, *text;
 } labels[] = {
-    { "stillwater", "STILLWATER" },
+    { "stillwater", "Stillwater" },
     { "score", "SCORE" },
     { "lines", "LINES" },
     { "hold", "HOLD" },
@@ -104,51 +70,50 @@ static const struct
     { "endless", "ENDLESS" },
     { "sprint", "SPRINT" },
     { "duet", "DUET" },
-    { "paused", "PAUSED" },
-    { "complete", "COMPLETE" },
-    { "game_over", "GAME OVER" },
-    { "press_enter", "PRESS ENTER" },
+    { "paused", "Paused" },
+    { "complete", "Complete" },
+    { "game_over", "Game over" },
+    { "press_enter", "Enter to continue" },
     { "remaining", "REMAINING" },
     { "elapsed", "TIME" },
     { "best", "BEST" },
-    { "no_best", "NO BEST" },
-    { "chapter_controls", "7 8 CHAPTER" },
-    { "controller_lost", "CONTROLLER LOST" },
-    { "saving_failed", "SAVING FAILED" },
+    { "no_best", "No best yet" },
+    { "chapter_controls", "7 / 8  Chapter" },
+    { "controller_lost", "Controller disconnected" },
+    { "saving_failed", "Could not save" },
     { "chapter", "CHAPTER" },
     { "rescue", "RESCUE" },
-    { "music", "M USE MY MUSIC" },
-    { "listening", "M RETURN TO SCORE" },
-    { "audio_unavailable", "M RETRY AUDIO" },
-    { "audio_waiting", "CHOOSE AUDIO" },
-    { "audio_score", "ORIGINAL SCORE" },
-    { "audio_connected", "AUDIO CONNECTED" },
-    { "audio_reactive", "AUDIO REACTIVE" },
-    { "audio_quiet", "NO MUSIC HEARD" },
-    { "audio_quiet_hint", "PLAY MUSIC OR CHECK ROUTING" },
-    { "audio_share_hint", "SHARE MUSIC WITH AUDIO" },
-    { "audio_gesture_hint", "CLICK IF NO CHOOSER" },
-    { "audio_no_source", "AUDIO UNAVAILABLE" },
-    { "audio_cancelled", "SHARING NOT STARTED" },
-    { "audio_ended", "SHARING ENDED" },
-    { "audio_restored", "ORIGINAL SCORE RESTORED" },
-    { "audio_browser_help", "BROWSER SHARE A MUSIC TAB" },
-    { "audio_desktop_help", "DESKTOP USE LOOPBACK AUDIO" },
-    { "setting_effects_off", "EFFECTS OFF" },
-    { "setting_effects_low", "EFFECTS LOW" },
-    { "setting_effects_full", "EFFECTS FULL" },
-    { "setting_motion_on", "REDUCED MOTION ON" },
-    { "setting_motion_off", "REDUCED MOTION OFF" },
-    { "setting_ghost_on", "GHOST ON" },
-    { "setting_ghost_off", "GHOST OFF" },
-    { "setting_volume", "VOLUME" },
-    { "setting_das", "MOVE DELAY" },
-    { "setting_arr", "MOVE REPEAT" },
-    { "setting_ms", "MS" },
-    { "setting_percent", "PERCENT" },
-    { "play_controls", "ARROWS MOVE   X Z ROTATE   SPACE DROP   C HOLD   P PAUSE" },
+    { "music", "M  Connect music" },
+    { "audio_share_hint", "Choose a music tab and share its audio" },
+    { "audio_no_source", "Audio sharing unavailable" },
+    { "audio_cancelled", "Audio sharing cancelled" },
+    { "audio_ended", "Audio sharing ended" },
+    { "setting_effects_off", "Effects off" },
+    { "setting_effects_low", "Effects low" },
+    { "setting_effects_full", "Effects full" },
+    { "setting_motion_on", "Reduced motion on" },
+    { "setting_motion_off", "Reduced motion off" },
+    { "setting_ghost_on", "Ghost on" },
+    { "setting_ghost_off", "Ghost off" },
+    { "setting_volume", "Volume" },
+    { "setting_das", "Move delay" },
+    { "setting_arr", "Move repeat" },
+    { "setting_ms", "ms" },
+    { "setting_percent", "%" },
+    { "play_controls", "Arrows  Move     X / Z  Rotate     Space  Drop     C  Hold" },
     { "settings_controls",
-      "1 2 3 4 MODE   V EFFECTS   F MOTION   G GHOST   9 0 VOLUME   M AUDIO" },
+      "1 - 4  Mode     V  Effects     F  Motion     G  Ghost     9 / 0  Volume" },
+    { "connect_music", "Connect your music" },
+    { "music_youtube", "1  YouTube" },
+    { "music_spotify", "2  Spotify" },
+    { "music_tidal", "3  TIDAL" },
+    { "music_listen", "M  Share music audio" },
+    { "music_score", "4  Use game score" },
+    { "music_intro", "Play a track, then share its audio" },
+    { "music_play", "Play a track to begin" },
+    { "music_retry", "M  Try again" },
+    { "pause_hint", "P  Pause" },
+
 };
 
 static void face(render_mesh_asset *mesh, const CF_V3 *positions, int count)
@@ -180,71 +145,208 @@ static void quad(render_mesh_asset *mesh, CF_V3 a, CF_V3 b, CF_V3 c, CF_V3 d)
     face(mesh, positions, COUNT(positions));
 }
 
-static void extrude(render_mesh_asset *mesh, const Point corners[4])
+static Point midpoint(Point a, Point b)
 {
-    CF_V3 front[4], back[4];
-    for (int i = 0; i < 4; i++) {
-        front[i] = (CF_V3){ corners[i].x, corners[i].y, DEPTH * .5f };
-        back[i] = (CF_V3){ corners[i].x, corners[i].y, -DEPTH * .5f };
+    return (Point){ (a.x + b.x) * .5f, (a.y + b.y) * .5f };
+}
+
+static void edge(Edge **edges, Point a, Point b)
+{
+    if (a.x == b.x && a.y == b.y) {
+        return;
     }
-    quad(mesh, front[0], front[1], front[2], front[3]);
-    quad(mesh, back[3], back[2], back[1], back[0]);
-    for (int i = 0; i < 4; i++) {
-        int next = (i + 1) % 4;
-        quad(mesh, back[i], back[next], front[next], front[i]);
+    apush(*edges, ((Edge){ a, b }));
+}
+
+static void curve(Edge **edges, Point a, Point control, Point b, int depth)
+{
+    Point middle = midpoint(a, b);
+    float deviation = hypotf(control.x - middle.x, control.y - middle.y);
+    if (deviation <= CURVE_TOLERANCE || depth == 12) {
+        edge(edges, a, b);
+        return;
+    }
+    Point left = midpoint(a, control), right = midpoint(control, b);
+    middle = midpoint(left, right);
+    curve(edges, a, left, middle, depth + 1);
+    curve(edges, middle, right, b, depth + 1);
+}
+
+static float side_of(Point a, Point b, Point p)
+{
+    return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+}
+
+/* Compare the filled triangles to the contours' nonzero winding, including
+ * interior counters and overlapping outlines. Boundary samples are omitted
+ * because both representations include their own floating-point rounding. */
+static void verify_fill(TESStesselator *tess, const Edge *edges)
+{
+    Point low = edges[0].a, high = low;
+    for (int i = 0; i < acount(edges); i++) {
+        low.x = fminf(low.x, edges[i].a.x);
+        low.y = fminf(low.y, edges[i].a.y);
+        high.x = fmaxf(high.x, edges[i].a.x);
+        high.y = fmaxf(high.y, edges[i].a.y);
+    }
+    const TESSreal *vertices = tessGetVertices(tess);
+    const TESSindex *indices = tessGetElements(tess);
+    for (int row = 0; row < FILL_SAMPLE_AXIS; row++) {
+        for (int column = 0; column < FILL_SAMPLE_AXIS; column++) {
+            Point sample = {
+                low.x + (high.x - low.x) * (column + .5f) / FILL_SAMPLE_AXIS,
+                low.y + (high.y - low.y) * (row + .5f) / FILL_SAMPLE_AXIS,
+            };
+            int winding = 0;
+            bool boundary = false;
+            for (int i = 0; i < acount(edges); i++) {
+                Edge edge = edges[i];
+                float side = side_of(edge.a, edge.b, sample);
+                boundary |= fabsf(side) < FILL_SIDE_EPSILON;
+                if (edge.a.y <= sample.y && edge.b.y > sample.y && side > 0) {
+                    winding++;
+                }
+                if (edge.a.y > sample.y && edge.b.y <= sample.y && side < 0) {
+                    winding--;
+                }
+            }
+            if (boundary) {
+                continue;
+            }
+            bool filled = false;
+            for (int i = 0; i < tessGetElementCount(tess) && !filled; i++) {
+                Point p[3];
+                for (int j = 0; j < 3; j++) {
+                    int at = indices[i * 3 + j] * 2;
+                    p[j] = (Point){ vertices[at], vertices[at + 1] };
+                }
+                if (fabsf(side_of(p[0], p[1], p[2])) < FACE_AREA_EPSILON) {
+                    continue;
+                }
+                filled = side_of(p[0], p[1], sample) >= -FILL_SIDE_EPSILON &&
+                         side_of(p[1], p[2], sample) >= -FILL_SIDE_EPSILON &&
+                         side_of(p[2], p[0], sample) >= -FILL_SIDE_EPSILON;
+            }
+            assert(filled == (winding != 0));
+        }
     }
 }
 
-static void stroke(render_mesh_asset *mesh, Point a, Point b)
+static void fill(render_mesh_asset *mesh, const Edge *edges, const int *contours)
 {
-    float dx = b.x - a.x, dy = b.y - a.y;
-    float length = hypotf(dx, dy);
-    assert(length > 0);
-    float ux = dx / length * STROKE_WIDTH * .5f;
-    float uy = dy / length * STROKE_WIDTH * .5f;
-    Point corners[] = {
-        { a.x - ux + uy, a.y - uy - ux },
-        { b.x + ux + uy, b.y + uy - ux },
-        { b.x + ux - uy, b.y + uy + ux },
-        { a.x - ux - uy, a.y - uy + ux },
-    };
-    extrude(mesh, corners);
+    TESStesselator *tess = tessNewTess(NULL);
+    assert(tess);
+    Point *points = NULL;
+    for (int i = 0; i < acount(contours); i++) {
+        int end = i + 1 < acount(contours) ? contours[i + 1] : acount(edges);
+        asetlen(points, 0);
+        for (int j = contours[i]; j < end; j++) {
+            apush(points, edges[j].a);
+        }
+        assert(acount(points) >= 3);
+        tessAddContour(tess, 2, points, sizeof *points, acount(points));
+    }
+    const TESSreal normal[] = { 0, 0, 1 };
+    assert(tessTesselate(tess, TESS_WINDING_NONZERO, TESS_POLYGONS, 3, 2, normal));
+    verify_fill(tess, edges);
+    const TESSreal *vertices = tessGetVertices(tess);
+    const TESSindex *indices = tessGetElements(tess);
+    int count = tessGetVertexCount(tess);
+    int first = acount(mesh->vertices);
+    for (int i = 0; i < count; i++) {
+        for (int side = 0; side < 2; side++) {
+            float sign = side ? -1.0f : 1.0f;
+            render_mesh_surface_vertex vertex = {
+                .position = { vertices[i * 2], vertices[i * 2 + 1], sign * DEPTH * .5f },
+                .normal = { 0, 0, sign },
+                .uv = { vertices[i * 2], vertices[i * 2 + 1] },
+                .tangent = { 1, 0, 0, sign }
+            };
+            apush(mesh->vertices, vertex);
+        }
+    }
+    for (int i = 0; i < tessGetElementCount(tess); i++) {
+        int triangle[3];
+        for (int j = 0; j < 3; j++) {
+            int index = indices[i * 3 + j];
+            assert(index >= 0 && index < count);
+            triangle[j] = first + index * 2;
+        }
+        CF_V3 a = mesh->vertices[triangle[0]].position;
+        CF_V3 b = mesh->vertices[triangle[1]].position;
+        CF_V3 c = mesh->vertices[triangle[2]].position;
+        float area = cf_cross(cf_sub_v3(b, a), cf_sub_v3(c, a)).z;
+        if (fabsf(area) < FACE_AREA_EPSILON) {
+            continue;
+        }
+        assert(area > 0);
+        for (int j = 0; j < 3; j++) {
+            apush(mesh->indices, triangle[j]);
+        }
+        for (int j = 2; j >= 0; j--) {
+            apush(mesh->indices, triangle[j] + 1);
+        }
+    }
+    for (int i = 0; i < acount(edges); i++) {
+        Point a = edges[i].a, b = edges[i].b;
+        /* TrueType outer contours are clockwise; holes reverse winding. */
+        quad(mesh,
+             (CF_V3){ b.x, b.y, -DEPTH * .5f },
+             (CF_V3){ a.x, a.y, -DEPTH * .5f },
+             (CF_V3){ a.x, a.y, DEPTH * .5f },
+             (CF_V3){ b.x, b.y, DEPTH * .5f });
+    }
+    afree(points);
+    tessDeleteTess(tess);
 }
 
-static float coordinate(char c)
+static float letter(render_mesh_asset *mesh, const stbtt_fontinfo *font, int c, float x)
 {
-    assert((c >= '0' && c <= '9') || c == 'a');
-    return (float)(c == 'a' ? 10 : c - '0') * .1f;
-}
-
-static float letter(render_mesh_asset *mesh, char c, float x)
-{
+    int advance, bearing, x0, y0, x1, y1;
+    stbtt_GetCodepointHMetrics(font, c, &advance, &bearing);
+    assert(stbtt_GetCodepointBox(font, 'H', &x0, &y0, &x1, &y1));
+    float scale = 1.0f / (float)(y1 - y0);
+    stbtt_vertex *vertices;
+    int count = stbtt_GetCodepointShape(font, c, &vertices);
     if (c == ' ') {
-        return .48f;
+        assert(!count);
+        return advance * scale;
     }
-    const Glyph *glyph = NULL;
-    for (int i = 0; i < COUNT(glyphs); i++) {
-        if (glyphs[i].letter == c) {
-            glyph = &glyphs[i];
-            break;
+    assert(count);
+    Edge *edges = NULL;
+    int *contours = NULL;
+    Point previous = { 0 }, start = { 0 };
+    for (int i = 0; i < count; i++) {
+        const stbtt_vertex *v = &vertices[i];
+        Point p = { x + v->x * scale, (v->y - y0) * scale - .5f };
+        switch (v->type) {
+            case STBTT_vmove:
+                if (i) {
+                    edge(&edges, previous, start);
+                }
+                apush(contours, acount(edges));
+                start = p;
+                break;
+            case STBTT_vline:
+                edge(&edges, previous, p);
+                break;
+            case STBTT_vcurve: {
+                Point control = { x + v->cx * scale, (v->cy - y0) * scale - .5f };
+                curve(&edges, previous, control, p, 0);
+                break;
+            }
+            default:
+                /* The pinned Geist TrueType files use quadratic outlines. */
+                assert(false);
         }
+        previous = p;
     }
-    assert(glyph);
-    const char *path = glyph->paths;
-    while (*path) {
-        Point a = { x + coordinate(path[0]), coordinate(path[1]) };
-        path += 2;
-        while (*path && *path != ' ') {
-            Point b = { x + coordinate(path[0]), coordinate(path[1]) };
-            stroke(mesh, a, b);
-            a = b;
-            path += 2;
-        }
-        if (*path) {
-            path++;
-        }
-    }
-    return glyph->advance;
+    edge(&edges, previous, start);
+    fill(mesh, edges, contours);
+    afree(contours);
+    afree(edges);
+    stbtt_FreeShape(font, vertices);
+    return advance * scale;
 }
 
 static void bounds(render_mesh_asset *mesh)
@@ -284,26 +386,38 @@ static void verify(const render_mesh_asset *mesh)
         assert(fabsf(cf_len_v3(t) - 1) < .0001f);
         assert(fabsf(cf_dot_v3(v->normal, t)) < .0001f);
     }
+    assert(acount(mesh->indices) % 3 == 0);
+    for (int i = 0; i < acount(mesh->indices); i++) {
+        assert(mesh->indices[i] >= 0 && mesh->indices[i] < acount(mesh->vertices));
+    }
     for (int i = 0; i < acount(mesh->indices); i += 3) {
         const render_mesh_surface_vertex *a = &mesh->vertices[mesh->indices[i]];
         CF_V3 b = mesh->vertices[mesh->indices[i + 1]].position;
         CF_V3 c = mesh->vertices[mesh->indices[i + 2]].position;
         CF_V3 cross = cf_cross(cf_sub_v3(b, a->position), cf_sub_v3(c, a->position));
-        assert(cf_dot_v3(cross, a->normal) > .000001f);
+        assert(cf_dot_v3(cross, a->normal) > 1e-12f);
     }
 }
 
 static render_mesh_asset make_mesh(const char *text)
 {
     render_mesh_asset mesh = { 0 };
+    const stbtt_fontinfo *font = &medium;
+    if (!strcmp(text, "Stillwater")) {
+        font = &regular;
+    }
+    if (strlen(text) == 1 && isdigit((unsigned char)text[0])) {
+        font = &numeric;
+    }
     float x = 0;
     for (const char *c = text; *c; c++) {
-        x += letter(&mesh, *c, x);
+        x += letter(&mesh, font, (unsigned char)*c, x);
+        int x0, y0, x1, y1;
+        assert(stbtt_GetCodepointBox(font, 'H', &x0, &y0, &x1, &y1));
+        x += (float)stbtt_GetCodepointKernAdvance(font, *c, c[1]) / (float)(y1 - y0);
     }
     center(&mesh);
     verify(&mesh);
-    assert(acount(mesh.vertices) % 24 == 0);
-    assert(acount(mesh.indices) == acount(mesh.vertices) / 24 * 36);
     assert(fabsf(mesh.min.x + mesh.max.x) < .0001f);
     assert(fabsf(mesh.min.y + .5f) < .0001f);
     assert(fabsf(mesh.max.y - .5f) < .0001f);
@@ -389,37 +503,23 @@ static void generate(const char *directory, const char *prototypes, const char *
     publish(&mesh, directory, prototypes, name);
 }
 
-static void dot(render_mesh_asset *mesh, float y)
-{
-    const float half = STROKE_WIDTH * .5f;
-    const Point corners[] = {
-        { -half, y - half },
-        { half, y - half },
-        { half, y + half },
-        { -half, y + half },
-    };
-    extrude(mesh, corners);
-}
-
-/* Punctuation keeps the digits' cap frame of [-.5, .5]. Only its occupied
- * bounds are stored; centering or normalizing these meshes would misalign
- * the decimal point or turn the colon into full-height blocks. */
+/* Punctuation retains the digit cap frame rather than expanding to one unit. */
 static void punctuation(const char *directory, const char *prototypes)
 {
-    render_mesh_asset mesh = { 0 };
-    dot(&mesh, -.2f);
-    dot(&mesh, .2f);
-    bounds(&mesh);
-    verify(&mesh);
-    assert(fabsf(mesh.min.y + .26f) < .0001f);
-    assert(fabsf(mesh.max.y - .26f) < .0001f);
-    publish(&mesh, directory, prototypes, "time_colon");
-    dot(&mesh, -.44f);
-    bounds(&mesh);
-    verify(&mesh);
-    assert(fabsf(mesh.min.y + .5f) < .0001f);
-    assert(fabsf(mesh.max.y + .38f) < .0001f);
-    publish(&mesh, directory, prototypes, "time_decimal");
+    const char *names[] = { "time_colon", "time_decimal" };
+    const char *characters = ":.";
+    for (int i = 0; i < 2; i++) {
+        render_mesh_asset mesh = { 0 };
+        letter(&mesh, &numeric, characters[i], 0);
+        bounds(&mesh);
+        float x = (mesh.min.x + mesh.max.x) * .5f;
+        for (int j = 0; j < acount(mesh.vertices); j++) {
+            mesh.vertices[j].position.x -= x;
+        }
+        bounds(&mesh);
+        verify(&mesh);
+        publish(&mesh, directory, prototypes, names[i]);
+    }
 }
 
 static void outward_face(render_mesh_asset *mesh, CF_V3 *positions, int count)
@@ -541,7 +641,7 @@ static void directory(const char *path)
 static void preview(const char *path)
 {
     static const char *const samples[] = {
-        "STILLWATER",
+        "Stillwater",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "0123456789",
         "SCORE   LINES   HOLD   NEXT   CHAPTER",
@@ -572,12 +672,32 @@ static void preview(const char *path)
     assert(!fclose(file));
 }
 
+static void load_font(stbtt_fontinfo *font, const char *name)
+{
+    char path[512];
+    int n = snprintf(path, sizeof path, ".chibi/engine/third_party/fonts/geist/Geist-%s.ttf", name);
+    assert(n > 0 && (size_t)n < sizeof path);
+    FILE *file = fopen(path, "rb");
+    assert(file);
+    assert(!fseek(file, 0, SEEK_END));
+    long size = ftell(file);
+    assert(size > 0);
+    rewind(file);
+    unsigned char *data = xmalloc((size_t)size);
+    assert(fread(data, 1, (size_t)size, file) == (size_t)size);
+    assert(!fclose(file));
+    assert(stbtt_InitFont(font, data, 0));
+}
+
+static void free_fonts()
+{
+    free(regular.data);
+    free(medium.data);
+    free(numeric.data);
+}
+
 int main(int argc, char **argv)
 {
-    if (argc == 3 && !strcmp(argv[1], "--preview")) {
-        preview(argv[2]);
-        return 0;
-    }
     if (argc >= 2 && !strcmp(argv[1], "--block")) {
         assert(argc <= 3);
         if (argc == 3) {
@@ -587,10 +707,24 @@ int main(int argc, char **argv)
         block();
         return 0;
     }
+    if ((argc == 3 || argc == 4) && !strcmp(argv[1], "--preview")) {
+        if (argc == 4) {
+            assert(!chdir(argv[3]));
+        }
+        load_font(&regular, "Regular");
+        load_font(&medium, "Medium");
+        load_font(&numeric, "Numeric");
+        preview(argv[2]);
+        free_fonts();
+        return 0;
+    }
     assert(argc <= 2);
     if (argc == 2) {
         assert(!chdir(argv[1]));
     }
+    load_font(&regular, "Regular");
+    load_font(&medium, "Medium");
+    load_font(&numeric, "Numeric");
     const char *output = "content/meshes/text";
     const char *prototypes = "content/prototypes";
     directory("content/meshes");
@@ -606,5 +740,6 @@ int main(int argc, char **argv)
         generate(output, prototypes, labels[i].name, labels[i].text);
     }
     punctuation(output, prototypes);
+    free_fonts();
     return 0;
 }

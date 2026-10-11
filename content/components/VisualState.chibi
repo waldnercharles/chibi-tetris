@@ -5,6 +5,15 @@ component VisualState {
     mid: number
     treble: number
     beat: number
+    // Integrated field motion remains continuous across audio and input changes.
+    flow_phase: number
+    flow_velocity: number
+    flow_energy: number
+    flow_turn: number
+    // Exact bass, mid and treble controls sent to both particle shaders.
+    field_bands: CF_V3
+    // Exact energy, beat and chapter controls sent to both particle shaders.
+    field_response: CF_V3
     // Cosmetic pool saturation; event queue loss is tracked separately.
     cue_overwrites: int
 }

@@ -1,4 +1,0 @@
-name "TextListening"
-components {
-    MeshAsset source="content/meshes/text/listening.mesh"
-}

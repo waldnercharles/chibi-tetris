@@ -1,7 +1,13 @@
 version 1
 name "ReopenChecks"
 (array)entities {
-    - name="World" prototype="World"
+    - {
+        name "World"
+        prototype "World"
+        components {
+            Session audio_ready=#true
+        }
+    }
     - {
         name "Board1"
         prototype "TestBoard"
