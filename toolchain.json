@@ -2,22 +2,21 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "6f6bf479a09bb073c29ef7eb5a4d1c9f504adeab",
-    "source_snapshot_sha256": "67f174c3f8adaca7ddc35381ad73f198518059c83aa97664f72dfa564fcab7bb",
-    "review": "https://github.com/waldnercharles/chibi/pull/353",
-    "project_format": 21,
+    "revision": "dd20172b7f093d41d8b4cc23ce68ca479828fca1",
+    "source_snapshot_sha256": "32a8e606b5fa709c489073318c89f162d9a71c85a8dbbd2b6c9297203d7b3910",
+    "project_format": 23,
     "player_prepared_format": 12
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "43f2475ed89942e09bd5e94c784118a084999518a7cb090060bdcad9b78e11c7",
-    "manifest_sha256": "efaec82ba6f1d46ea5b6636335840dcb06542b29ceb7be437ba9c5d0713536d2",
+    "build_id": "f38366a3f017edb97d953e5da05cd8ca6ce0451a2c23b335859c838c0089ff17",
+    "manifest_sha256": "00e94caa742cd61d4a137eb4157dd72ef205bfc9b75ef8d23440cbb703e1208a",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
       "compiler_id": "Clang",
       "compiler_version": "23.1.1",
-      "configuration": "Release",
+      "configuration": "Debug",
       "native_backend": true
     }
   },

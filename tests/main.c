@@ -18,7 +18,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-/* Public GameControl values from the pinned SDK's runtime/components.h. */
+/* Public Control values from the pinned SDK's runtime/components.h. */
 enum
 {
     KEY_SPACE = 4,

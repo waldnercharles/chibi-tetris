@@ -1,7 +1,7 @@
 name "EnvCurrent"
 components {
-    GAME.GameMaterial scene=0xffffff00
-    GAME.GameRenderState hidden=#true
-    GAME.GameSprite image="content/images/current.png" layer=-99
-    (object)GAME.GameTransform
+    Material scene=0xffffff00
+    RenderState hidden=#true
+    Sprite image="content/images/current.png" layer=-99
+    (object)Transform
 }

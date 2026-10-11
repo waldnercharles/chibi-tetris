@@ -1,8 +1,23 @@
 # Validation record
 
-This record covers deterministic simulation, observed player behavior, and remaining coverage limits. It applies to the Stillwater implementation and SDK recorded by [toolchain.json](../toolchain.json). Native and browser exports were built locally from the authored project. See the [README](../README.md) for current browser access and publishing steps.
+[toolchain.json](../toolchain.json) records the current engine and native SDK. Its `tested_web_player` entry retains the original browser export's identity. See the [README](../README.md) for browser access and publishing steps.
 
-## Automated checks
+## Native component-name migration
+
+The project migrated from format 21 through 22 to 23. Authored assets and test fixtures now use native component names without the `GAME.` and `Game` prefixes. The preceding format-22 migration also removed obsolete HRC lab settings.
+
+| Check | Completed evidence |
+| --- | --- |
+| Project validation | 38 assets, zero errors, zero warnings; 13.403 seconds. |
+| Asset formatting | Release controller completed in 6.509 seconds. |
+| Focused gameplay tests | Eight C/pico_unit cases passed, zero failed, 95 assertions; 7.741 seconds. |
+| Installed native SDK compiler | Compiled the project into a 28,300,107-byte prepared artifact; 2.016 seconds. |
+
+These checks used the engine's production supervisor with a 60-second deadline. Test compilation was separate. The initial sanitizer-build formatter was stopped before the deadline while minimizing unchanged source; the Release formatter completed. Gameplay tests used the Release controller and the migrated authored content. Their coverage is described below. The `tested_native_sdk` record identifies the package used for the installed-compiler check; packaged-player execution remains unverified for this migration.
+
+The remaining test results and player observations document the original release, using engine revision `6f6bf479a09bb073c29ef7eb5a4d1c9f504adeab`. Native and browser exports were not rebuilt or played for the component-name migration.
+
+## Original automated checks
 
 All test commands used the engine's production deadline supervisor. Configuration and compilation were timed separately. The normal test ceiling is 60 seconds; the observed native play session used a stricter 55-second ceiling.
 
