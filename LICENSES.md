@@ -2,7 +2,7 @@
 
 This repository contains Stillwater's source and authored game content. No commercial Tetris Effect assets, themes, music or branding are included.
 
-The three stage paintings in `content/images` were generated specifically for Stillwater with OpenAI's image-generation tool on October 10, 2026. No reference images were supplied. Exact prompts and rendering use are recorded in `docs/visuals.md`.
+The procedural environments, block geometry and mesh text are original project assets. `tools/glyphs.c` generates the text meshes from original stroke forms using Chibi's mesh writer. The former generated 2D paintings have been removed. `docs/visuals.md` records the current presentation.
 
 The music and sound effects in `content/sounds` and their original score are dedicated to the public domain under CC0 1.0. They were composed and synthesized specifically for Stillwater with `tools/compose.c`, without third-party samples. `docs/audio.md` records the composition, reproduction and audio measurements. The generator remains project source.
 
