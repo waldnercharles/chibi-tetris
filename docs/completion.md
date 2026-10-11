@@ -29,4 +29,4 @@ Chapter unlocks, scores, Sprint best and settings use the SDK save service, with
 - Browser audio processing was observed, but there is no recording or human listening review of the audible mix.
 - Physical controller hardware remains untested. Synthetic two-slot tests cover the authored behavior.
 
-Project validation passes for 38 assets with no errors or warnings. The admitted engine native, language and tooling groups pass. Full and quarantined suites remain disabled, not passed. Exports are local; no public website has been deployed.
+Project validation passes for 38 assets with no errors or warnings. The admitted engine native, language and tooling groups pass. Full and quarantined suites remain disabled, not passed. See the [README](../README.md) for browser access and publishing steps.

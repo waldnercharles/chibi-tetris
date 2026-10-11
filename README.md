@@ -13,7 +13,9 @@ The rules include seven-piece bags, SRS quarter turns, hold, five previews, a gh
 
 ## Play
 
-The native export is `dist/Stillwater.app` on macOS. Open it normally. The browser export is `dist/web`; serve it with `make serve`, then open [the local game](http://127.0.0.1:18769). Exports are generated locally and are not checked into Git. This repository does not publish a website.
+[Play Stillwater in your browser](https://waldnercharles.github.io/chibi-tetris/).
+
+The native export is `dist/Stillwater.app` on macOS. Open it normally. The local browser export is `dist/web`; serve it with `make serve`, then open [the local game](http://127.0.0.1:18769). Exports are generated locally and kept out of the source branch.
 
 | Action | Player one | Player two | Controller |
 | --- | --- | --- | --- |
@@ -45,6 +47,26 @@ make web
 ```
 
 `SDK`, `CTL`, `ENGINE_BUILD`, and `WEB_PLAYER` can select existing matching installations. SDK and build output live under ignored `.chibi/`, `build/`, or `dist/` directories. Native exports include the player, prepared game, resources, and dependency licenses. Browser exports use Chibi's WebGPU player with its WebGL 2 fallback.
+
+## Publish to GitHub Pages
+
+GitHub Pages serves the root of the `gh-pages` branch. Build the browser export with the pinned toolchain, run the focused checks, and inspect browser play before publishing. Keep the SDK dependency notices in the export. Source changes on `main` need a new export and publishing commit to reach the website.
+
+From a clean, committed source checkout, publish an updated export with:
+
+```sh
+make web
+git clone --single-branch --branch gh-pages https://github.com/waldnercharles/chibi-tetris.git build/pages-publish
+rsync -a --delete --exclude=.git dist/web/ build/pages-publish/
+touch build/pages-publish/.nojekyll
+cp LICENSES.md build/pages-publish/
+git -C build/pages-publish add --all
+git -C build/pages-publish commit -m "Publish Stillwater from $(git rev-parse --short HEAD)"
+git -C build/pages-publish push origin gh-pages
+rm -rf build/pages-publish
+```
+
+Wait for the repository's Pages deployment to finish, then verify the public play link above. The publishing directory is temporary; remove it before repeating these steps.
 
 ## Verify and edit
 

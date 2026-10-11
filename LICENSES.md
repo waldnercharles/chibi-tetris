@@ -1,6 +1,6 @@
 # Asset provenance
 
-Stillwater source and authored game content are private project material. No commercial Tetris Effect assets, themes, music or branding are included.
+This repository contains Stillwater's source and authored game content. No commercial Tetris Effect assets, themes, music or branding are included.
 
 The three stage paintings in `content/images` were generated specifically for Stillwater with OpenAI's image-generation tool on October 10, 2026. No reference images were supplied. Exact prompts and rendering use are recorded in `docs/visuals.md`.
 

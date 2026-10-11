@@ -1,6 +1,6 @@
 # Validation record
 
-This record covers deterministic simulation, observed player behavior, and remaining coverage limits. It applies to the Stillwater implementation and SDK recorded by [toolchain.json](../toolchain.json). Native and browser exports were built locally from the authored project. No public deployment was made.
+This record covers deterministic simulation, observed player behavior, and remaining coverage limits. It applies to the Stillwater implementation and SDK recorded by [toolchain.json](../toolchain.json). Native and browser exports were built locally from the authored project. See the [README](../README.md) for current browser access and publishing steps.
 
 ## Automated checks
 
@@ -68,4 +68,4 @@ dist/Stillwater.app/Contents/MacOS/Stillwater --frames 2100 --save build/native-
 
 The frame limit alone is not a wall-clock deadline; repeat it through the production supervisor when validating. The explicit path keeps this check's saved state separate from the default project save.
 
-Full native/render/Studio verification and other quarantined suites were not run and are not passed. Physical controllers, prolonged play and broad platform/browser compatibility remain untested. No public deployment is included in this record.
+Full native/render/Studio verification and other quarantined suites were not run and are not passed. Physical controllers, prolonged play and broad platform/browser compatibility remain untested. The observed player checks above preceded public deployment.
