@@ -1,0 +1,34 @@
+behavior LockChecks {
+    board: entity
+    frame: int = 0
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+    on Begin {
+        board = get_global_variable("Board1")
+    }
+    on Tick {
+        if frame == 1 {
+            Check(board.BoardState.level == 20, "chapter drives gravity")
+        }
+        if frame == 20 {
+            Check(board.BoardState.pieces == 0, "grounded rotation resets lock delay")
+        }
+        if frame == 45 {
+            Check(board.BoardState.pieces == 0, "lock remains delayed after final permitted reset")
+        }
+        if frame == 75 {
+            Check(board.BoardState.pieces >= 1, "fifteen resets cannot stall forever")
+            Check(!board.BoardState.topout, "bounded lock remains playable")
+            self.TestReport.done = true
+        }
+        frame += 1
+    }
+}

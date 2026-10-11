@@ -1,0 +1,27 @@
+version 1
+name "LockChecks"
+(array)entities {
+    - {
+        name "World"
+        prototype "TestWorld"
+        components {
+            Session mode=0 stage=19
+        }
+    }
+    - {
+        name "Board1"
+        prototype "Board"
+        components {
+            GAME.GameGlobalBinding name="Board1"
+            BoardState index=0
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        components {
+            (object)TestReport
+        }
+        (array)behaviors "LockChecks"
+    }
+}

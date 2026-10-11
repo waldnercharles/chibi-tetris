@@ -1,0 +1,9 @@
+version 21
+name "Stillwater"
+content "content"
+start_scene "scenes/Stillwater.kdl"
+application {
+    title "Stillwater"
+    width 1280
+    height 720
+}

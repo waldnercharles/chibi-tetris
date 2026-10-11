@@ -1,0 +1,8 @@
+name "Board"
+components {
+    (object)BoardState
+    GAME.GameAppearance border_width=2.0 height=488.0 layer=-3 width=248.0
+    GAME.GameMaterial border_scene=0x243745ff scene=0x020508ff
+    GAME.GameTransform y=8.0
+}
+(array)behaviors "Board"

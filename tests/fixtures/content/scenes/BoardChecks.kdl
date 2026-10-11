@@ -1,0 +1,29 @@
+version 1
+name "BoardChecks"
+(array)entities {
+    - name="World" prototype="TestWorld"
+    - {
+        name "Board1"
+        prototype "Board"
+        components {
+            GAME.GameGlobalBinding name="Board1"
+            BoardState index=0
+        }
+    }
+    - {
+        name "Board2"
+        prototype "Board"
+        components {
+            GAME.GameGlobalBinding name="Board2"
+            BoardState index=1
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        components {
+            (object)TestReport
+        }
+        (array)behaviors "BoardChecks"
+    }
+}

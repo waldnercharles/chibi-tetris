@@ -1,0 +1,5 @@
+name "TestWorld"
+components {
+    GAME.GameGlobalBinding name="World"
+    Session arr=0.035 das=0.15 ghost=#true mode=3 reduced_motion=#true run=1 screen=1 seed=73129
+}

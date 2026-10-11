@@ -1,0 +1,11 @@
+# Focused authored checks
+
+Build from the game root with `make -f tests/Makefile test-build ENGINE=/path/to/pinned/chibi`, then run `make -f tests/Makefile test ENGINE=/path/to/pinned/chibi CTL=/path/to/chibi_ctl`. The engine's production test supervisor applies its 60-second ceiling. The single C/pico_unit dispatcher also enforces one 58-second deadline for all runtime checks and kills its active controller process group on timeout. Build timing is separate. For diagnosis, the binary accepts `--all /path/to/chibi_ctl /path/to/game` or the `STILLWATER_CTL` and `STILLWATER_PROJECT` environment variables.
+
+The dispatcher clones the authored content with copy-on-write into a fresh `/tmp/stillwater-tests-*` directory and adds the small fixtures in this directory. It does not modify the game project. Successful runs remove that directory. Failed runs print its path and retain the last request and response for diagnosis.
+
+The rules fixture calls the live `Pieces` and `Rules` libraries. Board fixtures use the actual `Board` prototype and authored input map, driven through keyboard and two-slot controller input timelines. They check deterministic bags, geometry, SRS floor and wall kicks, collision, ghost placement, row compaction, spin scoring, combos, back-to-back awards, hold limits, auto-repeat, dropping, pause, restart, lock-reset limits, top-out, rescue and the fixed entity pool.
+
+Shell fixtures run the actual `World` prototype and `Shell` behavior. Test-only board telemetry supplies clear counts and top-outs to exercise Journey unlocks, selected-chapter restarts, Sprint completion, Duet reserves, rescue and failure, controller-disconnect pause, settings changes and save commits. A second fresh runtime receives the first runtime's exported `saved_state` and verifies settings and chapter reopening. These isolated snapshots never access the player's save file; the SDK's storage tests cover filesystem transport. Browser storage was checked through save/reload in the real player, as recorded in `docs/validation.md`.
+
+These are bounded simulation checks. They do not claim GPU rendering, physical-controller input, audio output, browser playability, or full engine-suite coverage.

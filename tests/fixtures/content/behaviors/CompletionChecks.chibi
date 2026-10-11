@@ -1,0 +1,82 @@
+// Lock can award the goal's final clear and then report a blocked next spawn.
+// Supply that exact telemetry together; Shell must finish the completed run.
+behavior CompletionChecks {
+    world: entity
+    first: entity
+    second: entity
+    frame: int = 0
+    mode: int = 2
+    goal: int = 40
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        first = get_global_variable("Board1")
+        second = get_global_variable("Board2")
+        mode = cast<int>(read_saved_number("test_mode", 2).Number)
+        if mode == 0 {
+            goal = 12
+        }
+        if mode == 3 {
+            goal = 20
+        }
+    }
+
+    on Tick {
+        match (frame) {
+            case 1 {
+                match (mode) {
+                    case 0 {
+                        send_event<"Journey">(world)
+                    }
+                    case 2 {
+                        send_event<"Sprint">(world)
+                    }
+                    case 3 {
+                        send_event<"Duet">(world)
+                    }
+                }
+            }
+            case 15 {
+                if mode == 3 {
+                    world.Session.stage = 5
+                }
+                first.BoardState.lines = goal - 1
+            }
+            case 18 {
+                Check(world.Session.screen == 1, "run continues one line before completion")
+                Check(world.Session.mode == mode, "requested mode is active")
+            }
+            case 20 {
+                first.BoardState.lines = goal
+                first.BoardState.score = 1000
+                first.BoardState.topout = true
+                if mode == 3 {
+                    world.Session.charge = 0
+                    second.BoardState.topout = true
+                }
+            }
+            case 23 {
+                Check(world.Session.screen == 3, "final clear finishes with blocked next spawn")
+                if mode == 2 {
+                    Check(read_saved_number("sprint", 0).Number > 0, "completed Sprint records its winning time")
+                }
+                if mode == 3 {
+                    Check(world.Session.rescue1 == 0 && world.Session.rescue2 == 0, "completed Duet needs no rescue")
+                }
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

@@ -1,0 +1,6 @@
+component TestReport {
+    checks: int
+    failures: int
+    done: bool
+    first_failure: string
+}

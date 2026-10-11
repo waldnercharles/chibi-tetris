@@ -1,0 +1,7 @@
+name "EnvShore"
+components {
+    GAME.GameMaterial scene=0xffffffff
+    (object)GAME.GameRenderState
+    GAME.GameSprite image="content/images/shore.png" layer=-100
+    (object)GAME.GameTransform
+}

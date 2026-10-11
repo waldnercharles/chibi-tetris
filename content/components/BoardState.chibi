@@ -1,0 +1,22 @@
+// Public board telemetry. The behavior owns its grid, queue and timers.
+component BoardState {
+    index: int
+    score: int
+    lines: int
+    level: int
+    topout: bool
+    pieces: int
+    combo: int
+    last_clear: int
+    clear_serial: int
+    ready: bool
+    current: int
+    held: int
+    can_hold: bool
+    column: int
+    row: int
+    rotation: int
+    ghost_row: int
+    back_to_back: bool
+    spin: int
+}

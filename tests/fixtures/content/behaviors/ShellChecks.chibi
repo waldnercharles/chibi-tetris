@@ -1,0 +1,111 @@
+// Milestones are test inputs. Session transitions and commits run the real Shell.
+behavior ShellChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+    }
+    on Tick {
+        match (frame) {
+            case 1 {
+                Check(world.Session.screen == 0 && world.Session.stage == 0, "new profile opens first chapter")
+                send_event<"Journey">(world)
+            }
+            case 3 {
+                Check(world.Session.screen == 1 && world.Session.mode == 0 && world.Session.run == 1, "Journey starts")
+            }
+            case 15 {
+                board.BoardState.lines = 12;
+                board.BoardState.score = 1200
+            }
+            case 18 {
+                Check(world.Session.stage == 1, "twelve lines advance Journey")
+                Check(read_saved_number("chapter", -1).Number == 1, "chapter unlock commits")
+            }
+            case 19 {
+                board.BoardState.lines = 0;
+                send_event<"Restart">(world)
+            }
+            case 22 {
+                Check(world.Session.stage == 0 && world.Session.run == 2, "restart returns to starting chapter")
+            }
+            case 24 {
+                send_event<"Home">(world)
+            }
+            case 26 {
+                send_event<"ChapterNext">(world)
+            }
+            case 28 {
+                Check(world.Session.stage == 1, "unlocked chapter can be selected")
+            }
+            case 29 {
+                send_event<"Journey">(world)
+            }
+            case 32 {
+                Check(world.Session.stage == 1 && world.Session.screen == 1, "Journey starts selected chapter")
+            }
+            case 44 {
+                board.BoardState.lines = 12
+            }
+            case 47 {
+                Check(world.Session.stage == 2, "selected chapter progresses")
+            }
+            case 48 {
+                board.BoardState.lines = 0;
+                send_event<"Restart">(world)
+            }
+            case 51 {
+                Check(world.Session.stage == 1, "restart remembers selected starting chapter")
+            }
+            case 52 {
+                send_event<"Home">(world)
+            }
+            case 54 {
+                send_event<"Settings">(world)
+            }
+            case 56 {
+                send_event<"Setting0">(world)
+            }
+            case 58 {
+                send_event<"Setting3">(world)
+            }
+            case 60 {
+                send_event<"Setting4">(world)
+            }
+            case 62 {
+                send_event<"Setting5">(world)
+            }
+            case 64 {
+                send_event<"Setting6">(world)
+            }
+            case 66 {
+                send_event<"Setting7">(world)
+            }
+            case 68 {
+                send_event<"Home">(world)
+            }
+            case 72 {
+                Check(world.Session.screen == 0, "settings return to title")
+                Check(abs(world.Session.master - 0.9) < 0.00001 && abs(world.Session.das - 0.16) < 0.00001, "settings update volumes and DAS")
+                Check(abs(world.Session.arr - 0.04) < 0.00001 && world.Session.effects == 0, "settings update ARR and effects")
+                Check(world.Session.reduced_motion && !world.Session.ghost, "settings toggle motion and ghost")
+                Check(read_saved_number("chapter", -1).Number == 2, "second chapter unlock survives restart")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

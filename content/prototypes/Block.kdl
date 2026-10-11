@@ -1,0 +1,6 @@
+name "Block"
+components {
+    GAME.GameAppearance border_width=1.0
+    GAME.GameMaterial border_scene=0xffffff28
+    (object)GAME.GameTransform
+}

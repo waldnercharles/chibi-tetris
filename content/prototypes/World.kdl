@@ -1,0 +1,9 @@
+name "World"
+components {
+    GAME.GameGlobalBinding name="World"
+    GAME.GameHRC2D ambient=1.0 min_resolution=0.25 particle_focal_length=300.0 resolution=0.25 target_fps=60.0 trace_levels=1
+    (object)GAME.GameInput
+    GAME.GameUi document="Stillwater" order=50
+    Session arr=0.035 das=0.15 effects=2 ghost=#true master=0.8 music=0.65 seed=73129 sound=0.75
+}
+(array)behaviors "Shell"

@@ -1,0 +1,196 @@
+// Three original plates, eight ambient glints and two fixed twelve-glint clear pools.
+// All environment drawing stays behind the board; no gameplay state is written.
+behavior Environment {
+    world: entity
+    board1: entity
+    board2: entity
+    plates: entity[]
+    ambient: entity[]
+    sparks: entity[]
+    ripples: entity[]
+    weights: number[] = [1, 0, 0]
+    ages: number[] = [10, 10]
+    strengths: number[] = [0, 0]
+    serial1: int = 0
+    serial2: int = 0
+    run: int = -1
+    time := 0
+    ready := false
+
+    function Tint(mood: int) -> (color: uint) {
+        match enum (mood) {
+            case 1 {
+                return 2212025600
+            }
+            case 2 {
+                return 3300257280
+            }
+        }
+        return 2966742272
+    }
+
+    function Center(board: int) -> (x: number) {
+        if world.Session.Mode != 3 {
+            return 0
+        }
+        if board == 0 {
+            return -254
+        }
+        return 254
+    }
+
+    function Clear(board: int, lines: int) {
+        ages[board] = 0
+        strengths[board] = cast<number>(min(lines, 4)) / 4
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board1 = get_global_variable("Board1")
+        board2 = get_global_variable("Board2")
+        shore := await spawn(EnvShore)
+        current := await spawn(EnvCurrent)
+        aurora := await spawn(EnvAurora)
+        plates = [shore, current, aurora]
+        for i in 0..7 {
+            glint := await spawn(EnvGlint)
+            ambient = array_add(ambient, glint)
+        }
+        for i in 0..23 {
+            glint := await spawn(EnvGlint)
+            sparks = array_add(sparks, glint)
+        }
+        for i in 0..1 {
+            ripple := await spawn(EnvRipple)
+            ripples = array_add(ripples, ripple)
+        }
+        ready = true
+    }
+
+    on Tick(dt) {
+        if !ready {
+            return
+        }
+        delta := min(dt, 0.05)
+        mood: int = floor(world.Session.Stage / 2)
+        mood = clamp(mood, 0, 2)
+        effects := world.Session.Effects
+        moving := !world.Session.ReducedMotion && effects > 0
+        playing := world.Session.Screen == 1
+        if moving && world.Session.Screen != 2 {
+            time += delta
+        }
+        tint := Tint(mood)
+
+        // A slow dissolve also previews the selected chapter on the title screen.
+        for i in 0..2 {
+            target := 0
+            if i == mood {
+                target = 1
+            }
+            weight := get(weights, i)
+            if moving {
+                weight += clamp(target - weight, -delta / 1.6, delta / 1.6)
+            }
+            if !moving {
+                weight = target
+            }
+            weights[i] = weight
+            plate := get(plates, i)
+            plate.Material.Scene = 4294967040 + cast<uint>(cast<int>(round(weight * 255)))
+            plate.RenderState.Hidden = weight <= 0
+            if moving {
+                plate.Transform = { x: sin(time * 0.09 + cast<number>(i) * 0.4) * 2.5,
+                y: cos(time * 0.07 + cast<number>(i) * 0.3) * 1.5 }
+            }
+            if !moving {
+                plate.Transform = { x: 0, y: 0 }
+            }
+        }
+
+        // A reset establishes a new serial baseline without inventing a clear.
+        if run != world.Session.Run {
+            run = world.Session.Run
+            serial1 = board1.BoardState.ClearSerial
+            serial2 = board2.BoardState.ClearSerial
+            ages = [10, 10]
+        }
+        if playing && board1.BoardState.ClearSerial > serial1 {
+            Clear(0, board1.BoardState.LastClear)
+        }
+        if playing && world.Session.Mode == 3 && board2.BoardState.ClearSerial > serial2 {
+            Clear(1, board2.BoardState.LastClear)
+        }
+        serial1 = board1.BoardState.ClearSerial
+        serial2 = board2.BoardState.ClearSerial
+
+        // The ambient points stay outside both possible board rectangles.
+        for i in 0..7 {
+            glint := get(ambient, i)
+            visible := moving && effects == 2
+            glint.RenderState.Hidden = !visible
+            if visible {
+                side := -1
+                if i % 2 == 1 {
+                    side = 1
+                }
+                cycle := fract(time * 0.012 + cast<number>(i) * 0.137)
+                glint.Transform = { x: side * (465 + i * 14) + sin(time * 0.17 + i) * 9,
+                y: 335 - cycle * 660 }
+                alpha := sin(cycle * pi) * (22 + i % 3 * 6)
+                glint.Material.Scene = tint + cast<uint>(cast<int>(alpha))
+                glint.Appearance.Width = 1.5 + cast<number>(i % 3) * 0.4
+                glint.Appearance.Height = 1.5 + cast<number>(i % 3) * 0.4
+            }
+        }
+
+        for board in 0..1 {
+            age := get(ages, board)
+            if world.Session.Screen != 2 {
+                age += delta
+            }
+            ages[board] = age
+            strength := get(strengths, board)
+            visible := effects > 0 && playing && age < 1.8
+            if board == 1 && world.Session.Mode != 3 {
+                visible = false
+            }
+            center := Center(board)
+            ripple := get(ripples, board)
+            ripple.RenderState.Hidden = !visible
+            if visible {
+                progress := clamp(age / 1.8, 0, 1)
+                fade := (1 - progress) * (1 - progress)
+                ripple.Material.Scene = tint + cast<uint>(cast<int>((42 + strength * 40) * fade))
+                ripple.Appearance.Width = 130 + progress * 120
+                ripple.Transform = { x: center, y: 264 + progress * 10 }
+                if !moving {
+                    ripple.Appearance.Width = 200
+                    ripple.Transform = { x: center, y: 268 }
+                }
+            }
+            for point in 0..11 {
+                glint := get(sparks, board * 12 + point)
+                show := visible && moving
+                if effects == 1 && point >= 6 {
+                    show = false
+                }
+                glint.RenderState.Hidden = !show
+                if show {
+                    side := -1
+                    if point % 2 == 1 {
+                        side = 1
+                    }
+                    progress := clamp(age / 1.8, 0, 1)
+                    spread := 10 + point * 3
+                    glint.Transform = { x: center + side * (132 + progress * spread),
+                    y: 252 - point * 7 - sin(progress * pi * 0.65) * (16 + point * 3) }
+                    alpha := (1 - progress) * (45 + strength * 65)
+                    glint.Material.Scene = tint + cast<uint>(cast<int>(alpha))
+                    glint.Appearance.Width = 1.8 + strength * 1.2
+                    glint.Appearance.Height = 1.8 + strength * 1.2
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,35 @@
+behavior ReopenChecks {
+    world: entity
+    frame: int = 0
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+    on Begin {
+        world = get_global_variable("World")
+    }
+    on Tick {
+        if frame == 1 {
+            Check(world.Session.screen == 0 && world.Session.stage == 2, "reopen selects highest unlocked chapter")
+            Check(abs(world.Session.master - 0.9) < 0.00001 && abs(world.Session.das - 0.16) < 0.00001, "reopen restores master and DAS")
+            Check(abs(world.Session.arr - 0.04) < 0.00001 && world.Session.effects == 0, "reopen restores ARR and effects")
+            Check(world.Session.reduced_motion && !world.Session.ghost, "reopen restores accessibility choices")
+            send_event<"ChapterPrevious">(world)
+        }
+        if frame == 3 {
+            Check(world.Session.stage == 1, "reopened unlock permits earlier chapter")
+            send_event<"Journey">(world)
+        }
+        if frame == 6 {
+            Check(world.Session.stage == 1 && world.Session.mode == 0 && world.Session.screen == 1, "reopened profile starts selected Journey")
+            self.TestReport.done = true
+        }
+        frame += 1
+    }
+}

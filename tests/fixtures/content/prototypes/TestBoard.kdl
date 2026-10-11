@@ -1,0 +1,4 @@
+name "TestBoard"
+components {
+    BoardState combo=-1 level=1 ready=#true
+}

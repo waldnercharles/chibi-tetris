@@ -1,0 +1,544 @@
+behavior Board {
+    world: entity
+    tiles: entity[] = []
+    grid: int[] = []
+    queue: int[] = []
+    clear_rows: int[] = []
+    seed: int64 = 1
+    seen_run: int = -1
+    seen_rescue: int = 0
+    current: int = 0
+    held: int = 0
+    column: int = 3
+    row: int = 1
+    rotation: int = 0
+    last_kick: int = 0
+    rotated := false
+    hold_used := false
+    fall_clock := 0
+    lock_clock := 0
+    lock_started := false
+    lock_resets: int = 0
+    repeat_direction: int = 0
+    repeat_clock := 0
+    next_repeat := 0
+    flash := 0
+    visible := false
+    old_mode: int = -1
+    old_screen: int = 0
+    old_ghost := false
+    old_effects: int = -1
+    stack_dirty := true
+    piece_dirty := true
+    preview_dirty := true
+    origin := -120
+
+    on Begin {
+        world = get_global_variable("World")
+        for (i in 0..231) {
+            tile := await spawn(Block)
+            tiles = array_add(tiles, tile)
+        }
+        self.BoardState.ready = true
+    }
+
+    function FillQueue() {
+        if length(queue) < 6 {
+            queue = append(queue, Pieces.Bag(seed))
+        }
+    }
+
+    function Next() -> (kind: int) {
+        FillQueue()
+        kind = get(queue, 0)
+        queue = remove_index(queue, 0)
+        FillQueue()
+        preview_dirty = true
+        return kind
+    }
+
+    function TopOut() {
+        if self.BoardState.topout {
+            return
+        }
+        self.BoardState.topout = true
+        piece_dirty = true
+        play_sound("topout", 0.45)
+    }
+
+    function SpawnPiece(kind: int) {
+        current = kind
+        column = 3
+        row = 1
+        rotation = 0
+        rotated = false
+        last_kick = 0
+        fall_clock = 0
+        lock_clock = 0
+        lock_started = false
+        lock_resets = 0
+        piece_dirty = true
+        if !Rules.Fits(grid, current, rotation, column, row) {
+            TopOut()
+        }
+    }
+
+    function Reset() {
+        seen_run = world.Session.run
+        grid = Rules.Empty()
+        queue = []
+        clear_rows = []
+        seed = cast<int64>(world.Session.seed) % 2147483646
+        if seed < 0 {
+            seed = -seed
+        }
+        seed += 1
+        held = 0
+        hold_used = false
+        repeat_direction = 0
+        repeat_clock = 0
+        flash = 0
+        seen_rescue = world.Session.rescue1
+        if self.BoardState.index == 1 {
+            seen_rescue = world.Session.rescue2
+        }
+        self.BoardState.score = 0
+        self.BoardState.lines = 0
+        self.BoardState.level = 1
+        self.BoardState.topout = false
+        self.BoardState.pieces = 0
+        self.BoardState.combo = -1
+        self.BoardState.last_clear = 0
+        self.BoardState.clear_serial = 0
+        self.BoardState.back_to_back = false
+        self.BoardState.spin = 0
+        stack_dirty = true
+        preview_dirty = true
+        SpawnPiece(Next())
+    }
+
+    function Rescue() {
+        Rules.Rescue(grid)
+        self.BoardState.topout = false
+        self.BoardState.combo = -1
+        hold_used = false
+        flash = 0
+        clear_rows = []
+        stack_dirty = true
+        preview_dirty = true
+        SpawnPiece(current)
+        play_sound("rescue", 0.5)
+    }
+
+    function ResetLock(grounded: bool) {
+        if !grounded || lock_resets >= 15 {
+            return
+        }
+        lock_clock = 0
+        lock_resets += 1
+    }
+
+    function Shift(direction: int) -> (moved: bool) {
+        if !Rules.Fits(grid, current, rotation, column + direction, row) {
+            return false
+        }
+        grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
+        column += direction
+        rotated = false
+        ResetLock(grounded)
+        piece_dirty = true
+        return true
+    }
+
+    function Rotate(direction: int) {
+        result := Rules.Rotate(grid, current, rotation, column, row, direction)
+        if !result.success {
+            return
+        }
+        grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
+        column = result.column
+        row = result.row
+        rotation = result.facing
+        last_kick = result.kick
+        rotated = true
+        ResetLock(grounded)
+        piece_dirty = true
+        play_sound("rotate", 0.2)
+    }
+
+    function Hold() {
+        if hold_used {
+            return
+        }
+        replacement := held
+        held = current
+        if replacement == 0 {
+            replacement = Next()
+        }
+        SpawnPiece(replacement)
+        hold_used = true
+        preview_dirty = true
+        play_sound("hold", 0.3)
+    }
+
+    function Lock() {
+        spin := Rules.Spin(grid, current, rotation, column, row, rotated, last_kick)
+        any_visible := Rules.Place(grid, current, rotation, column, row)
+        clear_rows = Rules.FullRows(grid)
+        count := length(clear_rows)
+        Rules.Award(self, count, spin)
+        if count > 0 {
+            Rules.Collapse(grid, clear_rows)
+            flash = 0.14
+            if world.Session.reduced_motion || world.Session.effects == 0 {
+                flash = 0
+            }
+            match (count) {
+                case 1 {
+                    play_sound("clear1", 0.42)
+                }
+                case 2 {
+                    play_sound("clear2", 0.48)
+                }
+                case 3 {
+                    play_sound("clear2", 0.55)
+                }
+                case 4 {
+                    play_sound("clear4", 0.6)
+                }
+            }
+        }
+        if count == 0 {
+            play_sound("lock", 0.25)
+        }
+        stack_dirty = true
+        hold_used = false
+        if !any_visible && count == 0 {
+            TopOut()
+            return
+        }
+        SpawnPiece(Next())
+    }
+
+    function HardDrop() {
+        landing := Rules.Landing(grid, current, rotation, column, row)
+        distance := landing - row
+        self.BoardState.score += distance * 2
+        if distance > 0 {
+            rotated = false
+        }
+        row = landing
+        play_sound("hard_drop", 0.35)
+        Lock()
+    }
+
+    function Horizontal(left: bool, right: bool, left_pressed: bool, right_pressed: bool, seconds: number) {
+        direction: int = 0
+        if left {
+            direction = -1
+        }
+        if right {
+            direction = 1
+        }
+        if left && right {
+            direction = repeat_direction
+            if left_pressed {
+                direction = -1
+            }
+            if right_pressed {
+                direction = 1
+            }
+        }
+        if direction == 0 {
+            repeat_direction = 0
+            repeat_clock = 0
+            return
+        }
+        if direction != repeat_direction || left_pressed || right_pressed {
+            repeat_direction = direction
+            repeat_clock = 0
+            next_repeat = max(0, world.Session.das)
+            if Shift(direction) {
+                play_sound("move", 0.15)
+            }
+            return
+        }
+        repeat_clock += seconds
+        if repeat_clock < next_repeat {
+            return
+        }
+        arr := max(0, world.Session.arr)
+        moved := false
+        for (step in 0..9) {
+            if arr > 0 && repeat_clock < next_repeat {
+                break
+            }
+            if !Shift(direction) {
+                next_repeat = repeat_clock + arr
+                break
+            }
+            moved = true
+            next_repeat += arr
+        }
+        if moved {
+            play_sound("move", 0.15)
+        }
+    }
+
+    function Fall(seconds: number, soft: bool) {
+        interval := Rules.Gravity(self.BoardState.level)
+        if soft {
+            interval = min(0.02, interval / 20)
+        }
+        fall_clock += seconds
+        for (step in 0..21) {
+            if fall_clock < interval {
+                break
+            }
+            if !Rules.Fits(grid, current, rotation, column, row + 1) {
+                fall_clock = 0
+                break
+            }
+            row += 1
+            fall_clock -= interval
+            rotated = false
+            piece_dirty = true
+            if soft {
+                self.BoardState.score += 1
+            }
+        }
+        grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
+        if grounded {
+            lock_started = true
+        }
+        if lock_started {
+            lock_clock += seconds
+        }
+        if grounded && lock_clock >= 0.5 {
+            Lock()
+        }
+    }
+
+    function Controls(seconds: number) {
+        left := input.P1Left.held
+        right := input.P1Right.held
+        left_pressed := input.P1Left.pressed
+        right_pressed := input.P1Right.pressed
+        soft := input.P1Soft.held
+        drop := input.P1Drop.pressed
+        cw := input.P1CW.pressed
+        ccw := input.P1CCW.pressed
+        hold := input.P1Hold.pressed
+        if self.BoardState.index == 1 {
+            left = input.P2Left.held
+            right = input.P2Right.held
+            left_pressed = input.P2Left.pressed
+            right_pressed = input.P2Right.pressed
+            soft = input.P2Soft.held
+            drop = input.P2Drop.pressed
+            cw = input.P2CW.pressed
+            ccw = input.P2CCW.pressed
+            hold = input.P2Hold.pressed
+        }
+        if hold {
+            Hold()
+        }
+        if self.BoardState.topout {
+            return
+        }
+        Horizontal(left, right, left_pressed, right_pressed, seconds)
+        if cw {
+            Rotate(1)
+        }
+        if ccw && !cw {
+            Rotate(-1)
+        }
+        if drop {
+            HardDrop()
+            return
+        }
+        Fall(seconds, soft)
+    }
+
+    function Hide(slot: int) {
+        tile := get(tiles, slot)
+        tile.Appearance.width = 0
+        tile.Appearance.height = 0
+    }
+
+    function Tile(slot: int, x: number, y: number, size: number, color: uint, ghost: bool) {
+        tile := get(tiles, slot)
+        tile.Transform = vec2(x, y)
+        tile.Appearance.width = size
+        tile.Appearance.height = size
+        tile.Material.scene = color
+        tile.Material.border_scene = 4294967096
+        if color == 33884415 {
+            tile.Material.border_scene = 202842240
+        }
+        tile.Appearance.border_width = 1
+        tile.Appearance.layer = 0
+        if ghost {
+            tile.Material.scene = (color & 4294967040) | 22
+            tile.Material.border_scene = (color & 4294967040) | 160
+            tile.Appearance.border_width = 1.5
+            tile.Appearance.layer = 1
+        }
+        if slot >= 200 && slot < 204 {
+            tile.Appearance.layer = 2
+        }
+    }
+
+    function DrawStack() {
+        for (i in 0..199) {
+            y := i / 10 + 2
+            color := Pieces.Color(get(grid, i + 20))
+            if flash > 0 && contains(clear_rows, y) {
+                color = 3824283391
+            }
+            Tile(i, origin + i % 10 * 24 + 12, -232 + (y - 2) * 24 + 12, 22, color, false)
+        }
+        stack_dirty = false
+    }
+
+    function DrawPiece() {
+        ghost_row := Rules.Landing(grid, current, rotation, column, row)
+        self.BoardState.ghost_row = ghost_row
+        for (i in 0..3) {
+            Hide(200 + i)
+            Hide(204 + i)
+            if !self.BoardState.topout {
+                cell := Pieces.Cell(current, rotation, i)
+                x := origin + (column + cell.x) * 24 + 12
+                if row + cell.y >= 2 {
+                    Tile(200 + i, x, -232 + (row + cell.y - 2) * 24 + 12, 22, Pieces.Color(current), false)
+                }
+                if world.Session.ghost && ghost_row > row && ghost_row + cell.y >= 2 {
+                    Tile(204 + i, x, -232 + (ghost_row + cell.y - 2) * 24 + 12, 22, Pieces.Color(current), true)
+                }
+            }
+        }
+        piece_dirty = false
+    }
+
+    function Preview(first: int, kind: int, x: number, y: number, dim: bool) {
+        for (i in 0..3) {
+            Hide(first + i)
+            if kind > 0 {
+                cell := Pieces.Cell(kind, 0, i)
+                center_x := 1
+                center_y := 0.5
+                if kind == 1 || kind == 2 {
+                    center_x = 1.5
+                }
+                if kind == 1 {
+                    center_y = 1
+                }
+                color := Pieces.Color(kind)
+                if dim {
+                    color = (color & 4294967040) | 100
+                }
+                Tile(first + i, x + (cell.x - center_x) * 18, y + (cell.y - center_y) * 18, 16, color, false)
+            }
+        }
+    }
+
+    function DrawPreviews() {
+        Preview(208, held, origin - 70, -186, hold_used)
+        for (i in 0..4) {
+            Preview(212 + i * 4, get(queue, i), origin + 310, -182 + i * 78, false)
+        }
+        preview_dirty = false
+    }
+
+    function Render() {
+        show := world.Session.screen >= 1 && world.Session.screen <= 3
+        if self.BoardState.index == 1 && world.Session.mode != 3 {
+            show = false
+        }
+        if !show {
+            if visible {
+                for (i in 0..231) {
+                    Hide(i)
+                }
+            }
+            self.Appearance.width = 0
+            self.Appearance.height = 0
+            visible = false
+            return
+        }
+        if !visible || old_mode != world.Session.mode {
+            origin = -120
+            if world.Session.mode == 3 {
+                origin = -374 + self.BoardState.index * 508
+            }
+            self.Transform = vec2(origin + 120, 8)
+            self.Appearance.width = 248
+            self.Appearance.height = 488
+            stack_dirty = true
+            piece_dirty = true
+            preview_dirty = true
+        }
+        if old_ghost != world.Session.ghost || old_effects != world.Session.effects {
+            piece_dirty = true
+        }
+        visible = true
+        old_mode = world.Session.mode
+        old_ghost = world.Session.ghost
+        old_effects = world.Session.effects
+        if stack_dirty {
+            DrawStack()
+        }
+        if piece_dirty {
+            DrawPiece()
+        }
+        if preview_dirty {
+            DrawPreviews()
+        }
+    }
+
+    on Tick(dt) {
+        if !self.BoardState.ready {
+            return
+        }
+        restarted := seen_run != world.Session.run
+        if restarted {
+            Reset()
+        }
+        request := world.Session.rescue1
+        if self.BoardState.index == 1 {
+            request = world.Session.rescue2
+        }
+        if request != seen_rescue {
+            seen_rescue = request
+            Rescue()
+        }
+        if flash > 0 {
+            flash -= min(dt, 0.1)
+            if flash <= 0 {
+                stack_dirty = true
+            }
+        }
+        level := 1 + self.BoardState.lines / 10
+        if world.Session.mode == 0 {
+            level = max(1, world.Session.stage + 1)
+        }
+        self.BoardState.level = level
+        enabled := self.BoardState.index == 0 || world.Session.mode == 3
+        if world.Session.screen == 1 && old_screen == 1 && !restarted && enabled && !self.BoardState.topout {
+            Controls(min(dt, 0.1))
+        }
+        if world.Session.screen != 1 {
+            repeat_direction = 0
+            repeat_clock = 0
+        }
+        old_screen = world.Session.screen
+        self.BoardState.current = current
+        self.BoardState.held = held
+        self.BoardState.can_hold = !hold_used
+        self.BoardState.column = column
+        self.BoardState.row = row
+        self.BoardState.rotation = rotation
+        Render()
+    }
+}

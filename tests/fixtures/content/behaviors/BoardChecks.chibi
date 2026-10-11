@@ -1,0 +1,107 @@
+behavior BoardChecks {
+    world: entity
+    first: entity
+    second: entity
+    frame: int = 0
+    initial: int = 0
+    held_piece: int = 0
+    next_piece: int = 0
+    paused_row: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        first = get_global_variable("Board1")
+        second = get_global_variable("Board2")
+    }
+
+    on Tick {
+        match (frame) {
+            case 1 {
+                Check(first.BoardState.ready && second.BoardState.ready, "both pools initialized")
+                Check(first.BoardState.current == second.BoardState.current, "duet begins with equal pieces")
+                initial = first.BoardState.current
+            }
+            case 4 {
+                Check(first.BoardState.column == 2 && second.BoardState.column == 3, "P1 left is isolated")
+            }
+            case 7 {
+                Check(first.BoardState.column == 3, "P1 right")
+            }
+            case 9 {
+                Check(first.BoardState.rotation == 1, "P1 clockwise")
+            }
+            case 11 {
+                Check(first.BoardState.rotation == 0, "P1 counterclockwise")
+            }
+            case 13 {
+                Check(first.BoardState.held == initial && !first.BoardState.can_hold, "first hold stores piece")
+                held_piece = first.BoardState.held
+                next_piece = first.BoardState.current
+            }
+            case 15 {
+                Check(first.BoardState.held == held_piece && first.BoardState.current == next_piece, "hold once per lock")
+            }
+            case 17 {
+                Check(first.BoardState.pieces == 1 && first.BoardState.score > 0, "hard drop locks and scores")
+                Check(first.BoardState.can_hold, "lock re-enables hold")
+            }
+            case 19 {
+                Check(first.BoardState.current == initial && !first.BoardState.can_hold, "hold swaps after lock")
+            }
+            case 21 {
+                Check(second.BoardState.pieces == 1, "P2 hard drop")
+            }
+            case 23 {
+                Check(second.BoardState.rotation == 1, "P2 clockwise")
+            }
+            case 25 {
+                Check(second.BoardState.rotation == 0, "P2 counterclockwise")
+            }
+            case 27 {
+                Check(second.BoardState.held > 0 && !second.BoardState.can_hold, "P2 hold")
+            }
+            case 30 {
+                Check(second.BoardState.column == 2, "DAS initial move")
+            }
+            case 35 {
+                Check(second.BoardState.column == 2, "DAS delays repeat")
+            }
+            case 41 {
+                Check(second.BoardState.column <= 1, "DAS and ARR repeat")
+            }
+            case 61 {
+                Check(first.BoardState.column >= 6, "held movement reaches right wall")
+            }
+            case 75 {
+                Check(first.BoardState.row > 1 && first.BoardState.score > 30, "soft drop moves and scores")
+                world.Session.screen = 2
+                paused_row = first.BoardState.row
+            }
+            case 89 {
+                Check(first.BoardState.row == paused_row, "pause freezes falling")
+                world.Session.screen = 1
+            }
+            case 92 {
+                world.Session.run += 1
+                world.Session.screen = 2
+            }
+            case 95 {
+                Check(first.BoardState.pieces == 0 && first.BoardState.score == 0 && first.BoardState.lines == 0, "restart resets counters while paused")
+                Check(first.BoardState.current == initial && first.BoardState.held == 0 && first.BoardState.can_hold, "restart restores seeded queue and hold")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

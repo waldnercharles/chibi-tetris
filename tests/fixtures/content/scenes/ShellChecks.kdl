@@ -1,0 +1,24 @@
+version 1
+name "ShellChecks"
+(array)entities {
+    - name="World" prototype="World"
+    - {
+        name "Board1"
+        prototype "TestBoard"
+        components {
+            GAME.GameGlobalBinding name="Board1"
+        }
+    }
+    - {
+        name "Board2"
+        prototype "TestBoard"
+        components {
+            GAME.GameGlobalBinding name="Board2"
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        (array)behaviors "ShellChecks"
+    }
+}

@@ -1,0 +1,4 @@
+.chibi/
+build/
+dist/
+.DS_Store

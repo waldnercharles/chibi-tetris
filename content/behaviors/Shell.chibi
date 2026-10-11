@@ -1,0 +1,610 @@
+behavior Shell {
+    board1: entity
+    board2: entity
+    chapters := ["First light", "Tide pools", "Undertow", "Open water", "Polar night", "Homeward"]
+    selected: int = 0
+    preferenceRow: int = 0
+    chapter: int = 0
+    startingChapter: int = 0
+    unlocked: int = 0
+    settingsReturn: int = 0
+    stageStart: int = 0
+    lastLines: int = 0
+    bestEndless: int = 0
+    bestJourney: int = 0
+    bestDuet: int = 0
+    bestSprint: number = 0
+    clock: number = 0
+    refresh: number = 0
+    settle: number = 0
+    chapterBanner: number = 0
+    pad1 := false
+    pad2 := false
+    disconnected := false
+    won := false
+    initialized := false
+    resultTitle := ""
+    resultDetail := ""
+    notice := ""
+    action writer = commit_save()
+
+    on Begin {
+        board1 = get_global_variable("Board1")
+        board2 = get_global_variable("Board2")
+        unlocked = cast<int>(clamp(read_saved_number("chapter", 0).Number, 0, 5))
+        chapter = unlocked
+        bestEndless = cast<int>(max(0, read_saved_number("endless", 0).Number))
+        bestJourney = cast<int>(max(0, read_saved_number("journey", 0).Number))
+        bestDuet = cast<int>(max(0, read_saved_number("duet", 0).Number))
+        bestSprint = max(0, read_saved_number("sprint", 0).Number)
+        self.Session.master = clamp(read_saved_number("master", 0.8).Number, 0, 1)
+        self.Session.music = clamp(read_saved_number("music", 0.65).Number, 0, 1)
+        self.Session.sound = clamp(read_saved_number("sound", 0.75).Number, 0, 1)
+        self.Session.das = clamp(read_saved_number("das", 0.15).Number, 0.08, 0.3)
+        self.Session.arr = clamp(read_saved_number("arr", 0.035).Number, 0.01, 0.08)
+        self.Session.effects = cast<int>(clamp(read_saved_number("effects", 2).Number, 0, 2))
+        self.Session.reduced_motion = read_saved_number("reduced_motion", 0).Number != 0
+        self.Session.ghost = read_saved_number("ghost", 1).Number != 0
+        self.Session.stage = chapter
+        Mix()
+        initialized = true
+        Refresh()
+    }
+
+    after writer.Failed {
+        notice = "Progress could not be saved. Check available storage."
+        Refresh()
+    }
+
+    function Mix() {
+        set_master_volume(self.Session.master)
+        set_music_volume(self.Session.music)
+        set_sound_volume(self.Session.sound)
+    }
+
+    function SaveSettings() {
+        set_saved_number("master", self.Session.master)
+        set_saved_number("music", self.Session.music)
+        set_saved_number("sound", self.Session.sound)
+        set_saved_number("das", self.Session.das)
+        set_saved_number("arr", self.Session.arr)
+        set_saved_number("effects", self.Session.effects)
+        motion: number = 0
+        if self.Session.reduced_motion {
+            motion = 1
+        }
+        set_saved_number("reduced_motion", motion)
+        ghost: number = 0
+        if self.Session.ghost {
+            ghost = 1
+        }
+        set_saved_number("ghost", ghost)
+        writer.Exec()
+    }
+
+    function Music() {
+        if self.Session.stage < 2 {
+            play_music("shore", 2)
+            return
+        }
+        if self.Session.stage < 4 {
+            play_music("current", 2)
+            return
+        }
+        play_music("aurora", 2)
+    }
+
+    function Start(mode: int) {
+        self.Session.mode = mode
+        self.Session.stage = 0
+        if mode == 0 {
+            self.Session.stage = chapter
+        }
+        startingChapter = self.Session.stage
+        self.Session.seed = 40040
+        if mode != 2 {
+            self.Session.seed = 73129 + cast<int>(clock * 1000) % 1000000
+        }
+        RestartRun()
+    }
+
+    function RestartRun() {
+        self.Session.stage = startingChapter
+        self.Session.run += 1
+        self.Session.elapsed = 0
+        self.Session.rescue1 = 0
+        self.Session.rescue2 = 0
+        self.Session.charge = 0
+        self.Session.screen = 1
+        lastLines = 0
+        stageStart = 0
+        settle = 0.15
+        chapterBanner = 4
+        won = false
+        notice = ""
+        disconnected = false
+        pad1 = controller_connected(0)
+        pad2 = controller_connected(1)
+        Music()
+        Refresh()
+    }
+
+    function GoHome() {
+        self.Session.screen = 0
+        self.Session.stage = chapter
+        selected = 0
+        notice = ""
+        stop_music(1)
+        Refresh()
+    }
+
+    function ResumePlay() {
+        self.Session.screen = 1
+        disconnected = false
+        pad1 = controller_connected(0)
+        pad2 = controller_connected(1)
+        notice = ""
+        Refresh()
+    }
+
+    function PausePlay() {
+        self.Session.screen = 2
+        selected = 0
+        Refresh()
+    }
+
+    function OpenSettings() {
+        settingsReturn = self.Session.screen
+        self.Session.screen = 4
+        preferenceRow = 0
+        Refresh()
+    }
+
+    function BackToPrevious() {
+        if self.Session.screen == 4 {
+            SaveSettings()
+            self.Session.screen = settingsReturn
+            Refresh()
+            return
+        }
+        if self.Session.screen == 5 {
+            GoHome()
+            return
+        }
+        if self.Session.screen == 2 {
+            ResumePlay()
+            return
+        }
+        if self.Session.screen == 3 {
+            GoHome()
+            return
+        }
+    }
+
+    function Choose() {
+        play_sound("menu", 0.4)
+        if self.Session.screen == 0 {
+            if selected < 4 {
+                Start(selected)
+                return
+            }
+            if selected == 4 {
+                self.Session.screen = 5
+                Refresh()
+                return
+            }
+            OpenSettings()
+            return
+        }
+        if self.Session.screen == 2 {
+            if selected == 0 {
+                ResumePlay()
+                return
+            }
+            if selected == 1 {
+                RestartRun()
+                return
+            }
+            if selected == 2 {
+                OpenSettings()
+                return
+            }
+            GoHome()
+            return
+        }
+        if self.Session.screen == 3 {
+            if selected == 0 {
+                RestartRun()
+                return
+            }
+            GoHome()
+            return
+        }
+        if self.Session.screen == 4 {
+            Adjust(1)
+            return
+        }
+        if self.Session.screen == 5 {
+            GoHome()
+        }
+    }
+
+    function Adjust(direction: int) {
+        if preferenceRow == 0 {
+            self.Session.master = clamp(self.Session.master + cast<number>(direction) * 0.1, 0, 1)
+        }
+        if preferenceRow == 1 {
+            self.Session.music = clamp(self.Session.music + cast<number>(direction) * 0.1, 0, 1)
+        }
+        if preferenceRow == 2 {
+            self.Session.sound = clamp(self.Session.sound + cast<number>(direction) * 0.1, 0, 1)
+        }
+        if preferenceRow == 3 {
+            self.Session.das = clamp(self.Session.das + cast<number>(direction) * 0.01, 0.08, 0.3)
+        }
+        if preferenceRow == 4 {
+            self.Session.arr = clamp(self.Session.arr + cast<number>(direction) * 0.005, 0.01, 0.08)
+        }
+        if preferenceRow == 5 {
+            self.Session.effects = (self.Session.effects + direction + 3) % 3
+        }
+        if preferenceRow == 6 {
+            self.Session.reduced_motion = !self.Session.reduced_motion
+        }
+        if preferenceRow == 7 {
+            self.Session.ghost = !self.Session.ghost
+        }
+        Mix()
+        play_sound("menu", 0.35)
+        Refresh()
+    }
+
+    function SelectSetting(row: int) {
+        preferenceRow = row
+        Adjust(1)
+    }
+
+    function ChangeChapter(direction: int) {
+        chapter = cast<int>(clamp(chapter + direction, 0, unlocked))
+        self.Session.stage = chapter
+        Refresh()
+    }
+
+    function Finish(success: bool) {
+        won = success
+        self.Session.screen = 3
+        selected = 0
+        score := board1.BoardState.score
+        if self.Session.mode == 3 {
+            score += board2.BoardState.score
+        }
+        resultTitle = "A moment to breathe"
+        resultDetail = "Every piece is a fresh beginning."
+        if success {
+            resultTitle = "The water is still"
+            resultDetail = "Your journey is complete."
+            play_sound("complete", 0.7)
+        }
+        if self.Session.mode == 2 && success {
+            resultTitle = "Forty lines. One flow."
+            resultDetail = "A fixed seed. A little faster next time."
+            if bestSprint == 0 || self.Session.elapsed < bestSprint {
+                bestSprint = self.Session.elapsed
+                set_saved_number("sprint", bestSprint)
+                resultDetail = "A new personal best."
+            }
+        }
+        if self.Session.mode == 1 && score > bestEndless {
+            bestEndless = score
+            set_saved_number("endless", score)
+            resultDetail = "A new personal best."
+        }
+        if self.Session.mode == 0 && score > bestJourney {
+            bestJourney = score
+            set_saved_number("journey", score)
+        }
+        if self.Session.mode == 3 && score > bestDuet {
+            bestDuet = score
+            set_saved_number("duet", score)
+        }
+        if self.Session.mode == 3 && success {
+            resultTitle = "Together, home"
+            resultDetail = "Two currents. One journey."
+        }
+        writer.Exec()
+        Refresh()
+    }
+
+    function Progress() {
+        lines := board1.BoardState.lines
+        goal: int = 12
+        if self.Session.mode == 3 {
+            lines += board2.BoardState.lines
+            goal = 20
+        }
+        if self.Session.mode == 2 && lines >= 40 {
+            Finish(true)
+            return
+        }
+        if (self.Session.mode == 0 || self.Session.mode == 3) && self.Session.stage == 5 && lines - stageStart >= goal {
+            lastLines = lines
+            Finish(true)
+            return
+        }
+        if self.Session.mode == 3 {
+            self.Session.charge = cast<int>(min(8, self.Session.charge + lines - lastLines))
+            if board1.BoardState.topout && self.Session.charge >= 4 {
+                self.Session.charge -= 4
+                self.Session.rescue1 += 1
+                notice = "Player one rescued. Six rows returned to the sea."
+                settle = 0.1
+            }
+            if board2.BoardState.topout && self.Session.charge >= 4 {
+                self.Session.charge -= 4
+                self.Session.rescue2 += 1
+                notice = "Player two rescued. Six rows returned to the sea."
+                settle = 0.1
+            }
+            if settle == 0 && board1.BoardState.topout && board2.BoardState.topout {
+                Finish(false)
+                return
+            }
+            if board1.BoardState.topout || board2.BoardState.topout {
+                if settle == 0 {
+                    notice = "Keep going. Four shared clears bring your partner back."
+                }
+            }
+        } else {
+            if board1.BoardState.topout {
+                Finish(false)
+                return
+            }
+        }
+        lastLines = lines
+        if self.Session.mode == 0 || self.Session.mode == 3 {
+            if lines - stageStart >= goal {
+                stageStart += goal
+                self.Session.stage += 1
+                chapterBanner = 4
+                if self.Session.mode == 0 && self.Session.stage > unlocked {
+                    unlocked = self.Session.stage
+                    set_saved_number("chapter", unlocked)
+                    writer.Exec()
+                }
+                play_sound("complete", 0.45)
+                Music()
+            }
+        }
+        if self.Session.mode == 1 {
+            newStage := cast<int>(min(5, lines / 20))
+            if newStage != self.Session.stage {
+                self.Session.stage = newStage
+                chapterBanner = 3
+                Music()
+            }
+        }
+    }
+
+    function Refresh() {
+        screen := self.Session.screen
+        set_ui_visible(Element: "#title-screen", Visible: screen == 0)
+        set_ui_visible(Element: "#hud", Visible: screen == 1 || screen == 2 || screen == 3)
+        set_ui_visible(Element: "#pause-screen", Visible: screen == 2)
+        set_ui_visible(Element: "#result-screen", Visible: screen == 3)
+        set_ui_visible(Element: "#settings-screen", Visible: screen == 4)
+        set_ui_visible(Element: "#guide-screen", Visible: screen == 5)
+        set_ui_text(Element: "#notice", Text: notice)
+        set_ui_visible(Element: "#notice", Visible: notice != "")
+        for (i in 0..5) {
+            set_ui_class(Element: format_text("#menu{}", i), Class: "selected", On: selected == i)
+        }
+        for (i in 0..3) {
+            set_ui_class(Element: format_text("#pause{}", i), Class: "selected", On: selected == i)
+        }
+        for (i in 0..1) {
+            set_ui_class(Element: format_text("#result{}", i), Class: "selected", On: selected == i)
+        }
+        set_ui_text(Element: "#chapter-choice", Text: format_text("CHAPTER {} / {}   {}", chapter + 1, unlocked + 1, chapters[chapter]))
+        set_ui_text(Element: "#record", Text: format_text("ENDLESS BEST   {}", bestEndless))
+        set_ui_text(Element: "#pause-title", Text: "Take your time")
+        set_ui_text(Element: "#pause-detail", Text: "Your place is waiting.")
+        if disconnected {
+            set_ui_text(Element: "#pause-title", Text: "Controller disconnected")
+            set_ui_text(Element: "#pause-detail", Text: "Reconnect, then confirm. Or press Enter to continue on keyboard.")
+        }
+        set_ui_text(Element: "#result-title", Text: resultTitle)
+        set_ui_text(Element: "#result-detail", Text: resultDetail)
+        score := board1.BoardState.score
+        if self.Session.mode == 3 {
+            score += board2.BoardState.score
+        }
+        set_ui_text(Element: "#result-score", Text: format_text("{} POINTS   /   {}:{:02}", score, cast<int>(self.Session.elapsed / 60), cast<int>(self.Session.elapsed) % 60))
+        set_ui_class(Element: "#hud", Class: "duet", On: self.Session.mode == 3)
+        set_ui_text(Element: "#chapter-name", Text: chapters[self.Session.stage])
+        set_ui_text(Element: "#chapter-number", Text: format_text("0{} / 06", self.Session.stage + 1))
+        set_ui_visible(Element: "#chapter-arrival", Visible: chapterBanner > 0 && screen == 1)
+        set_ui_text(Element: "#chapter-arrival", Text: chapters[self.Session.stage])
+        set_ui_text(Element: "#score1", Text: format_text("{}", board1.BoardState.score))
+        set_ui_text(Element: "#score2", Text: format_text("{}", board2.BoardState.score))
+        set_ui_text(Element: "#lines1", Text: format_text("{} LINES", board1.BoardState.lines))
+        set_ui_text(Element: "#lines2", Text: format_text("{} LINES", board2.BoardState.lines))
+        set_ui_text(Element: "#clock", Text: format_text("{}:{:02}", cast<int>(self.Session.elapsed / 60), cast<int>(self.Session.elapsed) % 60))
+        set_ui_text(Element: "#seed", Text: format_text("SEED {}", self.Session.seed))
+        set_ui_text(Element: "#goal", Text: "ENDLESS / FIND YOUR RHYTHM")
+        if self.Session.mode == 0 {
+            set_ui_text(Element: "#goal", Text: format_text("{} / 12 LINES TO NEXT CHAPTER", board1.BoardState.lines - stageStart))
+        }
+        if self.Session.mode == 2 {
+            set_ui_text(Element: "#goal", Text: format_text("{} / 40 LINES", board1.BoardState.lines))
+        }
+        if self.Session.mode == 3 {
+            set_ui_text(Element: "#goal", Text: format_text("{} / 20 SHARED LINES   ·   RESCUE {} / 4", lastLines - stageStart, self.Session.charge))
+        }
+        set_ui_visible(Element: "#partner-wait1", Visible: self.Session.mode == 3 && board1.BoardState.topout)
+        set_ui_visible(Element: "#partner-wait2", Visible: self.Session.mode == 3 && board2.BoardState.topout)
+        for (i in 0..7) {
+            set_ui_class(Element: format_text("#setting{}", i), Class: "selected", On: preferenceRow == i)
+        }
+        set_ui_text(Element: "#value0", Text: format_text("{}%", cast<int>(self.Session.master * 100 + 0.5)))
+        set_ui_text(Element: "#value1", Text: format_text("{}%", cast<int>(self.Session.music * 100 + 0.5)))
+        set_ui_text(Element: "#value2", Text: format_text("{}%", cast<int>(self.Session.sound * 100 + 0.5)))
+        set_ui_text(Element: "#value3", Text: format_text("{} ms", cast<int>(self.Session.das * 1000 + 0.5)))
+        set_ui_text(Element: "#value4", Text: format_text("{} ms", cast<int>(self.Session.arr * 1000 + 0.5)))
+        effects := ["Quiet", "Gentle", "Full"]
+        set_ui_text(Element: "#value5", Text: effects[self.Session.effects])
+        set_ui_text(Element: "#value6", Text: "Off")
+        if self.Session.reduced_motion {
+            set_ui_text(Element: "#value6", Text: "On")
+        }
+        set_ui_text(Element: "#value7", Text: "Off")
+        if self.Session.ghost {
+            set_ui_text(Element: "#value7", Text: "On")
+        }
+    }
+
+    on Tick {
+        if !initialized {
+            return
+        }
+        clock += dt
+        chapterBanner = max(0, chapterBanner - dt)
+        if self.Session.screen == 1 {
+            if (pad1 && !controller_connected(0)) || (self.Session.mode == 3 && pad2 && !controller_connected(1)) {
+                disconnected = true
+                PausePlay()
+                return
+            }
+            pad1 = controller_connected(0)
+            pad2 = controller_connected(1)
+            if input.Pause.pressed || input.Pause2.pressed {
+                PausePlay()
+                return
+            }
+            if settle > 0 {
+                settle = max(0, settle - dt)
+            } else {
+                self.Session.elapsed += dt
+                Progress()
+            }
+        } else {
+            if input.Back.pressed {
+                BackToPrevious()
+                return
+            }
+            if self.Session.screen == 2 && (input.Pause.pressed || input.Pause2.pressed) {
+                ResumePlay()
+                return
+            }
+            if input.MenuUp.pressed || input.MenuDown.pressed {
+                direction: int = 1
+                if input.MenuUp.pressed {
+                    direction = -1
+                }
+                if self.Session.screen == 4 {
+                    preferenceRow = (preferenceRow + direction + 8) % 8
+                }
+                if self.Session.screen == 0 {
+                    selected = (selected + direction + 6) % 6
+                }
+                if self.Session.screen == 2 {
+                    selected = (selected + direction + 4) % 4
+                }
+                if self.Session.screen == 3 {
+                    selected = (selected + direction + 2) % 2
+                }
+                play_sound("menu", 0.3)
+                Refresh()
+            }
+            if input.MenuLeft.pressed || input.MenuRight.pressed {
+                direction: int = 1
+                if input.MenuLeft.pressed {
+                    direction = -1
+                }
+                if self.Session.screen == 4 {
+                    Adjust(direction)
+                }
+                if self.Session.screen == 0 {
+                    ChangeChapter(direction)
+                }
+            }
+            if input.Confirm.pressed {
+                Choose()
+                return
+            }
+        }
+        refresh += dt
+        if refresh >= 0.1 {
+            refresh = 0
+            Refresh()
+        }
+    }
+
+    on Journey {
+        Start(0)
+    }
+    on Endless {
+        Start(1)
+    }
+    on Sprint {
+        Start(2)
+    }
+    on Duet {
+        Start(3)
+    }
+    on Guide {
+        self.Session.screen = 5
+        Refresh()
+    }
+    on Settings {
+        OpenSettings()
+    }
+    on Resume {
+        ResumePlay()
+    }
+    on Restart {
+        RestartRun()
+    }
+    on Home {
+        if self.Session.screen == 4 {
+            BackToPrevious()
+            return
+        }
+        GoHome()
+    }
+    on ChapterPrevious {
+        ChangeChapter(-1)
+    }
+    on ChapterNext {
+        ChangeChapter(1)
+    }
+    on AdjustDown {
+        Adjust(-1)
+    }
+    on AdjustUp {
+        Adjust(1)
+    }
+    on Setting0 {
+        SelectSetting(0)
+    }
+    on Setting1 {
+        SelectSetting(1)
+    }
+    on Setting2 {
+        SelectSetting(2)
+    }
+    on Setting3 {
+        SelectSetting(3)
+    }
+    on Setting4 {
+        SelectSetting(4)
+    }
+    on Setting5 {
+        SelectSetting(5)
+    }
+    on Setting6 {
+        SelectSetting(6)
+    }
+    on Setting7 {
+        SelectSetting(7)
+    }
+}

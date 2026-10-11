@@ -1,0 +1,33 @@
+behavior RescueChecks {
+    board: entity
+    world: entity
+    frame: int = 0
+    before_score: int = 0
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+    on Begin {
+        board = get_global_variable("Board1")
+        world = get_global_variable("World")
+    }
+    on Tick {
+        if frame == 53 {
+            Check(board.BoardState.topout && board.BoardState.pieces > 0, "center stack tops out")
+            before_score = board.BoardState.score
+            world.Session.rescue1 += 1
+        }
+        if frame == 56 {
+            Check(!board.BoardState.topout && board.BoardState.row == 1, "rescue restores active spawn")
+            Check(board.BoardState.score == before_score && board.BoardState.can_hold, "rescue preserves score and restores hold")
+            self.TestReport.done = true
+        }
+        frame += 1
+    }
+}

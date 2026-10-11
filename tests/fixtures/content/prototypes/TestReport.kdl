@@ -1,0 +1,5 @@
+name "TestReport"
+components {
+    (object)BoardState
+    (object)TestReport
+}

@@ -1,0 +1,165 @@
+// IDs: 1 I, 2 O, 3 T, 4 S, 5 Z, 6 J, 7 L. Coordinates grow downward.
+library Pieces {
+    function Cell(kind: int, rotation: int, block: int) -> (x: int, y: int) {
+        xs: int[] = [0, 1, 2, 3]
+        ys: int[] = [1, 1, 1, 1]
+        match (kind) {
+            case 2 {
+                xs = [1, 2, 1, 2]
+                ys = [0, 0, 1, 1]
+            }
+            case 3 {
+                xs = [1, 0, 1, 2]
+                ys = [0, 1, 1, 1]
+            }
+            case 4 {
+                xs = [1, 2, 0, 1]
+                ys = [0, 0, 1, 1]
+            }
+            case 5 {
+                xs = [0, 1, 1, 2]
+                ys = [0, 0, 1, 1]
+            }
+            case 6 {
+                xs = [0, 0, 1, 2]
+                ys = [0, 1, 1, 1]
+            }
+            case 7 {
+                xs = [2, 0, 1, 2]
+                ys = [0, 1, 1, 1]
+            }
+        }
+        x = get(xs, block)
+        y = get(ys, block)
+        if kind == 2 {
+            return (x, y)
+        }
+        pivot: int = 2
+        if kind == 1 {
+            pivot = 3
+        }
+        turn: int = 0
+        while turn < rotation {
+            old_x := x
+            x = pivot - y
+            y = old_x
+            turn += 1
+        }
+        return (x, y)
+    }
+
+    // Five ordered SRS tests, including the unshifted rotation. The I uses
+    // its own table. These are mathematical offsets, not copied game code.
+    function Kick(kind: int, from: int, direction: int, test: int) -> (x: int, y: int) {
+        if test == 0 || kind == 2 {
+            return (0, 0)
+        }
+        xs: int[] = [0, 0, 0, 0]
+        ys: int[] = [0, 0, 0, 0]
+        transition := from * 2
+        if direction > 0 {
+            transition += 1
+        }
+        if kind == 1 {
+            match (transition) {
+                case 0 {
+                    xs = [-1, 2, -1, 2]
+                    ys = [0, 0, -2, 1]
+                }
+                case 1 {
+                    xs = [-2, 1, -2, 1]
+                    ys = [0, 0, 1, -2]
+                }
+                case 2 {
+                    xs = [2, -1, 2, -1]
+                    ys = [0, 0, -1, 2]
+                }
+                case 3 {
+                    xs = [-1, 2, -1, 2]
+                    ys = [0, 0, -2, 1]
+                }
+                case 4 {
+                    xs = [1, -2, 1, -2]
+                    ys = [0, 0, 2, -1]
+                }
+                case 5 {
+                    xs = [2, -1, 2, -1]
+                    ys = [0, 0, -1, 2]
+                }
+                case 6 {
+                    xs = [-2, 1, -2, 1]
+                    ys = [0, 0, 1, -2]
+                }
+                case 7 {
+                    xs = [1, -2, 1, -2]
+                    ys = [0, 0, 2, -1]
+                }
+            }
+            return (get(xs, test - 1), get(ys, test - 1))
+        }
+        match (transition) {
+            case 0 {
+                xs = [1, 1, 0, 1]
+                ys = [0, -1, 2, 2]
+            }
+            case 1 {
+                xs = [-1, -1, 0, -1]
+                ys = [0, -1, 2, 2]
+            }
+            case 2 {
+                xs = [1, 1, 0, 1]
+                ys = [0, 1, -2, -2]
+            }
+            case 3 {
+                xs = [1, 1, 0, 1]
+                ys = [0, 1, -2, -2]
+            }
+            case 4 {
+                xs = [-1, -1, 0, -1]
+                ys = [0, -1, 2, 2]
+            }
+            case 5 {
+                xs = [1, 1, 0, 1]
+                ys = [0, -1, 2, 2]
+            }
+            case 6 {
+                xs = [-1, -1, 0, -1]
+                ys = [0, 1, -2, -2]
+            }
+            case 7 {
+                xs = [-1, -1, 0, -1]
+                ys = [0, 1, -2, -2]
+            }
+        }
+        return (get(xs, test - 1), get(ys, test - 1))
+    }
+
+    function Color(kind: int) -> (color: uint) {
+        colors: uint[] = [33884415, 1758978047, 4124474111, 3366317567,
+        2547297279, 3953111039, 2326720767, 4055206911]
+        return get(colors, kind)
+    }
+
+    // Park-Miller in 64-bit integers is identical on native and WebAssembly.
+    // Rejection sampling prevents modulo bias during Fisher-Yates shuffling.
+    function Random(seed: ref int64, count: int) -> (value: int) {
+        limit := 2147483646 - 2147483646 % cast<int64>(count)
+        sample := limit
+        while sample >= limit {
+            seed = seed * 48271 % 2147483647
+            sample = seed - 1
+        }
+        return cast<int>(cast<number>(sample % cast<int64>(count)))
+    }
+
+    function Bag(seed: ref int64) -> (bag: int[]) {
+        bag = [1, 2, 3, 4, 5, 6, 7]
+        i: int = 6
+        while i > 0 {
+            j := Random(seed, i + 1)
+            bag = swap(bag, i, j)
+            i -= 1
+        }
+        return bag
+    }
+}

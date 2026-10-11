@@ -1,0 +1,107 @@
+behavior ModeChecks {
+    world: entity
+    first: entity
+    second: entity
+    frame: int = 0
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+    on Begin {
+        world = get_global_variable("World")
+        first = get_global_variable("Board1")
+        second = get_global_variable("Board2")
+    }
+    on Tick {
+        match (frame) {
+            case 1 {
+                send_event<"Sprint">(world)
+            }
+            case 3 {
+                Check(world.Session.mode == 2 && world.Session.seed == 40040, "Sprint uses fixed seed")
+            }
+            case 15 {
+                first.BoardState.lines = 39
+            }
+            case 18 {
+                Check(world.Session.screen == 1, "Sprint continues at thirty-nine lines")
+            }
+            case 20 {
+                first.BoardState.lines = 40;
+                first.BoardState.score = 4000
+            }
+            case 23 {
+                Check(world.Session.screen == 3, "Sprint completes forty lines")
+                Check(read_saved_number("sprint", 0).Number > 0, "Sprint record commits")
+            }
+            case 26 {
+                first.BoardState.lines = 0
+                first.BoardState.score = 0
+                send_event<"Duet">(world)
+            }
+            case 29 {
+                Check(world.Session.mode == 3 && world.Session.screen == 1, "Duet starts")
+            }
+            case 32 {
+                Check(world.Session.screen == 2, "second controller disconnect pauses Duet")
+            }
+            case 34 {
+                send_event<"Resume">(world)
+            }
+            case 36 {
+                Check(world.Session.screen == 1, "Duet can resume on keyboard")
+            }
+            case 40 {
+                first.BoardState.lines = 8
+            }
+            case 42 {
+                Check(world.Session.charge == 8, "Duet reserve caps at eight")
+            }
+            case 43 {
+                first.BoardState.topout = true;
+                second.BoardState.topout = true
+            }
+            case 45 {
+                Check(world.Session.rescue1 == 1 && world.Session.rescue2 == 1 && world.Session.charge == 0, "full reserve rescues both boards")
+                Check(world.Session.screen == 1, "rescue prevents both-topout loss")
+                first.BoardState.topout = false
+                second.BoardState.topout = false
+            }
+            case 54 {
+                first.BoardState.topout = true
+            }
+            case 58 {
+                Check(world.Session.screen == 1 && world.Session.rescue1 == 1, "one stranded board lets partner continue")
+            }
+            case 60 {
+                first.BoardState.lines = 12
+            }
+            case 62 {
+                Check(world.Session.rescue1 == 2 && world.Session.charge == 0, "four further clears rescue waiting partner")
+                first.BoardState.topout = false
+            }
+            case 64 {
+                first.BoardState.lines = 20
+            }
+            case 72 {
+                Check(world.Session.stage == 1 && world.Session.charge == 8, "twenty shared lines advance Duet")
+            }
+            case 74 {
+                world.Session.charge = 0
+                first.BoardState.topout = true
+                second.BoardState.topout = true
+            }
+            case 80 {
+                Check(world.Session.screen == 3, "both topouts without reserve end Duet")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

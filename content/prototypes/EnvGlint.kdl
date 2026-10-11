@@ -1,0 +1,7 @@
+name "EnvGlint"
+components {
+    GAME.GameAppearance antialias=1.0 height=2.0 layer=-20 shape="Circle" width=2.0
+    GAME.GameMaterial scene=0x8ad3d800
+    GAME.GameRenderState hidden=#true
+    (object)GAME.GameTransform
+}

@@ -1,0 +1,7 @@
+name "Environment"
+components {
+    GAME.GameAppearance height=1100.0 layer=-90 width=1800.0
+    GAME.GameMaterial scene=0x06101c24
+    (object)GAME.GameTransform
+}
+(array)behaviors "Environment"

@@ -1,0 +1,21 @@
+version 1
+name "RescueChecks"
+(array)entities {
+    - name="World" prototype="TestWorld"
+    - {
+        name "Board1"
+        prototype "Board"
+        components {
+            GAME.GameGlobalBinding name="Board1"
+            BoardState index=0
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        components {
+            (object)TestReport
+        }
+        (array)behaviors "RescueChecks"
+    }
+}

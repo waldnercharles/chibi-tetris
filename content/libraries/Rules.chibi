@@ -1,0 +1,189 @@
+// Deterministic rules shared by the live board and focused executable checks.
+library Rules {
+    function Empty() -> (grid: int[]) {
+        grid = []
+        return resize(grid, 220)
+    }
+
+    function Occupied(grid: int[], x: int, y: int) -> (occupied: bool) {
+        if x < 0 || x >= 10 || y < 0 || y >= 22 {
+            return true
+        }
+        return get(grid, y * 10 + x) != 0
+    }
+
+    function Fits(grid: int[], kind: int, rotation: int, x: int, y: int) -> (fits: bool) {
+        for (block in 0..3) {
+            cell := Pieces.Cell(kind, rotation, block)
+            if Occupied(grid, x + cell.x, y + cell.y) {
+                return false
+            }
+        }
+        return true
+    }
+
+    function Landing(grid: int[], kind: int, rotation: int, x: int, y: int) -> (row: int) {
+        row = y
+        while Fits(grid, kind, rotation, x, row + 1) {
+            row += 1
+        }
+        return row
+    }
+
+    function Rotate(grid: int[], kind: int, rotation: int, x: int, y: int, direction: int)
+    -> (success: bool, column: int, row: int, facing: int, kick: int) {
+        next := (rotation + direction + 4) % 4
+        for (test in 0..4) {
+            offset := Pieces.Kick(kind, rotation, direction, test)
+            if Fits(grid, kind, next, x + offset.x, y + offset.y) {
+                return (true, x + offset.x, y + offset.y, next, test)
+            }
+        }
+        return (false, x, y, rotation, 0)
+    }
+
+    function Place(grid: ref int[], kind: int, rotation: int, x: int, y: int) -> (visible: bool) {
+        visible = false
+        for (block in 0..3) {
+            cell := Pieces.Cell(kind, rotation, block)
+            grid = set_array_elem(grid, (y + cell.y) * 10 + x + cell.x, kind)
+            if y + cell.y >= 2 {
+                visible = true
+            }
+        }
+        return visible
+    }
+
+    function FullRows(grid: int[]) -> (rows: int[]) {
+        rows = []
+        for (y in 0..21) {
+            full := true
+            for (x in 0..9) {
+                if get(grid, y * 10 + x) == 0 {
+                    full = false
+                    break
+                }
+            }
+            if full {
+                rows = array_add(rows, y)
+            }
+        }
+        return rows
+    }
+
+    function Collapse(grid: ref int[], rows: int[]) {
+        destination: int = 21
+        source: int = 21
+        while source >= 0 {
+            if !contains(rows, source) {
+                if source != destination {
+                    for (x in 0..9) {
+                        grid = set_array_elem(grid, destination * 10 + x, get(grid, source * 10 + x))
+                    }
+                }
+                destination -= 1
+            }
+            source -= 1
+        }
+        while destination >= 0 {
+            for (x in 0..9) {
+                grid = set_array_elem(grid, destination * 10 + x, cast<int>(0))
+            }
+            destination -= 1
+        }
+    }
+
+    function Rescue(grid: ref int[]) {
+        y: int = 21
+        while y >= 6 {
+            for (x in 0..9) {
+                grid = set_array_elem(grid, y * 10 + x, get(grid, (y - 6) * 10 + x))
+            }
+            y -= 1
+        }
+        for (i in 0..59) {
+            grid = set_array_elem(grid, i, cast<int>(0))
+        }
+    }
+
+    // 0 ordinary placement, 1 mini T-spin, 2 full T-spin. Rotation must be
+    // the last successful action; a fifth SRS test upgrades a mini to full.
+    function Spin(grid: int[], kind: int, rotation: int, x: int, y: int, rotated: bool, kick: int)
+    -> (spin: int) {
+        if kind != 3 || !rotated {
+            return 0
+        }
+        corners: int[] = [0, 0, 0, 0]
+        count: int = 0
+        for (i in 0..3) {
+            cx := x
+            cy := y
+            if i == 1 || i == 2 {
+                cx += 2
+            }
+            if i >= 2 {
+                cy += 2
+            }
+            if Occupied(grid, cx, cy) {
+                corners = set_array_elem(corners, i, cast<int>(1))
+                count += 1
+            }
+        }
+        if count < 3 {
+            return 0
+        }
+        if kick == 4 {
+            return 2
+        }
+        if get(corners, rotation) + get(corners, (rotation + 1) % 4) == 2 {
+            return 2
+        }
+        return 1
+    }
+
+    function Points(lines: int, spin: int, level: int, combo: int, back_to_back: bool) -> (points: int) {
+        normal: int[] = [0, 100, 300, 500, 800]
+        full: int[] = [400, 800, 1200, 1600, 1600]
+        mini: int[] = [100, 200, 400, 1600, 1600]
+        points = get(normal, lines)
+        if spin == 1 {
+            points = get(mini, lines)
+        }
+        if spin == 2 {
+            points = get(full, lines)
+        }
+        if lines > 0 {
+            if back_to_back && (lines == 4 || spin > 0) {
+                points = points * 3 / 2
+            }
+            points += 50 * max(0, combo)
+        }
+        return points * level
+    }
+
+    function Award(board: entity, lines: int, spin: int) {
+        board.BoardState.pieces += 1
+        board.BoardState.last_clear = lines
+        board.BoardState.spin = spin
+        if lines > 0 {
+            board.BoardState.combo += 1
+        }
+        if lines == 0 {
+            board.BoardState.combo = -1
+        }
+        board.BoardState.score += Points(lines, spin, board.BoardState.level, board.BoardState.combo, board.BoardState.back_to_back)
+        if lines == 0 {
+            return
+        }
+        board.BoardState.back_to_back = lines == 4 || spin > 0
+        board.BoardState.lines += lines
+        board.BoardState.clear_serial += 1
+    }
+
+    function Gravity(level: int) -> (seconds: number) {
+        // Stillwater's calmer curve reaches 20G at level 20.
+        intervals: number[] = [0.8, 0.65, 0.52, 0.42, 0.34, 0.27, 0.21, 0.16, 0.12, 0.09,
+        0.07, 0.05, 0.035, 0.025, 0.018, 0.012, 0.008, 0.005, 0.002, 0.000833333]
+        return get(intervals, min(19, max(0, level - 1)))
+    }
+}

@@ -1,0 +1,147 @@
+behavior RulesChecks {
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        grid := Rules.Empty()
+        Check(length(grid) == 220, "22-row field")
+        for kind in 1..7 {
+            for rotation in 0..3 {
+                cells: int[] = []
+                for block in 0..3 {
+                    cell := Pieces.Cell(kind, rotation, block)
+                    Check(cell.x >= 0 && cell.x < 4 && cell.y >= 0 && cell.y < 4, "piece bounds")
+                    key := cell.y * 4 + cell.x
+                    Check(!contains(cells, key), "four distinct cells")
+                    cells = array_add(cells, key)
+                    initial := Pieces.Cell(kind, 0, block)
+                    wrapped := Pieces.Cell(kind, 4, block)
+                    Check(initial.x == wrapped.x && initial.y == wrapped.y, "four-turn cycle")
+                }
+                cw := Rules.Rotate(grid, kind, rotation, 3, 5, 1)
+                Check(cw.success && cw.kick == 0 && cw.facing == (rotation + 1) % 4, "clockwise transition")
+                ccw := Rules.Rotate(grid, kind, rotation, 3, 5, -1)
+                Check(ccw.success && ccw.kick == 0 && ccw.facing == (rotation + 3) % 4, "counterclockwise transition")
+            }
+        }
+        t_floor := Rules.Rotate(grid, 3, 0, 3, 20, 1)
+        Check(t_floor.success && t_floor.column == 2 && t_floor.row == 19 && t_floor.kick == 2, "T floor kick")
+        i_floor := Rules.Rotate(grid, 1, 0, 3, 20, 1)
+        Check(i_floor.success && i_floor.column == 4 && i_floor.row == 18 && i_floor.kick == 4, "I fifth floor kick")
+        t_wall := Rules.Rotate(grid, 3, 1, -1, 5, -1)
+        Check(t_wall.success && t_wall.column == 0 && t_wall.kick == 1, "T left wall kick")
+        i_wall := Rules.Rotate(grid, 1, 1, -2, 4, -1)
+        Check(i_wall.success && i_wall.column == 0 && i_wall.kick == 1, "I left wall kick")
+        Check(!Rules.Fits(grid, 3, 0, -1, 5), "left wall collision")
+        Check(!Rules.Fits(grid, 1, 0, 7, 5), "right wall collision")
+        Check(!Rules.Fits(grid, 1, 1, 3, -1), "hidden ceiling collision")
+        Check(Rules.Fits(grid, 1, 0, 3, -1), "hidden row participates")
+        Check(Rules.Landing(grid, 1, 0, 3, 1) == 20, "I ghost floor")
+        Check(Rules.Landing(grid, 2, 0, 3, 1) == 20, "O ghost floor")
+        grid = set_array_elem(grid, 204, cast<int>(7))
+        Check(Rules.Landing(grid, 2, 0, 3, 1) == 18, "ghost stack collision")
+        grid = Rules.Empty()
+        visible := Rules.Place(grid, 2, 0, 3, 0)
+        Check(!visible && get(grid, 4) == 2 && get(grid, 15) == 2, "hidden-only lock")
+        Check(!Rules.Fits(grid, 2, 0, 3, 0), "spawn obstruction")
+
+        grid = Rules.Empty()
+        for x in 0..9 {
+            grid = set_array_elem(grid, 210 + x, cast<int>(1))
+            grid = set_array_elem(grid, 190 + x, cast<int>(2))
+        }
+        grid = set_array_elem(grid, 200, cast<int>(3))
+        grid = set_array_elem(grid, 181, cast<int>(4))
+        grid = set_array_elem(grid, 9, cast<int>(7))
+        rows := Rules.FullRows(grid)
+        Check(length(rows) == 2 && get(rows, 0) == 19 && get(rows, 1) == 21, "nonadjacent full rows")
+        Rules.Collapse(grid, rows)
+        Check(get(grid, 210) == 3 && get(grid, 201) == 4 && get(grid, 29) == 7, "stable line compaction")
+        for i in 0..19 {
+            Check(get(grid, i) == 0, "top rows clear after compaction")
+        }
+        grid = Rules.Empty()
+        for i in 180..219 {
+            grid = set_array_elem(grid, i, cast<int>(1))
+        }
+        rows = Rules.FullRows(grid)
+        Check(length(rows) == 4, "four-line clear")
+        Rules.Collapse(grid, rows)
+        Check(identical(grid, Rules.Empty()), "four-line perfect clear grid")
+
+        grid = Rules.Empty()
+        grid = set_array_elem(grid, 0, cast<int>(1))
+        grid = set_array_elem(grid, 159, cast<int>(7))
+        grid = set_array_elem(grid, 160, cast<int>(2))
+        Rules.Rescue(grid)
+        Check(get(grid, 60) == 1 && get(grid, 219) == 7, "rescue shifts upper rows")
+        Check(!contains(grid, 2), "rescue discards bottom six")
+        for i in 0..59 {
+            Check(get(grid, i) == 0, "rescue clears spawn area")
+        }
+
+        grid = Rules.Empty()
+        grid = set_array_elem(grid, 183, cast<int>(1))
+        grid = set_array_elem(grid, 185, cast<int>(1))
+        grid = set_array_elem(grid, 203, cast<int>(1))
+        Check(Rules.Spin(grid, 3, 0, 3, 18, true, 0) == 2, "front corners full T-spin")
+        grid = set_array_elem(grid, 185, cast<int>(0))
+        grid = set_array_elem(grid, 205, cast<int>(1))
+        Check(Rules.Spin(grid, 3, 0, 3, 18, true, 0) == 1, "rear corners mini T-spin")
+        Check(Rules.Spin(grid, 3, 0, 3, 18, true, 4) == 2, "fifth kick upgrades mini")
+        Check(Rules.Spin(grid, 3, 0, 3, 18, false, 4) == 0, "movement disqualifies spin")
+        Check(Rules.Spin(grid, 2, 0, 3, 18, true, 4) == 0, "only T spins score")
+        Check(Rules.Points(1, 0, 2, 1, false) == 300, "combo and level score")
+        Check(Rules.Points(4, 0, 2, 0, true) == 2400, "back-to-back four-line score")
+        Check(Rules.Points(2, 2, 1, 0, true) == 1800, "back-to-back T-spin score")
+        Check(Rules.Points(0, 2, 3, -1, true) == 1200, "zero-line spin preserves base")
+        Check(Rules.Points(1, 1, 1, 0, false) == 200, "mini score")
+        Check(Rules.Gravity(1) == 0.8 && Rules.Gravity(20) < 0.001, "gravity endpoints")
+
+        self.BoardState.level = 2
+        self.BoardState.combo = -1
+        Rules.Award(self, 4, 0)
+        Check(self.BoardState.score == 1600 && self.BoardState.combo == 0 && self.BoardState.back_to_back, "first difficult clear starts chain")
+        Rules.Award(self, 0, 0)
+        Check(self.BoardState.score == 1600 && self.BoardState.combo == -1 && self.BoardState.back_to_back, "empty lock breaks combo but preserves difficult chain")
+        Rules.Award(self, 4, 0)
+        Check(self.BoardState.score == 4000 && self.BoardState.combo == 0, "difficult chain resumes after empty lock")
+        Rules.Award(self, 1, 0)
+        Check(self.BoardState.score == 4300 && self.BoardState.combo == 1 && !self.BoardState.back_to_back, "ordinary clear adds combo and breaks difficult chain")
+        Rules.Award(self, 2, 2)
+        Check(self.BoardState.score == 6900 && self.BoardState.combo == 2 && self.BoardState.back_to_back, "spin starts another difficult chain")
+        Rules.Award(self, 0, 2)
+        Check(self.BoardState.score == 7700 && self.BoardState.combo == -1 && self.BoardState.back_to_back, "no-line spin scores without breaking difficult chain")
+        Check(self.BoardState.pieces == 6 && self.BoardState.lines == 11 && self.BoardState.clear_serial == 4, "clear and lock telemetry tracks awards")
+
+        random_seed: int64 = 1
+        Check(Pieces.Random(random_seed, 2147483646) == 48270 && random_seed == 48271, "Park-Miller reference step")
+        seed_a: int64 = 73130
+        seed_b: int64 = 73130
+        seed_c: int64 = 73131
+        different := false
+        for bag_index in 0..19 {
+            a := Pieces.Bag(seed_a)
+            b := Pieces.Bag(seed_b)
+            c := Pieces.Bag(seed_c)
+            Check(identical(a, b) && seed_a == seed_b, "equal seeds produce equal bags")
+            if !identical(a, c) {
+                different = true
+            }
+            Check(length(a) == 7, "seven pieces per bag")
+            for kind in 1..7 {
+                Check(contains(a, kind), "bag contains every piece")
+            }
+        }
+        Check(different, "different seeds vary the sequence")
+        self.TestReport.done = true
+    }
+}

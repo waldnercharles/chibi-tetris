@@ -1,0 +1,77 @@
+body { color: #e9f0ef; font-size: 16dp; }
+div, p { display: block; }
+button { display: block; tab-index: none; height: 45dp; padding: 0dp 16dp; line-height: 45dp; color: #c6d9d9; background-color: #081c2399; border-width: 0dp; border-bottom: 1dp #71949633; text-align: left; font-size: 16dp; cursor: pointer; }
+button:hover, button:focus, button.selected { color: #ffffff; background-color: #80c8c722; border-left: 2dp #a8ded1; }
+button:active { background-color: #a8ded144; }
+.aside { float: right; font-size: 12dp; color: #b4c6c7; }
+.screen { position: absolute; width: 100%; height: 100%; background-color: #02121c44; }
+.edition { position: absolute; left: 7%; top: 56dp; color: #a1c3c2; letter-spacing: 4dp; font-size: 10dp; }
+.wordmark { position: absolute; left: 6.5%; top: 78dp; font-size: 79dp; font-weight: normal; letter-spacing: 5dp; color: #edf6ef; }
+.tagline { position: absolute; left: 7%; top: 182dp; color: #b9cfcd; font-size: 16dp; letter-spacing: 1dp; }
+.menu { position: absolute; left: 7%; top: 247dp; width: 485dp; }
+.menu button { margin-bottom: 5dp; }
+.index { display: inline-block; width: 39dp; font-size: 10dp; color: #82b0b1; }
+.chapter-picker { position: absolute; left: 7%; top: 567dp; width: 485dp; height: 32dp; font-size: 10dp; letter-spacing: 1dp; color: #a7c7c6; }
+.chapter-picker button { display: inline-block; width: 28dp; height: 28dp; padding: 0dp; text-align: center; line-height: 26dp; }
+#chapter-choice { display: inline-block; width: 419dp; text-align: center; }
+.title-foot { position: absolute; left: 7%; bottom: 42dp; font-size: 11dp; letter-spacing: 1dp; color: #96b7b8; }
+.record { position: absolute; right: 6%; top: 60dp; font-size: 11dp; letter-spacing: 2dp; color: #aec8c7; }
+.imprint { position: absolute; right: 6%; bottom: 44dp; text-align: right; font-size: 9dp; line-height: 20dp; letter-spacing: 2dp; color: #7dabae; }
+#hud { position: absolute; width: 100%; height: 100%; }
+.hud-brand { position: absolute; left: 42dp; top: 33dp; font-size: 23dp; letter-spacing: 3dp; color: #c8dddd; }
+.chapter { position: absolute; top: 36dp; left: 50%; margin-left: -190dp; width: 380dp; text-align: center; }
+#chapter-number { display: block; font-size: 11dp; letter-spacing: 3dp; color: #89b5b9; }
+#chapter-name { display: block; margin-top: 8dp; font-size: 19dp; letter-spacing: 2dp; }
+#clock { position: absolute; top: 42dp; right: 42dp; font-size: 20dp; color: #c6dcdd; }
+.scoreboard { position: absolute; left: 50%; top: 311dp; width: 168dp; }
+.score-a { margin-left: -360dp; }
+.score-b { display: none; }
+.small { font-size: 12dp; letter-spacing: 1dp; color: #8caaad; line-height: 24dp; }
+.player-label { display: none; }
+.score { font-size: 34dp; color: #edf9f3; margin: 5dp 0dp 10dp; }
+.board-label { position: absolute; left: 50%; top: 116dp; width: 108dp; text-align: center; font-size: 11dp; letter-spacing: 2dp; color: #94b9bc; }
+.hold-a { margin-left: -244dp; }
+.next-a { margin-left: 136dp; }
+.hold-b, .next-b { display: none; }
+#goal { position: absolute; top: 638dp; left: 50%; margin-left: -440dp; width: 880dp; text-align: center; font-size: 12dp; letter-spacing: 2dp; color: #c2dad5; }
+#seed { position: absolute; bottom: 12dp; right: 24dp; font-size: 8dp; letter-spacing: 1dp; color: #769496; }
+.play-controls { position: absolute; top: 671dp; left: 50%; margin-left: -560dp; width: 1120dp; text-align: center; font-size: 11dp; color: #9cbabf; }
+.pad-controls { position: absolute; top: 693dp; left: 50%; margin-left: -510dp; width: 1020dp; text-align: center; font-size: 10dp; color: #70989e; }
+.duet-controls { display: none; }
+#chapter-arrival { position: absolute; left: 50%; top: 93dp; margin-left: -340dp; width: 680dp; text-align: center; font-size: 17dp; letter-spacing: 4dp; color: #e1f5ea; }
+.duet .score-a { margin-left: -548dp; top: 295dp; width: 145dp; }
+.duet .score-b { display: block; margin-left: 415dp; top: 295dp; width: 145dp; text-align: right; }
+.duet .score { font-size: 26dp; }
+.duet .player-label { display: block; }
+.duet .hold-a { margin-left: -498dp; }
+.duet .next-a { margin-left: -118dp; }
+.duet .hold-b { display: block; margin-left: 10dp; }
+.duet .next-b { display: block; margin-left: 390dp; }
+.duet .solo-controls { display: none; }
+.duet .duet-controls { display: block; }
+.partner-wait { position: absolute; left: 50%; top: 328dp; width: 236dp; text-align: center; font-size: 12dp; line-height: 27dp; color: #f1e4c0; background-color: #051922e8; padding: 20dp 0dp; }
+.partner-wait span { font-size: 10dp; color: #bcd2d3; }
+.wait-a { margin-left: -372dp; }.wait-b { margin-left: 136dp; }
+.veil { position: absolute; width: 100%; height: 100%; background-color: #03121ee8; }
+.dialog { position: absolute; left: 50%; top: 50%; width: 540dp; margin-left: -270dp; margin-top: -185dp; }
+.eyebrow { font-size: 10dp; letter-spacing: 4dp; color: #91bab9; margin-bottom: 20dp; }
+.dialog-title { font-size: 35dp; letter-spacing: 1dp; color: #eef5ed; margin-bottom: 17dp; }
+.detail { color: #a9c3c5; font-size: 13dp; line-height: 22dp; margin-bottom: 25dp; }
+.dialog button { margin-bottom: 7dp; }
+.result-score { font-size: 14dp; letter-spacing: 2dp; color: #b8d9cb; margin-bottom: 38dp; }
+.settings-panel { position: absolute; top: 56dp; left: 50%; width: 650dp; margin-left: -325dp; }
+.settings-panel .dialog-title { font-size: 29dp; }
+.settings-panel .detail { font-size: 11dp; margin-bottom: 16dp; }
+.settings-panel button { height: 42dp; line-height: 42dp; font-size: 14dp; margin-bottom: 4dp; }
+.setting-value { float: right; color: #d1ebdf; width: 120dp; text-align: right; }
+.settings-footer { margin-top: 21dp; }
+.settings-footer button { display: inline-block; width: 55dp; text-align: center; }
+.settings-footer .done { float: right; width: 200dp; }
+.guide-panel { position: absolute; top: 40dp; left: 50%; width: 960dp; margin-left: -480dp; }
+.guide-panel .eyebrow { margin-bottom: 12dp; }.guide-panel .dialog-title { margin-bottom: 18dp; }
+.guide-column { display: inline-block; vertical-align: top; width: 447dp; margin-right: 28dp; font-size: 12dp; color: #abc5c8; line-height: 19dp; }
+.guide-heading { font-size: 15dp; color: #d5e9e1; margin-bottom: 5dp; }
+p { margin: 0dp 0dp 14dp; }
+.guide-keys { margin-top: 16dp; padding-top: 15dp; border-top: 1dp #74979544; font-size: 10dp; color: #c3d8d6; line-height: 23dp; }
+.guide-done { margin-top: 18dp; width: 928dp; }
+#notice { position: absolute; top: 83dp; left: 50%; margin-left: -440dp; width: 880dp; text-align: center; font-size: 11dp; color: #f2dbb3; }

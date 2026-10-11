@@ -1,0 +1,7 @@
+name "EnvRipple"
+components {
+    GAME.GameAppearance antialias=1.0 height=1.0 layer=-19 shape="Capsule" width=160.0
+    GAME.GameMaterial scene=0xaedee300
+    GAME.GameRenderState hidden=#true
+    GAME.GameTransform y=266.0
+}

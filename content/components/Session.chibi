@@ -1,0 +1,20 @@
+// Shared session and user settings. Screen: 0 title, 1 play, 2 pause, 3 results, 4 settings, 5 guide.
+component Session {
+    screen: int
+    mode: int
+    run: int
+    seed: int
+    stage: int
+    elapsed: number
+    rescue1: int
+    rescue2: int
+    charge: int
+    das: number
+    arr: number
+    effects: int
+    reduced_motion: bool
+    ghost: bool
+    master: number
+    music: number
+    sound: number
+}

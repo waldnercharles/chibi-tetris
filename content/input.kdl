@@ -1,0 +1,109 @@
+P1Left {
+    (array)sources "Arrow Left"
+    controller 0
+    (array)buttons "Dpad Left" "Left Stick Left"
+}
+P1Right {
+    (array)sources "Arrow Right"
+    controller 0
+    (array)buttons "Dpad Right" "Left Stick Right"
+}
+P1Soft {
+    (array)sources "Arrow Down"
+    controller 0
+    (array)buttons "Dpad Down" "Left Stick Down"
+}
+P1Drop {
+    (array)sources "Space"
+    controller 0
+    (array)buttons "Dpad Up"
+}
+P1CW {
+    (array)sources "Arrow Up" "X"
+    controller 0
+    (array)buttons "A"
+}
+P1CCW {
+    (array)sources "Z"
+    controller 0
+    (array)buttons "B"
+}
+P1Hold {
+    (array)sources "Shift" "C"
+    controller 0
+    (array)buttons "Left Shoulder" "Right Shoulder"
+}
+P2Left {
+    (array)sources "A"
+    controller 1
+    (array)buttons "Dpad Left" "Left Stick Left"
+}
+P2Right {
+    (array)sources "D"
+    controller 1
+    (array)buttons "Dpad Right" "Left Stick Right"
+}
+P2Soft {
+    (array)sources "S"
+    controller 1
+    (array)buttons "Dpad Down" "Left Stick Down"
+}
+P2Drop {
+    (array)sources "W"
+    controller 1
+    (array)buttons "Dpad Up"
+}
+P2CW {
+    (array)sources "E"
+    controller 1
+    (array)buttons "A"
+}
+P2CCW {
+    (array)sources "Q"
+    controller 1
+    (array)buttons "B"
+}
+P2Hold {
+    (array)sources "R"
+    controller 1
+    (array)buttons "Left Shoulder" "Right Shoulder"
+}
+MenuUp {
+    (array)sources "Arrow Up"
+    controller 0
+    (array)buttons "Dpad Up"
+}
+MenuDown {
+    (array)sources "Arrow Down"
+    controller 0
+    (array)buttons "Dpad Down"
+}
+MenuLeft {
+    (array)sources "Arrow Left"
+    controller 0
+    (array)buttons "Dpad Left"
+}
+MenuRight {
+    (array)sources "Arrow Right"
+    controller 0
+    (array)buttons "Dpad Right"
+}
+Confirm {
+    (array)sources "Enter"
+    controller 0
+    (array)buttons "A"
+}
+Back {
+    (array)sources "Backspace"
+    controller 0
+    (array)buttons "B"
+}
+Pause {
+    (array)sources "P"
+    controller 0
+    (array)buttons "Start"
+}
+Pause2 {
+    controller 1
+    (array)buttons "Start"
+}

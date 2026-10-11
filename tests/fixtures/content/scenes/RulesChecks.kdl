@@ -1,0 +1,12 @@
+version 1
+name "RulesChecks"
+(array)entities {
+    - {
+        name "Report"
+        prototype "TestReport"
+        components {
+            (object)TestReport
+        }
+        (array)behaviors "RulesChecks"
+    }
+}
