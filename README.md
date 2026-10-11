@@ -54,7 +54,7 @@ External music uses browser audio sharing or a native loopback device. Press M t
 
 This game consumes the Chibi SDK. KDL owns scene composition and `.chibi` owns the game rules and presentation. Blocks, scenery and text use the 3D renderer. There is no game-specific native module or separate browser implementation.
 
-The exact engine commit and package identities are recorded in `toolchain.json`. This development revision uses the engine branch `cwaldner/stillwater-3d-sdk`. Use its existing checkout through `.chibi/engine`, or pass `ENGINE=/absolute/path/to/that/checkout` to Make. The engine's documented CMake, C compiler, libclang and platform dependencies are required. Browser packaging also requires Emscripten.
+The game pins a commit from the engine's `main` branch and records its package identities in `toolchain.json`. Check out that exact revision in `.chibi/engine`, or pass `ENGINE=/absolute/path/to/that/checkout` to Make. The engine's documented CMake, C compiler, libclang and platform dependencies are required. Browser packaging also requires Emscripten.
 
 ```sh
 git clone --no-checkout https://github.com/waldnercharles/chibi.git .chibi/engine

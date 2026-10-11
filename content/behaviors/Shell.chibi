@@ -28,8 +28,6 @@ behavior Shell {
         bestDuet = cast<int>(max(0, read_saved_number("duet", 0).Number))
         self.Session.sprint_best = max(0, read_saved_number("sprint", 0).Number)
         self.Session.master = clamp(read_saved_number("master", 0.8).Number, 0, 1)
-        self.Session.music = clamp(read_saved_number("music", 0.65).Number, 0, 1)
-        self.Session.sound = clamp(read_saved_number("sound", 0.75).Number, 0, 1)
         self.Session.das = clamp(read_saved_number("das", 0.15).Number, 0.08, 0.3)
         self.Session.arr = clamp(read_saved_number("arr", 0.035).Number, 0.01, 0.08)
         self.Session.effects = cast<int>(clamp(read_saved_number("effects", 2).Number, 0, 2))
@@ -59,8 +57,6 @@ behavior Shell {
 
     function SaveSettings() {
         set_saved_number("master", self.Session.master)
-        set_saved_number("music", self.Session.music)
-        set_saved_number("sound", self.Session.sound)
         set_saved_number("das", self.Session.das)
         set_saved_number("arr", self.Session.arr)
         set_saved_number("effects", self.Session.effects)

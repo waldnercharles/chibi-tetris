@@ -779,6 +779,47 @@ TEST_CASE(music_connection_controls)
     return true;
 }
 
+TEST_CASE(retired_channel_preferences_keep_authored_mix)
+{
+    for (int legacy = 1; legacy >= 0; legacy--) {
+        yyjson_mut_doc *doc = request("Stillwater", 18);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "master", "0.4");
+        if (legacy) {
+            yyjson_mut_obj_add_str(doc, saved, "music", "0");
+            yyjson_mut_obj_add_str(doc, saved, "sound", "0");
+        }
+        key(doc, 0, 0);
+        tap(doc, 3, KEY_4);
+        tap(doc, 14, KEY_0);
+        REQUIRE(snapshot(doc));
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+        REQUIRE(yyjson_get_bool(field("World", "Session", "audio_ready")));
+        REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == 0);
+        REQUIRE(yyjson_get_num(field("World", "Session", "master")) == 0.5);
+        double music = yyjson_get_num(field("World", "Session", "music"));
+        double sound = yyjson_get_num(field("World", "Session", "sound"));
+        REQUIRE(music > 0.649 && music < 0.651);
+        REQUIRE(sound == 0.75);
+        yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
+        yyjson_val *state = yyjson_obj_get(result, "saved_state");
+        REQUIRE(yyjson_is_obj(state));
+        const char *master = yyjson_get_str(yyjson_obj_get(state, "master"));
+        REQUIRE(master && strtod(master, NULL) == 0.5);
+        static const char *channels[] = { "music", "sound" };
+        for (int i = 0; i < 2; i++) {
+            yyjson_val *channel = yyjson_obj_get(state, channels[i]);
+            if (legacy) {
+                const char *value = yyjson_get_str(channel);
+                REQUIRE(value && !strcmp(value, "0"));
+            } else {
+                REQUIRE(!channel);
+            }
+        }
+    }
+    return true;
+}
+
 TEST_CASE(music_choices_use_world_space_pointer)
 {
     static const struct
@@ -1269,30 +1310,34 @@ TEST_CASE(authored_environment_consumer)
 
 int main(int argc, char **argv)
 {
-    bool reactions_only = getenv("STILLWATER_REACTIONS") ||
+    bool reactions_only = (argc == 1 && getenv("STILLWATER_REACTIONS")) ||
                           (argc == 4 && !strcmp(argv[1], "--reactions"));
     bool consumer_only = argc == 4 && !strcmp(argv[1], "--consumer");
     bool hud_only = argc == 4 && !strcmp(argv[1], "--hud");
     bool onboarding_only = argc == 4 && !strcmp(argv[1], "--onboarding");
     bool previews_only = argc == 4 && !strcmp(argv[1], "--previews");
+    bool audio_preferences_only = argc == 4 && !strcmp(argv[1], "--audio-preferences");
     const char *controller_path = getenv("STILLWATER_CTL");
     const char *project_path = getenv("STILLWATER_PROJECT");
-    if (argc == 4 && (!strcmp(argv[1], "--all") || reactions_only || consumer_only ||
-                      hud_only || onboarding_only || previews_only)) {
+    if (argc == 4 && (!strcmp(argv[1], "--all") || reactions_only ||
+                      consumer_only || hud_only || onboarding_only ||
+                      previews_only || audio_preferences_only)) {
         controller_path = argv[2];
         project_path = argv[3];
     } else if (argc != 1 || !controller_path || !project_path) {
-        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews /path/to/chibi_ctl /path/to/game\n", argv[0]);
+        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews|--audio-preferences /path/to/chibi_ctl /path/to/game\n", argv[0]);
         return 2;
     }
     assert(realpath(controller_path, controller) && realpath(project_path, project));
     signal(SIGALRM, timeout_handler);
     alarm(58);
     prepare();
-    if (!hud_only && !onboarding_only && !previews_only) {
+    bool all = !reactions_only && !consumer_only && !hud_only &&
+               !onboarding_only && !previews_only && !audio_preferences_only;
+    if (all || reactions_only || consumer_only) {
         RUN_TEST_CASE(authored_environment_consumer);
     }
-    if (!consumer_only && !hud_only && !onboarding_only && !previews_only) {
+    if (all || reactions_only) {
         RUN_TEST_CASE(ordered_player_reactions);
         RUN_TEST_CASE(ordered_session_reactions);
         RUN_TEST_CASE(ordered_clear_reactions);
@@ -1300,14 +1345,15 @@ int main(int argc, char **argv)
     if (reactions_only) {
         RUN_TEST_CASE(topout_and_rescue);
     }
-    if (onboarding_only ||
-        (!reactions_only && !consumer_only && !hud_only && !previews_only)) {
+    if (all || onboarding_only) {
         RUN_TEST_CASE(music_choice_precedes_play);
         RUN_TEST_CASE(music_connection_controls);
         RUN_TEST_CASE(music_choices_use_world_space_pointer);
     }
-    if (!reactions_only && !consumer_only && !hud_only && !onboarding_only &&
-        !previews_only) {
+    if (all || onboarding_only || audio_preferences_only) {
+        RUN_TEST_CASE(retired_channel_preferences_keep_authored_mix);
+    }
+    if (all) {
         RUN_TEST_CASE(authored_rules);
         RUN_TEST_CASE(live_keyboard_boards);
         RUN_TEST_CASE(live_controller_boards);
@@ -1318,10 +1364,10 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
         RUN_TEST_CASE(score_choice_and_mode_keys);
     }
-    if (!reactions_only && !consumer_only && !onboarding_only) {
+    if (all || hud_only || previews_only) {
         RUN_TEST_CASE(sidebar_previews_follow_play_state);
     }
-    if (!reactions_only && !consumer_only && !onboarding_only && !previews_only) {
+    if (all || hud_only) {
         RUN_TEST_CASE(sprint_time_display);
         RUN_TEST_CASE(audio_source_status_labels);
         RUN_TEST_CASE(setting_value_labels);

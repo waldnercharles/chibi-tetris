@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "e9d23b04e85123f33c18abac97134df91e9b4515",
-    "source_snapshot_sha256": "6dc8797419c87175478465d2b40cc23070aa73ca80580f4fcc6e0da446570f34",
-    "project_format": 22,
+    "revision": "c98f548a36da0b1e6c6852e1d1d0ff5da89f8089",
+    "source_snapshot_sha256": "7bf8571dc84cbf2684b199f68b65f3c3220fd7a0928819227ec1e7e3b296a19d",
+    "project_format": 23,
     "player_prepared_format": 12,
-    "local_branch": "cwaldner/stillwater-3d-sdk"
+    "local_branch": "main"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "4a78c048e2bb1b18328bad375ef11ca512f23e2e1a1dda82cbc9fb9e0a31e216",
-    "manifest_sha256": "9c7347abb27728dc6768d80f506b3e690070adeea4714ed1e37ea8b4af062678",
+    "build_id": "eff4279344ee5ad3cc6834741877aa117dbe8d0ba600aa2356d81c276e2a11fe",
+    "manifest_sha256": "1f9496e4773344d7cb174b45ec9ee52bb8808c8c70063d7a3f62096bee5974f1",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,12 +22,12 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "e9d23b04e85123f33c18abac97134df91e9b4515",
+    "source_revision": "c98f548a36da0b1e6c6852e1d1d0ff5da89f8089",
     "files": {
-      "chibi-player.js": "a7b9e888e51d67dd705b197bccdab28080c1d1b23515531f2cf90c9f9a8a1d92",
-      "chibi-player.wasm": "16efa635dcce08f5c83176eda68bf0a362318c2d2c6f9ddfa3aa5f80184629c9",
-      "compiler/chibi-compile.js": "2ac7307c6b736f9b2fc044f3a70810f3139178f6b7020b0fe8cab902fe5494d1",
-      "compiler/chibi-compile.wasm": "7286c6d7aeb41b04c17c40bec345312f0694d4219d9b099e068f17a869bba251",
+      "chibi-player.js": "01f625c33be55c8b7a9238e0bcccf290d40e8a7f895c2e29511bfb0c3d362a42",
+      "chibi-player.wasm": "b5b44d36ab11fcf5832b7bab69c566edca711b6fb045d1ec7b9d52fdc545252e",
+      "compiler/chibi-compile.js": "b15e035406f70e830f6b68b64c4c7db2ad6d8009c7d7dbbcad7d3ebb854160a7",
+      "compiler/chibi-compile.wasm": "317a973090e119d68fcb6b51b2f176b69bb0caedc00dab49051e793d50507d97",
       "index.html": "6311f1efd7cf0dfea0fcb96fbef452b64f6c8712f05a1f1d2293e6655eff965e"
     }
   }
