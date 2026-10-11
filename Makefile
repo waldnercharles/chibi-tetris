@@ -6,7 +6,7 @@ WEB_PLAYER ?= $(abspath $(ENGINE))/dist/web-stillwater
 JOBS ?= 4
 RELEASE_FLAGS := -DCMAKE_BUILD_TYPE=Release -DCHIBI_ENABLE_SANITIZERS=OFF -DCHIBI_ENABLE_CCACHE=ON
 
-.PHONY: sdk authoring web-player play native web publish verify-published serve format validate test test-build
+.PHONY: sdk authoring web-player play native web publish publish-dev verify-published serve format validate test test-build test-publishing
 
 sdk:
 	$(MAKE) -C "$(ENGINE)" package-sdk SDK_BUILD_DIR=build/sdk-stillwater SDK_PREFIX="$(abspath $(SDK))" SDK_CMAKE_FLAGS='$(RELEASE_FLAGS)' JOBS=$(JOBS)
@@ -29,6 +29,9 @@ web:
 publish:
 	bash tools/pages.sh publish "$(abspath $(SDK))" "$(abspath $(WEB_PLAYER))"
 
+publish-dev:
+	bash tools/publish-dev.sh "$(CURDIR)"
+
 verify-published:
 	python3 -c 'import runpy, sys; sys.exit(runpy.run_path(sys.argv[1])["run_commands"]([["bash", sys.argv[2], "verify"]]))' \
 		"$(abspath $(ENGINE))/tools/test_policy.py" "$(CURDIR)/tools/pages.sh"
@@ -42,5 +45,5 @@ format:
 validate:
 	printf '%s\n' '{"contract":1,"operation":"validate_project"}' | "$(CTL)" --project-root "$(CURDIR)"
 
-test test-build:
+test test-build test-publishing:
 	$(MAKE) -f tests/Makefile $@ ENGINE="$(abspath $(ENGINE))" CTL="$(abspath $(CTL))"

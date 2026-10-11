@@ -48,6 +48,8 @@ publish)
     rsync -a --delete --exclude=.git dist/web/ "$temporary/site/"
     cp LICENSES.md "$temporary/site/"
     touch "$temporary/site/.nojekyll"
+    bash tools/editor-package.sh "$engine" "$temporary/editor" waldnercharles/chibi-tetris
+    bash tools/assemble-dev.sh "$PWD" "$temporary/site" "$temporary/editor"
     jq -n --arg revision "$revision" --arg engine "$engine" \
         '{format: 1, source_revision: $revision, engine_revision: $engine}' > "$temporary/site/deployment.json"
     (
@@ -57,7 +59,7 @@ publish)
         git add --all
         if ! git diff --cached --quiet; then
             git commit -m "Publish Stillwater from $revision"
-            git push origin HEAD:gh-pages
+            git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin HEAD:gh-pages
         fi
         printf 'Pages commit: %s\n' "$(git rev-parse HEAD)"
     )
@@ -72,7 +74,8 @@ verify)
     cmp "$temporary/deployment.json" "$temporary/site/deployment.json"
     curl --fail --silent --show-error --max-time 15 "${url}SHA256SUMS?revision=$revision" > "$temporary/SHA256SUMS"
     cmp "$temporary/SHA256SUMS" "$temporary/site/SHA256SUMS"
-    for file in index.html files.json chibi-player.js chibi-player.wasm data/game.chibip; do
+    for file in index.html files.json chibi-player.js chibi-player.wasm data/game.chibip \
+        dev/index.html dev/project.json dev/project.zip dev/studio.json; do
         curl --fail --silent --show-error --max-time 15 "${url}${file}?revision=$revision" > "$temporary/asset"
         [[ $(hash "$temporary/asset") == "$(hash "$temporary/site/$file")" ]] || fail "Public asset differs: $file"
     done

@@ -1308,8 +1308,13 @@ TEST_CASE(authored_environment_consumer)
     return true;
 }
 
+#include "publishing.h"
+
 int main(int argc, char **argv)
 {
+    if (argc == 3 && !strcmp(argv[1], "--publishing")) {
+        return publishing_main(argv[2]);
+    }
     bool reactions_only = (argc == 1 && getenv("STILLWATER_REACTIONS")) ||
                           (argc == 4 && !strcmp(argv[1], "--reactions"));
     bool consumer_only = argc == 4 && !strcmp(argv[1], "--consumer");
@@ -1326,6 +1331,7 @@ int main(int argc, char **argv)
         project_path = argv[3];
     } else if (argc != 1 || !controller_path || !project_path) {
         fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews|--audio-preferences /path/to/chibi_ctl /path/to/game\n", argv[0]);
+        fprintf(stderr, "       %s --publishing /path/to/game\n", argv[0]);
         return 2;
     }
     assert(realpath(controller_path, controller) && realpath(project_path, project));
