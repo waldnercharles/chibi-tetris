@@ -27,7 +27,7 @@ behavior ShellChecks {
                 Check(world.Session.screen == 1 && world.Session.mode == 0 && world.Session.run == 1, "Journey starts")
             }
             case 15 {
-                board.BoardState.lines = 12;
+                board.BoardState.lines = 12
                 board.BoardState.score = 1200
             }
             case 18 {
@@ -35,7 +35,7 @@ behavior ShellChecks {
                 Check(read_saved_number("chapter", -1).Number == 1, "chapter unlock commits")
             }
             case 19 {
-                board.BoardState.lines = 0;
+                board.BoardState.lines = 0
                 send_event<"Restart">(world)
             }
             case 22 {
@@ -57,7 +57,7 @@ behavior ShellChecks {
                 Check(world.Session.stage == 2, "selected chapter progresses")
             }
             case 48 {
-                board.BoardState.lines = 0;
+                board.BoardState.lines = 0
                 send_event<"Restart">(world)
             }
             case 51 {

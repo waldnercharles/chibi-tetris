@@ -13,7 +13,6 @@ behavior Hud {
     audio_status: int = -1
     audio_signal := false
     audio_quiet := false
-    audio_choice: int = -1
     hover_choice: int = -1
     pointer_choice: int = -1
     screen: int = -1
@@ -133,45 +132,45 @@ behavior Hud {
             label.Material.scene = 0xd2edf5ff
             label.Material.emission_intensity = 0.28
         }
-        if world.Session.audio_choice == choice {
-            label.Material.scene = 0xa9e7ffff
-            label.Material.emission_intensity = 0.42
-        }
     }
 
     function DrawConnection() {
         panel.Geometry3D.width = 610
-        panel.Geometry3D.height = 370
-        ModalLabel(0, "stillwater", 0, 139, 36)
-        ModalLabel(11, "connect_music", 0, 75, 20)
-        Choice(12, "music_youtube", 0, -160, 24, 13)
-        Choice(13, "music_spotify", 1, 0, 24, 13)
-        Choice(14, "music_tidal", 2, 160, 24, 13)
+        panel.Geometry3D.height = 330
+        ModalLabel(0, "stillwater", 0, 110, 36)
+        Choice(12, "music_score", 0, 0, 32, 22)
         action_label := "music_listen"
-        hint := "music_intro"
-        if world.Session.audio_source == 1 {
-            hint = "music_play"
-            if world.Session.audio_status == 1 {
-                hint = "audio_share_hint"
-            }
-        }
         if world.Session.audio_status >= 3 {
             action_label = "music_retry"
-            match (world.Session.audio_status) {
-                case 3 {
-                    hint = "audio_no_source"
-                }
-                case 4 {
-                    hint = "audio_cancelled"
-                }
-                case 5 {
-                    hint = "audio_ended"
+        }
+        Choice(13, action_label, 1, 0, -25, 14)
+        hint := ""
+        match (world.Session.audio_status) {
+            case 1 {
+                hint = "audio_share_hint"
+            }
+            case 2 {
+                hint = "audio_connected"
+                if world.Session.audio_quiet {
+                    hint = "audio_quiet"
                 }
             }
+            case 3 {
+                hint = "audio_no_source"
+            }
+            case 4 {
+                hint = "audio_cancelled"
+            }
+            case 5 {
+                hint = "audio_ended"
+            }
         }
-        Choice(15, action_label, 3, 0, -37, 14)
-        ModalLabel(16, hint, 0, -77, 9)
-        Choice(17, "music_score", 4, 0, -121, 10)
+        if hint != "" {
+            ModalLabel(16, hint, 0, -83, 10)
+        }
+        if world.Session.audio_status >= 3 && world.Session.audio_status != 3 {
+            ModalLabel(17, "audio_share_hint", 0, -115, 9)
+        }
     }
 
     function ReadPointer() {
@@ -189,32 +188,18 @@ behavior Hud {
         }
         point := ray.Origin + ray.Direction * distance
         choice: int = -1
-        if abs(point.y - 24) < 18 {
-            for i in 0..2 {
-                if abs(point.x - (-160 + i * 160)) < 68 {
-                    choice = i
-                }
-            }
+        if abs(point.x) < 150 && abs(point.y - 32) < 22 {
+            choice = 0
         }
-        if abs(point.x) < 165 && abs(point.y + 37) < 19 {
-            choice = 3
-        }
-        if abs(point.x) < 105 && abs(point.y + 121) < 17 {
-            choice = 4
+        if abs(point.x) < 165 && abs(point.y + 25) < 21 {
+            choice = 1
         }
         if choice < 0 {
             return
         }
         hover_choice = choice
         if input.Select.pressed {
-            world.Session.audio_choice = choice
             world.Session.audio_request = choice + 1
-            if choice == 3 {
-                world.Session.audio_request = 5
-            }
-            if choice == 4 {
-                world.Session.audio_request = 4
-            }
         }
     }
 
@@ -349,7 +334,6 @@ behavior Hud {
         audio_status = world.Session.audio_status
         audio_signal = world.Session.audio_signal
         audio_quiet = world.Session.audio_quiet
-        audio_choice = world.Session.audio_choice
         pointer_choice = hover_choice
         screen = world.Session.screen
         world_serial = world.ReactionQueue.serial
@@ -431,7 +415,7 @@ behavior Hud {
         ReadPointer()
         refresh += dt
         changed := ReadSettings(dt)
-        changed = changed || pointer_choice != hover_choice || audio_choice != world.Session.audio_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
+        changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
         if refresh < 0.1 && !changed {
             return
         }

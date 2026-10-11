@@ -1,4 +1,0 @@
-name "TextConnectMusic"
-components {
-    MeshAsset source="content/meshes/text/connect_music.mesh"
-}

@@ -2,4 +2,4 @@ name "Environment"
 components {
     Environment adaptation_speed=2.0 ambient_ground=0x030811ff ambient_intensity=0.65 ambient_sky=0x365474ff bloom_radius=0.018 bloom_strength=0.34 bloom_threshold=0.65 exposure=-0.6 occlusion="Low" occlusion_radius=16.0 tone_mapping="Neutral"
 }
-(array)behaviors "Environment"
+(array)behaviors "Environment" "StageDirector"

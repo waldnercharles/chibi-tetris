@@ -1,0 +1,221 @@
+// Observe production Board timing and rendered transforms through real input.
+behavior MotionChecks {
+    world: entity
+    board: entity
+    active: entity
+    ghost: entity
+    frame: int = 0
+    initial_row: int = 0
+    initial_column: int = 0
+    initial_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    ghost_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    soft_row: int = 0
+    tap_row: int = 0
+    tap_score: int = 0
+    released_row: int = 0
+    drop_row: int = 0
+    drop_column: int = 0
+    drop_kind: int = 0
+    paused_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    paused_scale: CF_V3 = { x: 0, y: 0, z: 0 }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+    }
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function Active() -> (tile: entity) {
+        tiles := find_entities_with_component("MeshAsset")
+        for item in tiles {
+            if !item.RenderState.hidden && item.Geometry3D.width == 22 && item.Transform3D.position.z >= 3 && item.Transform3D.position.x < 0 {
+                return item
+            }
+        }
+        return self
+    }
+
+    function Last(kind: int) -> (record: entity) {
+        serial := board.ReactionQueue.serial
+        while serial > 0 {
+            record = ReactionRules.Read(board, serial)
+            if record.ReactionEvent.kind == kind {
+                return record
+            }
+            serial -= 1
+        }
+        return board.ReactionQueue.first
+    }
+
+    function Point(record: entity, index: int) -> (point: CF_V3) {
+        match (index) {
+            case 0 {
+                return record.ReactionEvent.point0
+            }
+            case 1 {
+                return record.ReactionEvent.point1
+            }
+            case 2 {
+                return record.ReactionEvent.point2
+            }
+        }
+        return record.ReactionEvent.point3
+    }
+
+    function Same(first: CF_V3, second: CF_V3) -> (equal: bool) {
+        return abs(first.x - second.x) < 0.0001 && abs(first.y - second.y) < 0.0001 && abs(first.z - second.z) < 0.0001
+    }
+
+    function Style(mesh: string, depth: number) {
+        active = Active()
+        Check(active.MeshAsset.source == mesh, "stage selects its block silhouette")
+        Check(abs(active.Geometry3D.depth - depth) < 0.001, "stage changes block depth without changing its footprint")
+        Check(active.Geometry3D.width == 22 && active.Geometry3D.height == 22, "block footprint remains inside its cell")
+        Check(active.Shader.material == "BlockSurface", "stage blocks use a lit material")
+    }
+
+    on Tick {
+        match (frame) {
+            case 1 {
+                world.Session.reduced_motion = false
+                world.Session.effects = 2
+            }
+            case 3 {
+                active = Active()
+                initial_position = active.Transform3D.position
+                initial_row = board.BoardState.row
+                initial_column = board.BoardState.column
+                tiles := find_entities_with_component("Geometry3D")
+                for item in tiles {
+                    if item.Geometry3D.primitive == 8 && !item.RenderState.hidden && item.Transform3D.position.x < 0 {
+                        ghost = item
+                        ghost_position = item.Transform3D.position
+                        break
+                    }
+                }
+                Style("content/meshes/Block.mesh", 13.2)
+            }
+            case 4 {
+                world.VisualState.energy = 1
+                world.VisualState.bass = 1
+                world.VisualState.beat = 1
+            }
+            case 20 {
+                Check(active.Transform3D.position.z > initial_position.z + 1, "music raises the rendered piece")
+                Check(active.Transform3D.scale.z > 1.03 && active.Transform3D.scale.y < 1, "music changes piece depth and settling shape")
+                Check(active.Transform3D.position.x == initial_position.x && active.Transform3D.position.y == initial_position.y, "music preserves occupied cell centers")
+                Check(board.BoardState.row == initial_row && board.BoardState.column == initial_column && board.BoardState.score == 0 && board.BoardState.pieces == 0, "music leaves logical falling and scoring untouched")
+                Check(Same(ghost.Transform3D.position, ghost_position) && Same(ghost.Transform3D.scale, vec3(1, 1, 1)), "landing ghost remains fixed while the piece pulses")
+                world.Session.reduced_motion = true
+            }
+            case 24 {
+                Check(active.Transform3D.position.z == 3 && Same(active.Transform3D.scale, vec3(1, 1, 1)), "reduced motion restores the stable piece transform")
+            }
+            case 40 {
+                soft_row = board.BoardState.row
+            }
+            case 43 {
+                Check(board.BoardState.row == soft_row + 1, "pressing down advances one cell without spending accumulated gravity as a burst")
+            }
+            case 45 {
+                Check(board.BoardState.row == soft_row + 1, "soft drop waits one controllable interval before repeating")
+            }
+            case 49 {
+                Check(board.BoardState.row == soft_row + 2, "soft drop repeats once after its first interval")
+            }
+            case 70 {
+                distance := board.BoardState.row - soft_row
+                Check(distance >= 5 && distance <= 6, "held soft drop moves ten cells per second after its first cell")
+                Check(board.BoardState.score == distance && board.BoardState.pieces == 0, "soft drop scores each traveled row without immediately locking")
+                record := Last(4)
+                for index in 0..3 {
+                    cell := Pieces.Cell(board.BoardState.current, 0, index)
+                    point := Point(record, index)
+                    Check(abs(point.x - record.ReactionEvent.x - (cell.x - 1) * 24) < 0.001 && abs(point.y - record.ReactionEvent.y - (1 - cell.y) * 24) < 0.001, "soft-drop cells retain the position before their traveled rows")
+                }
+            }
+            case 72 {
+                released_row = board.BoardState.row
+            }
+            case 74 {
+                Check(board.BoardState.row == released_row, "releasing down resumes a fresh gravity interval")
+                Check(Last(3).ReactionEvent.result == 1 && Last(5).ReactionEvent.result == 1, "soft drop retains start and stop events")
+            }
+            case 76 {
+                drop_row = board.BoardState.row
+                drop_column = board.BoardState.column
+                drop_kind = board.BoardState.current
+            }
+            case 79 {
+                record := Last(6)
+                Check(record.ReactionEvent.kind == 6 && record.ReactionEvent.detail == drop_kind, "hard drop retains its outgoing piece")
+                for index in 0..3 {
+                    cell := Pieces.Cell(drop_kind, 0, index)
+                    expected := vec3(-374 + (drop_column + cell.x) * 24 + 12, 276 - (drop_row + cell.y) * 24, 9.6)
+                    point := Point(record, index)
+                    Check(abs(point.x - expected.x) < 0.001 && abs(point.y - expected.y) < 0.001 && abs(point.z - expected.z) < 0.001, "hard drop captures each occupied cell before the next piece spawns")
+                }
+                lock := Last(8)
+                Check(abs(lock.ReactionEvent.point0.y - (record.ReactionEvent.point0.y - record.ReactionEvent.amount * 24)) < 0.001, "lock cells reach the recorded hard-drop landing")
+                world.StageState.style = 1
+            }
+            case 96 {
+                Style("content/meshes/BlockPetal.mesh", 18.04)
+                world.StageState.style = 2
+            }
+            case 113 {
+                Style("content/meshes/BlockDune.mesh", 9.24)
+                world.StageState.style = 3
+            }
+            case 130 {
+                Style("content/meshes/BlockOrbit.mesh", 16.28)
+                world.Session.reduced_motion = false
+            }
+            case 134 {
+                world.Session.screen = 2
+                active = Active()
+                paused_position = active.Transform3D.position
+                paused_scale = active.Transform3D.scale
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                world.VisualState.beat = 0
+            }
+            case 140 {
+                Check(Same(active.Transform3D.position, paused_position) && Same(active.Transform3D.scale, paused_scale), "pause freezes the music-driven piece transform")
+                world.Session.mode = 0
+                world.Session.stage = 19
+                world.Session.run += 1
+                world.Session.screen = 1
+            }
+            case 146 {
+                Check(board.BoardState.level == 20 && board.BoardState.row >= 18, "soft drop never slows faster high-level gravity")
+                Check(board.BoardState.pieces == 0, "high-level gravity retains the half-second lock delay")
+            }
+            case 150 {
+                world.Session.stage = 0
+                world.Session.run += 1
+            }
+            case 154 {
+                tap_row = board.BoardState.row
+                tap_score = board.BoardState.score
+                Check(board.BoardState.level == 1 && board.BoardState.pieces == 0, "short-tap regression begins with normal gravity and a fresh piece")
+            }
+            case 172 {
+                Check(board.BoardState.row == tap_row + 8, "eight short Down taps move eight cells instead of stalling gravity")
+                Check(board.BoardState.score == tap_score + 8 && board.BoardState.pieces == 0, "each short Down tap scores exactly one traveled cell without locking")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

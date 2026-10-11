@@ -4,37 +4,25 @@ The upright well, beveled blocks, ghost outlines, hold, queue and text are mesh 
 
 ## Particle space
 
-The background is a deep violet void with two long spiral arms and a separate distant star field. There is no underwater scene. `CosmicParticles.kdl` authors the position, size and emission of each octahedron from its index, seed, the scene clock and audio controls. Each field is one instanced GPU draw. Particle count does not add entities, behavior activations or per-frame CPU particle updates.
+Four formations share stable particle identities: aurora curtains, petal shells, dune ribbons and orbital lattices. A persisted launch counter changes the opening family; a seeded variation changes its composition. Five-second quintic morphs respond to chapters, sustained changes in spectral balance, silence/resumption and longer musical phrases. They infer changes from sound rather than reading provider song metadata.
 
-The initial full setting contains 131,072 vortex particles and 16,384 stars. Reduced density contains 16,384 plus 2,048. Effects off leaves 512 stationary stars. The engine supports larger counts; the shipped count is selected from actual browser frame-time measurements, recorded in [validation](validation.md).
+`CosmicParticles.kdl` evaluates position, size and emission on the GPU. Full density contains 131,072 main particles plus 16,384 distant grains. Reduced density uses 16,384 plus 2,048; effects off retains 512 stationary grains. Two instanced draws keep individual particles out of the CPU entity and behavior systems. Browser measurements, rather than the maximum count the engine supports, determine the shipped density.
 
-Bass expands the arms and depth waves, midrange bends their flow, and treble changes their fine structure. Smoothed envelopes and integrated velocity turn musical onsets and player inputs into motion. Stars retain stable identities and brightness; they do not blink on a time-based twinkle cycle. The two fields share a clock that stops when paused or when motion is reduced. Chapter changes alter the palette gradually. Particles remain visible through the center at a lower intensity so the grid stays readable.
+Bass shapes broad displacement, midrange bends flow, treble affects fine structure, and player impulses disturb the field. Stable hashes and smoothed envelopes avoid time-based star flicker. Projected attenuation keeps the single or Duet wells readable without an opaque wall. Pausing or reducing motion freezes particle travel and scene morphs.
+
+Three stage point lights, including one shadowed key, complement the directional light. Eight lit geometric facets make their changes visible in the surrounding space, spreading farther apart around Duet. Four beveled block families have different roughness, metallic response and depth. Materials and depth blend during scene changes; the bevel mesh switches at the midpoint. Music gives the four active blocks a small depth lift and elastic scale, without changing their logical cells, ghost, drop speed or lock timing.
 
 ## Action feedback
 
-A fixed ring records each action and its world-space position before a piece spawns or rows collapse. A fixed pool renders short-lived 3D particle cues:
+A reaction records all four occupied cell centers and rendered front-face depth before the next piece spawns. Motion, turn, hold and rejection cues begin at the physical edges. A hard drop sends four compact packets to the landing, followed by compression, scattered flecks and a short local light. Cleared rows emit from their original positions. No full-height drop ribbons remain.
 
-| Action | Reaction |
-| --- | --- |
-| Move | A short directional dash |
-| Rotate | A crescent following the rotation direction |
-| Soft drop | Short curved wakes, plus press and release cues |
-| Hard drop | Five dense braided strands match the piece width, taper toward the landing, and spread into a ripple |
-| Hold | A curved exchange streak |
-| Blocked action | Stationary amber brackets |
-| Lock | A restrained landing pulse |
-| Clear | Each original row releases an outward strip of sparks |
-| Combo | Additional arcs, capped at four |
-| Top-out or rescue | A distinct colored burst and local light |
-| Pause, restart, mode, chapter, settings or audio selection | A small confirmation or perimeter pulse |
-
-Logical piece placement and controls remain immediate. Cosmetic releases last about 80–400 milliseconds. A hard-drop wake uses 1,024 overlapping grains at full density or 512 at reduced density. Strong reactions add local light; ordinary moves avoid changing the whole screen's brightness. Queue overflow has an explicit diagnostic rather than silently replaying or dropping a whole batch.
+[The VFX layer sheet](vfx.md) specifies each layer's purpose, procedural material, emission shape, velocity, lifetime and blending, including the exact logarithmic birth distribution and smooth retirement curves. The fixed pool never overwrites a visible effect; saturation increments a diagnostic. GPU grains create no individual entities.
 
 V cycles density. F toggles reduced motion: background travel, camera drift and audio modulation stop, while brief stationary input confirmations remain. G toggles the ghost. The 3D pause panel offers controls and a way to reconnect music; changed settings show their values immediately. Numbers reuse digit entities. Labels use filled, shallow extrusions of Geist, generated by the build-time C tool `tools/glyphs.c`. In-play text is limited to the board and its counters; detailed controls and audio guidance appear during music selection or pause.
 
 ## References and provenance
 
-[Tetris Effect: Connected's official media gallery](https://tetriseffect.game/connected/media/) and its [spiral-stage screenshot](https://www.videogameschronicle.com/files/2020/11/Connected_Singleplayer_01.jpg) informed the dark center, dense distant grain, luminous arcs and depth around the board. The geometry, particle trajectories, shaders, palettes and layout here are original; no reference artwork is shipped.
+[Tetris Effect: Connected's official feature guide](https://www.tetriseffect.game/about-the-game/) and its [Connected screenshot on Steam](https://cdn.cloudflare.steamstatic.com/steam/apps/1003590/ss_8ba09dc00d14f6a454c5bd62e0166cd56176841a.1920x1080.jpg) and [desert screenshot on Nintendo](https://img-eshop.cdn.nintendo.net/i/a0efbf417552698f827545644728d04c3471fa112626909d64330890ec6ff6ad.jpg) informed the quiet well, distinct scene compositions, changing block finishes and localized light. The geometry, particle trajectories, shaders, palettes and layout here are original; no reference artwork is shipped.
 
 [Butterchurn](https://butterchurnviz.com/) and [projectM](https://projectm-visualizer.org/docs/user/) informed the separation of broad musical motion from fine transients. The [WebGPU HDR particle sample](https://webgpu.github.io/webgpu-samples/?sample=particles) provided a reference for GPU-resident particle work and bright points against a dark field. Stillwater uses authored analytic trajectories with real 3D meshes rather than copying that demo's simulation or artwork.
 

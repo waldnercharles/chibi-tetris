@@ -1,0 +1,275 @@
+// Scene families share stable GPU particle identities and interpolate in place.
+// External song boundaries are inferred from sound, never provider metadata.
+behavior StageDirector {
+    world: entity
+    vortex: entity
+    stars: entity
+    lights: entity[]
+    facets: entity[]
+    ready := false
+    origin := 0
+    phase := 0
+    age := 0
+    quiet := 0
+    signal := 0
+    spectrum_age := 0
+    stage_audio: CF_V3 = { x: 0, y: 0, z: 0 }
+    stage_reaction := 0
+    heard := false
+    gap := false
+    baseline_bass := 0
+    baseline_mid := 0
+    baseline_treble := 0
+    previous_stage: int = 0
+    previous_source: int = 0
+    action writer = commit_save()
+
+    on Begin {
+        world = get_global_variable("World")
+        vortex = get_global_variable("Vortex")
+        stars = get_global_variable("Stars")
+        // The persisted launch number guarantees adjacent launches differ even
+        // on hosts whose supported rand() stream begins at the same value.
+        if world.StageState.seed <= 0 {
+            launch := cast<int>(floor(max(0, read_saved_number("visual_launch", 0).Number))) + 1
+            world.StageState.seed = 4 * (floor(rand() * 200000) + launch % 50000) + launch % 4 + 1
+            set_saved_number("visual_launch", launch)
+            writer.Exec()
+        }
+        world.StageState.style = cast<number>(cast<int>(floor(world.StageState.seed)) % 4)
+        world.StageState.target = cast<int>(world.StageState.style)
+        world.StageState.transition = 1
+        world.StageState.revision = 1
+        world.StageState.reason = 1
+        phase = world.StageState.seed * 0.0017
+        origin = world.StageState.style
+        previous_stage = world.Session.stage
+        previous_source = world.Session.audio_source
+        for i in 0..2 {
+            light := await spawn(StageLight)
+            lights = array_add(lights, light)
+        }
+        key := get(lights, 0)
+        key.PointLight.shadows = true
+        for i in 0..7 {
+            facet := await spawn(StageFacet)
+            facets = array_add(facets, facet)
+        }
+        ready = true
+        Stage()
+    }
+
+    after writer.Failed {
+        world.Session.save_failed = true
+    }
+
+    function Weight(family: number) -> (value: number) {
+        distance := abs(world.StageState.style - family)
+        distance = min(distance, 4 - distance)
+        value = clamp(1 - distance, 0, 1)
+        return value * value * (3 - 2 * value)
+    }
+
+    function Color(r: number, g: number, b: number) -> (value: uint) {
+        return cast<uint>(cast<int>(clamp(r, 0, 255))) << 24 | cast<uint>(cast<int>(clamp(g, 0, 255))) << 16 | cast<uint>(cast<int>(clamp(b, 0, 255))) << 8 | cast<uint>(255)
+    }
+
+    function Advance(reason: int) {
+        if world.StageState.transition < 1 {
+            return
+        }
+        origin = world.StageState.style
+        world.StageState.target = (world.StageState.target + 1) % 4
+        world.StageState.transition = 0
+        world.StageState.revision += 1
+        world.StageState.reason = reason
+        age = 0
+        spectrum_age = 0
+        baseline_bass = world.VisualState.bass
+        baseline_mid = world.VisualState.mid
+        baseline_treble = world.VisualState.treble
+    }
+
+    function Listen(delta: number) {
+        age += delta
+        energy := world.VisualState.energy
+        if energy < 0.025 {
+            quiet += delta
+            signal = 0
+            if heard && quiet > 1.4 {
+                gap = true
+            }
+        } else {
+            quiet = 0
+            signal += delta
+            if signal > 0.3 {
+                heard = true
+                if gap && age > 8 {
+                    gap = false
+                    Advance(3)
+                }
+            }
+        }
+        if world.Session.stage != previous_stage {
+            previous_stage = world.Session.stage
+            Advance(2)
+        }
+        if world.Session.audio_source != previous_source {
+            previous_source = world.Session.audio_source
+            if age > 8 {
+                Advance(5)
+            }
+        }
+        // Three seconds of changed spectral balance suggests a new section.
+        // A refractory interval prevents individual beats from changing scenes.
+        total := max(0.08, world.VisualState.bass + world.VisualState.mid + world.VisualState.treble)
+        bass := world.VisualState.bass / total
+        mid := world.VisualState.mid / total
+        treble := world.VisualState.treble / total
+        difference := abs(bass - baseline_bass) + abs(mid - baseline_mid) + abs(treble - baseline_treble)
+        if age < 4 {
+            baseline_bass = bass
+            baseline_mid = mid
+            baseline_treble = treble
+        }
+        if energy > 0.05 && difference > 0.55 && age > 18 {
+            spectrum_age += delta
+            if spectrum_age > 3 {
+                Advance(4)
+            }
+        } else {
+            spectrum_age = max(0, spectrum_age - delta * 2)
+        }
+        // Long continuous songs still unfold into new visual phrases.
+        if age > 38 + cast<int>(floor(world.StageState.seed)) % 13 && energy > 0.04 {
+            Advance(5)
+        }
+    }
+
+    function Field(field: entity) {
+        set_material_parameter(field, "Style", world.StageState.style)
+        set_material_parameter(field, "Variation", world.StageState.seed)
+        duet := 0
+        if world.Session.mode == 3 {
+            duet = 1
+        }
+        set_material_parameter(field, "Duet", duet)
+    }
+
+    function FacetRoll(family: int, angle: number) -> (value: number) {
+        match (family) {
+            case 0 {
+                return 0.12
+            }
+            case 2 {
+                return 1.5707963
+            }
+        }
+        return atan2(sin(angle), cos(angle))
+    }
+
+    function Stage() {
+        aurora := Weight(0)
+        petal := Weight(1)
+        dune := Weight(2)
+        orbit := Weight(3)
+        energy := stage_audio.x
+        bass := stage_audio.y
+        treble := stage_audio.z
+        reaction := stage_reaction
+        clock := world.StageState.clock
+        key_color := Color(125 * aurora + 255 * petal + 137 * dune + 208 * orbit, 244 * aurora + 184 * petal + 204 * dune + 157 * orbit, 229 * aurora + 103 * petal + 255 * dune + 255 * orbit)
+        rim_color := Color(158 * aurora + 232 * petal + 255 * dune + 119 * orbit, 103 * aurora + 114 * petal + 216 * dune + 255 * orbit, 250 * aurora + 147 * petal + 176 * dune + 213 * orbit)
+        surface := Color(24 * aurora + 54 * petal + 27 * dune + 40 * orbit, 48 * aurora + 35 * petal + 41 * dune + 30 * orbit, 56 * aurora + 24 * petal + 60 * dune + 58 * orbit)
+        world.DirectionalLight.color = key_color
+        world.DirectionalLight.intensity = 2.35 + energy * 0.2
+        world.DirectionalLight.direction = vec3(0.52 + sin(clock * 0.055 + phase) * 0.1, -0.65, -0.48)
+        self.Environment.ambient_intensity = 0.2
+        self.Environment.ambient_sky = Color(18 + 14 * aurora + 12 * dune, 20 + 11 * aurora, 36 + 8 * orbit)
+        self.Environment.ambient_ground = Color(3 + 4 * petal, 4, 9 + 4 * orbit)
+        self.Environment.bloom_strength = 0.2 + energy * 0.025 + reaction * 0.025
+        self.Environment.bloom_threshold = 0.8
+        self.Environment.exposure = -0.45
+        for i in 0..2 {
+            light := get(lights, i)
+            light.PointLight.color = key_color
+            angle := phase + clock * 0.12 + cast<number>(i) * 2.0943951
+            // PointLight uses Transform=(world X, world Z), elevation=world Y.
+            light.Transform = vec2(cos(angle) * 450, 130 + sin(angle) * 170)
+            light.PointLight.elevation = sin(angle) * 300
+            light.PointLight.intensity = 3.2 + energy * 0.65 + bass * 0.8
+            if i == 1 {
+                light.PointLight.color = rim_color
+                light.Transform = vec2(-360 + sin(angle) * 100, -190)
+                light.PointLight.elevation = 160 + cos(angle) * 150
+                light.PointLight.intensity = 3.8 + treble * 1.0
+            }
+            if i == 2 {
+                light.Transform = vec2(390 + sin(angle) * 80, 30)
+                light.PointLight.elevation = -170
+                light.PointLight.intensity = 2.6 + bass * 0.8
+            }
+            if world.Session.reduced_motion || world.Session.effects == 0 {
+                light.PointLight.intensity = 0
+            }
+        }
+        spread := 1
+        if world.Session.mode == 3 {
+            spread = 1.85
+        }
+        family := cast<int>(floor(world.StageState.style)) % 4
+        next_family := (family + 1) % 4
+        blend := Weight(cast<number>(next_family))
+        for i in 0..7 {
+            facet := get(facets, i)
+            angle := cast<number>(i) * 0.7853982 + phase * 0.2
+            sway := sin(clock * 0.12 + angle * 2) * (0.04 + bass * 0.06)
+            start := FacetRoll(family, angle)
+            finish := FacetRoll(next_family, angle)
+            // Blend the shortest arc. The launch phase can contain hundreds
+            // of turns and must never become a rotation distance.
+            roll := start + atan2(sin(finish - start), cos(finish - start)) * blend + sway * aurora
+            yaw := sin(angle + clock * 0.08) * 0.3
+            sz := sin(roll * 0.5)
+            cz := cos(roll * 0.5)
+            sy := sin(yaw * 0.5)
+            cy := cos(yaw * 0.5)
+            facet.Transform3D.position = vec3(cos(angle) * (660 + bass * 35) * spread, sin(angle) * 475, -720 + sin(angle * 2 + clock * 0.09) * 150)
+            facet.Transform3D.rotation = { x: sy * sz, y: sy * cz, z: cy * sz, w: cy * cz }
+            facet.Geometry3D.width = 38 * aurora + 98 * petal + 72 * dune + 54 * orbit
+            facet.Geometry3D.height = 220 * aurora + 148 * petal + 210 * dune + 170 * orbit
+            facet.Geometry3D.depth = 66 * aurora + 108 * petal + 84 * dune + 116 * orbit
+            facet.Material.scene = surface
+            facet.Material.emission_color = rim_color
+            facet.RenderState.hidden = world.Session.effects == 0
+        }
+        Field(vortex)
+        Field(stars)
+    }
+
+    on Tick(dt) {
+        if !ready {
+            return
+        }
+        moving := world.Session.effects > 0 && !world.Session.reduced_motion && world.Session.screen < 2
+        if moving {
+            // Keep the exact last rendered audio response while paused, even
+            // when the field controller publishes its previous frame later.
+            stage_audio = vec3(world.VisualState.field_response.x, world.VisualState.field_bands.x, world.VisualState.field_bands.z)
+            stage_reaction = world.VisualState.flow_energy
+            delta := min(dt, 0.05)
+            world.StageState.clock += delta
+            Listen(delta)
+            if world.StageState.transition < 1 {
+                world.StageState.transition = min(1, world.StageState.transition + delta / 5)
+                blend := world.StageState.transition
+                blend = blend * blend * blend * (blend * (blend * 6 - 15) + 10)
+                world.StageState.style = origin + blend
+                if world.StageState.transition == 1 {
+                    world.StageState.style = cast<number>(world.StageState.target)
+                }
+            }
+        }
+        Stage()
+    }
+}

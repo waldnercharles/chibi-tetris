@@ -1,0 +1,5 @@
+name "VfxEnvironment"
+components {
+    (object)Environment
+}
+(array)behaviors "Environment"

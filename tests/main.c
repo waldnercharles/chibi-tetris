@@ -623,7 +623,7 @@ TEST_CASE(sidebar_previews_follow_play_state)
 {
     yyjson_mut_doc *doc = request("PreviewChecks", 48);
     key(doc, 0, 0);
-    tap(doc, 1, KEY_4);
+    tap(doc, 1, KEY_ENTER);
     tap(doc, 5, KEY_C);
     tap(doc, 10, KEY_P);
     tap(doc, 16, KEY_ENTER);
@@ -771,7 +771,7 @@ TEST_CASE(music_connection_controls)
     key(doc, 0, 0);
     tap(doc, 3, KEY_SPACE);
     tap(doc, 40, KEY_SPACE);
-    tap(doc, 66, KEY_4);
+    tap(doc, 66, KEY_ENTER);
     tap(doc, 85, KEY_P);
     tap(doc, 90, KEY_M);
     REQUIRE(snapshot(doc));
@@ -784,22 +784,18 @@ TEST_CASE(music_choices_use_world_space_pointer)
     static const struct
     {
         double x, y;
-        int provider, source;
+        int source;
         bool starts;
     } choices[] = {
-        { -160, 24, 1, 0, false }, { 0, 24, 2, 0, false },
-        { 160, 24, 3, 0, false },  { 0, -37, 0, 1, false },
-        { 0, -121, 0, 0, true },   { 600, 24, 0, 0, false },
+        { 0, 32, 0, true },
+        { 0, -25, 1, false },
+        { 600, 24, 0, false },
     };
     for (int i = 0; i < (int)(sizeof choices / sizeof *choices); i++) {
         yyjson_mut_doc *doc = request("Stillwater", 18);
         key(doc, 0, 0);
         click_world(doc, 12, choices[i].x, choices[i].y);
         REQUIRE(snapshot(doc));
-        REQUIRE(
-            yyjson_get_int(field("World", "Session", "audio_provider")) ==
-            choices[i].provider
-        );
         REQUIRE(
             yyjson_get_int(field("World", "Session", "audio_source")) ==
             choices[i].source
@@ -835,7 +831,7 @@ TEST_CASE(score_choice_and_mode_keys)
 
     doc = request("Stillwater", 18);
     key(doc, 0, 0);
-    tap(doc, 1, KEY_4);
+    tap(doc, 1, KEY_ENTER);
     tap(doc, 3, KEY_SPACE);
     tap(doc, 6, KEY_P);
     tap(doc, 9, KEY_ENTER);
@@ -858,7 +854,7 @@ TEST_CASE(score_choice_and_mode_keys)
     REQUIRE(yyjson_get_int(field("Board1", "ReactionQueue", "dropped")) == 0);
     doc = request("Stillwater", 18);
     key(doc, 0, 0);
-    tap(doc, 1, KEY_4);
+    tap(doc, 1, KEY_ENTER);
     tap(doc, 3, KEY_2);
     tap(doc, 6, KEY_3);
     tap(doc, 9, KEY_4);
@@ -876,7 +872,7 @@ TEST_CASE(score_choice_and_mode_keys)
         yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
         yyjson_mut_obj_add_str(doc, saved, quiet_settings[i], i == 0 ? "0" : "1");
         key(doc, 0, 0);
-        tap(doc, 1, KEY_4);
+        tap(doc, 1, KEY_ENTER);
         tap(doc, 3, KEY_SPACE);
         REQUIRE(snapshot(doc));
         result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
@@ -1041,11 +1037,11 @@ TEST_CASE(audio_source_status_labels)
     {
         const char *source, *status, *signal, *quiet, *action, *label;
     } states[] = {
-        { "0", "0", "0", "0", "music_listen", "music_intro" },
+        { "0", "0", "0", "0", "music_listen", NULL },
         { "1", "1", "0", "0", "music_listen", "audio_share_hint" },
-        { "1", "2", "0", "0", "music_listen", "music_play" },
-        { "1", "2", "1", "0", "music_listen", "music_play" },
-        { "1", "2", "0", "1", "music_listen", "music_play" },
+        { "1", "2", "0", "0", "music_listen", "audio_connected" },
+        { "1", "2", "1", "0", "music_listen", "audio_connected" },
+        { "1", "2", "0", "1", "music_listen", "audio_quiet" },
         { "1", "3", "0", "0", "music_retry", "audio_no_source" },
         { "1", "4", "0", "0", "music_retry", "audio_cancelled" },
         { "1", "5", "0", "0", "music_retry", "audio_ended" },
@@ -1062,11 +1058,13 @@ TEST_CASE(audio_source_status_labels)
         char mesh[128];
         snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", states[i].action);
         REQUIRE(visible_mesh(mesh));
-        snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", states[i].label);
-        REQUIRE(visible_mesh(mesh));
-        REQUIRE(visible_mesh("content/meshes/text/music_youtube.mesh"));
-        REQUIRE(visible_mesh("content/meshes/text/music_spotify.mesh"));
-        REQUIRE(visible_mesh("content/meshes/text/music_tidal.mesh"));
+        if (states[i].label) {
+            snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", states[i].label);
+            REQUIRE(visible_mesh(mesh));
+        }
+        REQUIRE(!visible_mesh("content/meshes/text/music_youtube.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/music_spotify.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/music_tidal.mesh"));
         REQUIRE(visible_mesh("content/meshes/text/music_score.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/play_controls.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/score.mesh"));
@@ -1083,14 +1081,12 @@ TEST_CASE(audio_source_status_labels)
         REQUIRE(snapshot(doc));
         REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_ready")));
-        REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == capture);
-        REQUIRE(yyjson_get_int(field("World", "Session", "audio_status")) == capture);
+        REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == 1);
+        REQUIRE(yyjson_get_int(field("World", "Session", "audio_status")) == 1);
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_signal")));
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_quiet")));
         REQUIRE(yyjson_get_num(field("World", "VisualState", "energy")) == 0);
-        REQUIRE(visible_mesh(
-            capture ? "content/meshes/text/audio_share_hint.mesh" : "content/meshes/text/music_intro.mesh"
-        ));
+        REQUIRE(visible_mesh("content/meshes/text/audio_share_hint.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/pause_hint.mesh"));
     }
     return true;
@@ -1172,7 +1168,7 @@ TEST_CASE(immediate_session_labels)
 /* Ordered player and session feedback must exist on the real authored board. */
 TEST_CASE(ordered_player_reactions)
 {
-    yyjson_mut_doc *doc = request("ReactionChecks", 72);
+    yyjson_mut_doc *doc = request("ReactionChecks", 166);
     key(doc, 0, 0);
     yyjson_mut_val *input = sample_input(doc, 2);
     yyjson_mut_val *controls = yyjson_mut_obj_add_arr(doc, input, "controls");
@@ -1189,22 +1185,22 @@ TEST_CASE(ordered_player_reactions)
     yyjson_mut_arr_add_int(doc, controls, KEY_X);
     yyjson_mut_arr_add_int(doc, controls, KEY_Z);
     key(doc, 11, KEY_DOWN);
-    key(doc, 12, 0);
-    key(doc, 14, KEY_RIGHT);
-    key(doc, 17, 0);
+    key(doc, 16, 0);
     key(doc, 18, KEY_RIGHT);
-    key(doc, 24, KEY_LEFT);
-    key(doc, 26, KEY_RIGHT);
-    key(doc, 28, 0);
-    input = sample_input(doc, 29);
+    key(doc, 21, 0);
+    key(doc, 22, KEY_RIGHT);
+    key(doc, 28, KEY_LEFT);
+    key(doc, 30, KEY_RIGHT);
+    key(doc, 32, 0);
+    input = sample_input(doc, 33);
     controls = yyjson_mut_obj_add_arr(doc, input, "controls");
     yyjson_mut_arr_add_int(doc, controls, KEY_LEFT);
     yyjson_mut_arr_add_int(doc, controls, KEY_RIGHT);
-    key(doc, 30, KEY_DOWN);
-    key(doc, 40, 0);
-    key(doc, 41, KEY_DOWN);
-    key(doc, 66, 0);
-    tap(doc, 69, KEY_LEFT);
+    key(doc, 34, KEY_DOWN);
+    key(doc, 134, 0);
+    key(doc, 135, KEY_DOWN);
+    key(doc, 160, 0);
+    tap(doc, 163, KEY_LEFT);
     REQUIRE(snapshot(doc));
     REQUIRE(report(80));
     return true;
@@ -1267,65 +1263,113 @@ TEST_CASE(authored_environment_consumer)
     return true;
 }
 
+TEST_CASE(controlled_soft_drop_and_piece_motion)
+{
+    yyjson_mut_doc *doc = request("MotionChecks", 174);
+    key(doc, 0, 0);
+    key(doc, 42, KEY_DOWN);
+    key(doc, 72, 0);
+    tap(doc, 77, KEY_SPACE);
+    key(doc, 142, KEY_DOWN);
+    key(doc, 147, 0);
+    for (int frame = 155; frame <= 169; frame += 2) {
+        tap(doc, frame, KEY_DOWN);
+    }
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(43));
+    return true;
+}
+
+TEST_CASE(evolving_stage_direction)
+{
+    yyjson_mut_doc *doc = request("StageChecks", 126);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(33));
+    return true;
+}
+
+TEST_CASE(layered_world_space_reactions)
+{
+    yyjson_mut_doc *doc = request("VfxChecks", 64);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(35));
+    REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 1);
+    REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
+    return true;
+}
+
 int main(int argc, char **argv)
 {
-    bool reactions_only = getenv("STILLWATER_REACTIONS") ||
-                          (argc == 4 && !strcmp(argv[1], "--reactions"));
-    bool consumer_only = argc == 4 && !strcmp(argv[1], "--consumer");
-    bool hud_only = argc == 4 && !strcmp(argv[1], "--hud");
-    bool onboarding_only = argc == 4 && !strcmp(argv[1], "--onboarding");
-    bool previews_only = argc == 4 && !strcmp(argv[1], "--previews");
+    const char *selection = getenv("STILLWATER_REACTIONS") ? "--reactions" : "--all";
     const char *controller_path = getenv("STILLWATER_CTL");
     const char *project_path = getenv("STILLWATER_PROJECT");
-    if (argc == 4 && (!strcmp(argv[1], "--all") || reactions_only || consumer_only ||
-                      hud_only || onboarding_only || previews_only)) {
+    if (argc == 4) {
+        selection = argv[1];
         controller_path = argv[2];
         project_path = argv[3];
-    } else if (argc != 1 || !controller_path || !project_path) {
-        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews /path/to/chibi_ctl /path/to/game\n", argv[0]);
+    }
+    bool all = !strcmp(selection, "--all");
+    bool reactions = !strcmp(selection, "--reactions");
+    bool consumer = !strcmp(selection, "--consumer");
+    bool hud = !strcmp(selection, "--hud");
+    bool onboarding = !strcmp(selection, "--onboarding");
+    bool previews = !strcmp(selection, "--previews");
+    bool motion = !strcmp(selection, "--motion");
+    bool stage = !strcmp(selection, "--stage");
+    bool vfx = !strcmp(selection, "--vfx");
+    if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
+        !(all || reactions || consumer || hud || onboarding || previews ||
+          motion || stage || vfx)) {
+        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews|--motion|--stage|--vfx /path/to/chibi_ctl /path/to/game\n", argv[0]);
         return 2;
     }
     assert(realpath(controller_path, controller) && realpath(project_path, project));
     signal(SIGALRM, timeout_handler);
     alarm(58);
     prepare();
-    if (!hud_only && !onboarding_only && !previews_only) {
+    if (all || consumer || reactions) {
         RUN_TEST_CASE(authored_environment_consumer);
     }
-    if (!consumer_only && !hud_only && !onboarding_only && !previews_only) {
+    if (all || reactions) {
         RUN_TEST_CASE(ordered_player_reactions);
         RUN_TEST_CASE(ordered_session_reactions);
         RUN_TEST_CASE(ordered_clear_reactions);
-    }
-    if (reactions_only) {
         RUN_TEST_CASE(topout_and_rescue);
     }
-    if (onboarding_only ||
-        (!reactions_only && !consumer_only && !hud_only && !previews_only)) {
+    if (all || onboarding) {
         RUN_TEST_CASE(music_choice_precedes_play);
         RUN_TEST_CASE(music_connection_controls);
         RUN_TEST_CASE(music_choices_use_world_space_pointer);
     }
-    if (!reactions_only && !consumer_only && !hud_only && !onboarding_only &&
-        !previews_only) {
+    if (all) {
         RUN_TEST_CASE(authored_rules);
         RUN_TEST_CASE(live_keyboard_boards);
         RUN_TEST_CASE(live_controller_boards);
         RUN_TEST_CASE(lock_reset_limit);
-        RUN_TEST_CASE(topout_and_rescue);
         RUN_TEST_CASE(journey_settings_and_reopen);
         RUN_TEST_CASE(sprint_duet_and_disconnect);
         RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
         RUN_TEST_CASE(score_choice_and_mode_keys);
     }
-    if (!reactions_only && !consumer_only && !onboarding_only) {
+    if (all || hud || previews) {
         RUN_TEST_CASE(sidebar_previews_follow_play_state);
     }
-    if (!reactions_only && !consumer_only && !onboarding_only && !previews_only) {
+    if (all || hud) {
         RUN_TEST_CASE(sprint_time_display);
         RUN_TEST_CASE(audio_source_status_labels);
         RUN_TEST_CASE(setting_value_labels);
         RUN_TEST_CASE(immediate_session_labels);
+    }
+    if (all || motion) {
+        RUN_TEST_CASE(controlled_soft_drop_and_piece_motion);
+    }
+    if (all || stage) {
+        RUN_TEST_CASE(evolving_stage_direction);
+    }
+    if (all || vfx) {
+        RUN_TEST_CASE(layered_world_space_reactions);
     }
     pu_print_stats();
     yyjson_doc_free(reply);

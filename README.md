@@ -1,8 +1,8 @@
 # Stillwater
 
-A falling-block game authored in Chibi. A six-chapter journey unfolds inside a deep 3D particle vortex and a field of distant stars. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
+A falling-block game authored in Chibi. A six-chapter journey unfolds through aurora curtains, petal shells, dune ribbons and orbital lattices. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
 
-![Stillwater Journey](docs/screenshots/style-journey.png)
+![Stillwater Journey](docs/screenshots/layered-journey.png)
 
 - Journey starts at your highest unlocked chapter after you choose music. Each of its six chapters takes twelve lines.
 - Endless increases the falling speed as you clear lines.
@@ -27,7 +27,7 @@ The native export is `dist/Stillwater.app` on macOS. Open it normally. The local
 | Hold | C / Shift | R | Either shoulder |
 | Pause | P | P | Start |
 
-The opening scene asks you to choose music. Select YouTube, Spotify or Tidal to open its player, start a track there, then return and choose Share audio. You can also share an already-playing tab or choose Use game score. Browser sharing requires a separate permission prompt; service launch is not account sign-in. The board waits until it receives audio or you explicitly choose the game score.
+Press **Enter Play** for the bundled score, or **M Connect audio** to share music already playing in another tab. Select the music tab and enable audio in the browser's picker. A connected stream starts the game even when quiet. Browser and operating-system capture support varies; there is no service account sign-in inside the game.
 
 After music selection, these controls work inside the scene:
 
@@ -38,7 +38,7 @@ After music selection, these controls work inside the scene:
 | Resume when paused, restart after a result | Enter |
 | Restart the same run while paused or after a result | Backspace |
 | Previous / next unlocked Journey chapter while paused or after a result | 7 / 8 |
-| Reopen music selection while preserving the run | M |
+| Connect or reconnect audio while preserving the run | M |
 | Cycle effect density | V |
 | Toggle reduced motion | F |
 | Toggle the ghost | G |
@@ -48,7 +48,7 @@ Controller 1's A confirms resume or restart; B restarts while paused or after a 
 
 Chapter selection starts a fresh run at the selected chapter and stays paused. Press Enter when ready. The chapter keys stop at the first and highest unlocked chapters.
 
-External music uses browser audio sharing or a native loopback device. Press M to pause for music selection, then choose or route an audio source. The scene responds to its measured sound. See [audio capture](docs/audio.md#music-reaction-and-capture) for setup.
+External music uses browser audio sharing or a native loopback device. Press M to connect directly to an audio source. The scene responds to its measured sound. See [audio capture](docs/audio.md#music-reaction-and-capture) for setup.
 
 ## Build from source
 
@@ -92,8 +92,8 @@ make validate
 make test
 ```
 
-The C/pico_unit dispatcher calls the real authored libraries and behaviors through the controller. It covers deterministic rules, both keyboard and controller slots, lock/reset/hold behavior, topout/rescue, Journey and Sprint completion, cooperative progression, disconnect pause, save readback, the music gate and the 3D environment's effect controls. It runs under the engine's single 60-second production supervisor. Configuration and compilation are separate from that deadline.
+The C/pico_unit dispatcher calls the real authored libraries and behaviors through the controller. It covers deterministic rules, both keyboard and controller slots, lock/reset/hold behavior, topout/rescue, Journey and Sprint completion, cooperative progression, disconnect pause, save readback, the music gate, controlled soft drop, piece-surface reactions, scene transitions and the 3D environment's effect controls. It runs under the engine's single 60-second production supervisor. Configuration and compilation are separate from that deadline.
 
-`content/behaviors/Board.chibi` handles each board, `content/libraries/Pieces.chibi` and `Rules.chibi` own piece geometry and rule calculations, and `Shell.chibi` owns progression and in-game controls. `Environment.chibi` drives two GPU particle fields and fixed pools of short-lived reaction geometry and lights. `CosmicParticles.kdl` and `ReactionParticles.kdl` author their trajectories. `AudioReactive.chibi` maps measured audio into the scene, and `Hud.chibi` places mesh text. Test-only fixtures stay in `tests/fixtures` and are never exported.
+`content/behaviors/Board.chibi` handles each board, `content/libraries/Pieces.chibi` and `Rules.chibi` own piece geometry and rule calculations, and `Shell.chibi` owns progression and in-game controls. `StageDirector.chibi` morphs four scenes, block finishes and their lighting. `Environment.chibi` drives two GPU particle fields and fixed pools of short-lived reaction geometry and lights. `CosmicParticles.kdl` and `ReactionParticles.kdl` author their trajectories. `AudioReactive.chibi` maps measured audio into the scene, and `Hud.chibi` places mesh text. Test-only fixtures stay in `tests/fixtures` and are never exported.
 
 Read [validation](docs/validation.md) for executed checks and limits, [rules](docs/rules.md) for scoring, [audio](docs/audio.md) and [visuals](docs/visuals.md) for asset provenance, and [licenses](LICENSES.md) for terms.

@@ -1,4 +1,0 @@
-name "TextMusicIntro"
-components {
-    MeshAsset source="content/meshes/text/music_intro.mesh"
-}

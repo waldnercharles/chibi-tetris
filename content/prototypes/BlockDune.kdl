@@ -1,0 +1,5 @@
+name "BlockDune"
+(array)includes "Block"
+components {
+    MeshAsset source="content/meshes/BlockDune.mesh"
+}

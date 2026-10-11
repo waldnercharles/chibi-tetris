@@ -16,4 +16,6 @@ component VisualState {
     field_response: CF_V3
     // Cosmetic pool saturation; event queue loss is tracked separately.
     cue_overwrites: int
+    // Rejected new cues when every pooled field is still visibly fading.
+    cue_dropped: int
 }

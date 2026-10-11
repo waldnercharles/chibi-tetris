@@ -1,4 +1,4 @@
-// Screen 0 chooses music, 1 plays, 2 pauses and 3 holds a completed run.
+// Screen 0 offers Play or Connect audio; 1 plays, 2 pauses, 3 holds a result.
 behavior Shell {
     board1: entity
     board2: entity

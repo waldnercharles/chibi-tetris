@@ -13,4 +13,9 @@ component ReactionEvent {
     width: number
     // Offset from the recorded action pivot to the occupied horizontal center.
     center_offset: number
+    // Occupied cell centers in world XY and rendered front-face Z, captured at the action.
+    point0: CF_V3
+    point1: CF_V3
+    point2: CF_V3
+    point3: CF_V3
 }

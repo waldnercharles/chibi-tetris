@@ -1,0 +1,176 @@
+// The real stage director must retain every transition coordinate while stopped.
+behavior StageChecks {
+    world: entity
+    frame: int = 0
+    frozen_style := 0
+    frozen_clock := 0
+    frozen_seed := 0
+    frozen_direction := vec3(0, 0, 0)
+    frozen_light := 0
+    frozen_revision: int = 0
+    facets: entity[]
+    rotation_x: number[]
+    rotation_y: number[]
+    rotation_z: number[]
+    rotation_w: number[]
+    minimum_alignment := 1
+    wrap_alignment := 1
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        ReactionRules.Initialize(world, 1)
+        ReactionRules.Initialize(get_global_variable("Board1"), 1)
+        ReactionRules.Initialize(get_global_variable("Board2"), 1)
+    }
+
+    function LightSum() -> (value: number) {
+        value = 0
+        lights := find_entities_with_component("PointLight")
+        for light in lights {
+            if light.PointLight.radius == 1700 {
+                value += light.PointLight.intensity
+            }
+        }
+        return value
+    }
+
+    function Frozen() {
+        Check(world.StageState.style == frozen_style, "stage morph retains its exact position while stopped")
+        Check(world.StageState.clock == frozen_clock, "stage lighting and facets retain their clock while stopped")
+        Check(world.StageState.seed == frozen_seed, "stopped state and new run never reseed stable particle identities")
+        Check(world.StageState.revision == frozen_revision, "paused audio and chapter changes do not advance the stage")
+        direction := world.DirectionalLight.direction
+        Check(direction.x == frozen_direction.x && direction.y == frozen_direction.y && direction.z == frozen_direction.z, "the directional light retains its orientation while stopped")
+    }
+
+    function FacetBaseline() {
+        count: int = 0
+        geometry := find_entities_with_component("Geometry3D")
+        for item in geometry {
+            if item.Geometry3D.depth <= 10 {
+                continue
+            }
+            facets = array_add(facets, item)
+            rotation := item.Transform3D.rotation
+            rotation_x = array_add(rotation_x, cast<number>(rotation.x))
+            rotation_y = array_add(rotation_y, cast<number>(rotation.y))
+            rotation_z = array_add(rotation_z, cast<number>(rotation.z))
+            rotation_w = array_add(rotation_w, cast<number>(rotation.w))
+            count += 1
+        }
+        Check(count == 8, "the rotation check samples all eight production stage facets")
+    }
+
+    function FacetStep() -> (alignment: number) {
+        alignment = 1
+        index: int = 0
+        for facet in facets {
+            rotation := facet.Transform3D.rotation
+            same := abs(rotation.x * get(rotation_x, index) + rotation.y * get(rotation_y, index) + rotation.z * get(rotation_z, index) + rotation.w * get(rotation_w, index))
+            alignment = min(alignment, same)
+            rotation_x[index] = cast<number>(rotation.x)
+            rotation_y[index] = cast<number>(rotation.y)
+            rotation_z[index] = cast<number>(rotation.z)
+            rotation_w[index] = cast<number>(rotation.w)
+            index += 1
+        }
+        return alignment
+    }
+
+    on Tick {
+        match (frame) {
+            case 4 {
+                Check(world.StageState.seed == 800001 && world.StageState.style == 1, "explicit seed reproduces the petal opening")
+                Check(world.StageState.revision == 1 && world.StageState.reason == 1, "startup publishes one stage revision")
+                Check(world.StageState.transition == 1 && world.StageState.target == 1, "startup begins fully settled without a morph from zero")
+                Check(LightSum() > 8, "the stage has actual local lights with measurable intensity")
+                world.Session.stage = 1
+            }
+            case 6 {
+                Check(world.StageState.revision == 2 && world.StageState.reason == 2, "an owned chapter change begins one stage transition")
+                Check(world.StageState.target == 2 && world.StageState.style > 1 && world.StageState.style < 1.01, "the new scene starts a slow continuous morph instead of switching geometry")
+                world.VisualState.energy = 0.75
+                world.VisualState.bass = 0.8
+                world.VisualState.mid = 0.3
+                world.VisualState.treble = 0.2
+            }
+            case 9 {
+                frozen_style = world.StageState.style
+                frozen_clock = world.StageState.clock
+                frozen_seed = world.StageState.seed
+                frozen_revision = world.StageState.revision
+                frozen_direction = world.DirectionalLight.direction
+                frozen_light = LightSum()
+                world.Session.screen = 2
+            }
+            case 13 {
+                Frozen()
+                Check(LightSum() == frozen_light, "pause retains the actual light intensities")
+                world.Session.stage = 4
+                world.Session.run = 2
+                world.Session.seed = 99991
+                world.VisualState.energy = 0.1
+                world.VisualState.bass = 0.1
+                world.VisualState.treble = 0.95
+            }
+            case 17 {
+                Frozen()
+                world.Session.screen = 1
+                world.Session.reduced_motion = true
+            }
+            case 21 {
+                Frozen()
+                Check(LightSum() == 0, "reduced motion disables moving local light effects")
+                world.Session.reduced_motion = false
+                world.Session.effects = 0
+            }
+            case 25 {
+                Frozen()
+                Check(LightSum() == 0, "effects off disables local light effects")
+                world.Session.effects = 2
+            }
+            case 28 {
+                Check(world.StageState.style > frozen_style && world.StageState.style - frozen_style < 0.02, "resume continues the in-flight stage transition without a jump")
+                Check(world.StageState.clock > frozen_clock && world.StageState.clock - frozen_clock < 0.1, "resume advances only the new frame deltas")
+                Check(world.StageState.seed == frozen_seed && world.StageState.revision == frozen_revision, "resume and session restart retain the in-flight stage and stable seed")
+                Check(LightSum() > 8, "resume restores the lit scene")
+            }
+            case 42 {
+                Check(world.StageState.style > frozen_style && world.StageState.style < 1.15, "scene evolution remains smooth through subsequent audio frames")
+                Check(world.StageState.revision == 2, "ordinary beats never masquerade as repeated song boundaries")
+                world.Session.screen = 2
+                world.StageState.style = 0
+            }
+            case 43 {
+                FacetBaseline()
+            }
+            case 124 {
+                wrap_alignment = FacetStep()
+                Check(minimum_alignment > 0.98, "large startup seeds retain bounded facet rotation through every scene morph")
+                Check(wrap_alignment > 0.99999, "lattice-to-aurora wrap retains the same facet orientation")
+                self.TestReport.done = true
+            }
+        }
+        if frame > 43 && frame < 124 {
+            minimum_alignment = min(minimum_alignment, FacetStep())
+        }
+        if frame >= 43 && frame < 123 {
+            world.StageState.style = cast<number>(frame - 42) * 0.05
+        }
+        if frame == 123 {
+            world.StageState.style = 0
+        }
+        frame += 1
+    }
+}

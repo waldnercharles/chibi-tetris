@@ -26,34 +26,32 @@ behavior MusicOnboardingChecks {
     on Tick {
         match (frame) {
             case 1 {
-                Check(world.Session.screen == 0 && !world.Session.audio_ready, "launch waits for an explicit music choice")
+                Check(world.Session.screen == 0 && !world.Session.audio_ready, "launch offers play or connect audio")
                 Check(world.Session.run == 0 && world.Session.elapsed == 0, "launch has no active run or timer")
                 waiting_row = board.BoardState.row
-                world.Session.audio_request = 1
+                world.Session.audio_request = 2
             }
             case 4 {
-                Check(world.Session.audio_provider == 1, "YouTube command selects its launch request")
-                Check(world.Session.screen == 0 && world.Session.audio_source == 0 && !world.Session.audio_ready, "opening YouTube does not imply captured audio")
+                Check(world.Session.audio_source == 1 && world.Session.audio_status == 1, "connect directly requests host audio capture")
+                Check(world.Session.screen == 0 && !world.Session.audio_ready, "pending capture retains the opening actions")
                 world.Session.audio_request = 2
             }
             case 7 {
-                Check(world.Session.audio_provider == 2, "Spotify command selects its launch request")
-                Check(world.Session.screen == 0 && !world.Session.audio_ready, "opening Spotify does not start the run")
-                world.Session.audio_request = 3
+                Check(world.Session.audio_source == 1 && world.Session.audio_status == 1, "retry directly requests capture again")
+                Check(!world.Session.audio_signal && !world.Session.audio_ready, "retry never fabricates connected audio")
             }
             case 10 {
-                Check(world.Session.audio_provider == 3, "TIDAL command selects its launch request")
-                Check(world.Session.audio_choice == 3, "provider launch leaves share audio as the next confirm action")
-                world.Session.audio_request = 5
+                Check(world.Session.audio_request == 0, "capture command is consumed once")
+                Check(world.Session.run == 0, "pending capture does not create a run")
             }
             case 13 {
-                Check(world.Session.audio_source == 1 && world.Session.audio_status == 1, "share audio waits for the host permission and signal")
-                Check(world.Session.screen == 0 && !world.Session.audio_ready, "waiting capture cannot start a run")
-                world.Session.audio_request = 5
+                Check(world.Session.screen == 0 && !world.Session.audio_ready, "pending capture keeps play available")
+                Check(world.Session.elapsed == 0, "pending capture leaves the timer stopped")
+                world.Session.audio_request = 2
             }
             case 16 {
-                Check(world.Session.audio_source == 1 && world.Session.audio_status == 1, "retry remains an explicit capture request")
-                Check(!world.Session.audio_signal && !world.Session.audio_ready, "retry never fabricates an audio signal")
+                Check(world.Session.audio_source == 1 && world.Session.audio_status == 1, "repeated retries remain explicit capture requests")
+                Check(!world.Session.audio_signal && !world.Session.audio_ready, "pending stream has no fabricated signal")
             }
             case 65 {
                 Check(world.Session.run == 0 && world.Session.elapsed == 0, "capture waiting never advances the timer")
@@ -61,8 +59,8 @@ behavior MusicOnboardingChecks {
                 Check(world.Session.audio_source == 1 && !world.Session.audio_ready, "capture waiting never silently falls back to score")
             }
             case 80 {
-                Check(world.Session.screen == 1 && world.Session.audio_ready && world.Session.run == 1 && world.Session.mode == 0, "score shortcut starts journey once without also choosing duet")
-                Check(world.Session.audio_source == 0 && world.Session.audio_provider == 0, "explicit score clears the external source selection")
+                Check(world.Session.screen == 1 && world.Session.audio_ready && world.Session.run == 1 && world.Session.mode == 0, "Enter starts journey once while capture is pending")
+                Check(world.Session.audio_source == 0, "explicit score clears the external source selection")
                 Check(world.Session.elapsed > 0, "timer begins only after the explicit score choice")
             }
             case 87 {
@@ -71,11 +69,11 @@ behavior MusicOnboardingChecks {
                 waiting_row = board.BoardState.row
             }
             case 93 {
-                Check(world.Session.screen == 0 && !world.Session.audio_ready, "M from pause reopens the chooser")
+                Check(world.Session.screen == 0 && !world.Session.audio_ready && world.Session.audio_source == 1 && world.Session.audio_status == 1, "M from pause directly requests audio capture")
                 Check(world.Session.audio_return_screen == 2, "source selection remembers the paused screen")
                 Check(world.Session.run == waiting_run && world.Session.elapsed == waiting_elapsed, "reconnecting preserves the run and paused timer")
                 Check(board.BoardState.row == waiting_row, "reconnecting preserves the paused falling piece")
-                world.Session.audio_request = 4
+                world.Session.audio_request = 1
             }
             case 97 {
                 Check(world.Session.screen == 2 && world.Session.audio_ready, "explicit fallback returns to the existing pause")

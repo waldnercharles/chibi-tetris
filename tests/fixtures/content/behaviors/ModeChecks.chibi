@@ -33,7 +33,7 @@ behavior ModeChecks {
                 Check(world.Session.screen == 1, "Sprint continues at thirty-nine lines")
             }
             case 20 {
-                first.BoardState.lines = 40;
+                first.BoardState.lines = 40
                 first.BoardState.score = 4000
             }
             case 23 {
@@ -64,7 +64,7 @@ behavior ModeChecks {
                 Check(world.Session.charge == 8, "Duet reserve caps at eight")
             }
             case 43 {
-                first.BoardState.topout = true;
+                first.BoardState.topout = true
                 second.BoardState.topout = true
             }
             case 45 {

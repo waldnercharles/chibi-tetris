@@ -1,0 +1,188 @@
+// Production consumer regression. The fixture has no stage lights or audio,
+// so local reaction lights and field lifetimes can be observed directly.
+behavior VfxChecks {
+    world: entity
+    first: entity
+    second: entity
+    vortex: entity
+    stars: entity
+    packet: entity
+    landing: entity
+    light: entity
+    oldest: entity
+    old_age := 0
+    frame: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        first = get_global_variable("Board1")
+        second = get_global_variable("Board2")
+        vortex = get_global_variable("Vortex")
+        stars = get_global_variable("Stars")
+        ReactionRules.Initialize(world, 1)
+        ReactionRules.Initialize(first, 1)
+        ReactionRules.Initialize(second, 1)
+        packet = world
+        landing = world
+        light = world
+        oldest = world
+    }
+
+    function Record(source: entity, kind: int, result: int, x: number, y: number, amount: int) {
+        record := source.ReactionQueue.write
+        ReactionRules.Emit(source, kind, result, x, y, 1, amount, 3)
+        record.ReactionEvent.width = 48
+        record.ReactionEvent.center_offset = 12
+        record.ReactionEvent.point0 = vec3(x, y, 9)
+        record.ReactionEvent.point1 = vec3(x + 24, y, 10)
+        record.ReactionEvent.point2 = vec3(x, y - 24, 11)
+        record.ReactionEvent.point3 = vec3(x + 24, y - 24, 12)
+    }
+
+    function ActiveCues() -> (count: int) {
+        count = 0
+        fields := find_entities_with_component("ParticleField3D")
+        for field in fields {
+            if field != vortex && field != stars && field.ParticleField3D.count > 0 {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function CueAt(x: number, y: number) -> (found: entity) {
+        found = world
+        fields := find_entities_with_component("ParticleField3D")
+        for field in fields {
+            if field != vortex && field != stars && field.ParticleField3D.count > 0 {
+                p := field.Transform3D.position
+                if abs(p.x - x) < 0.01 && abs(p.y - y) < 0.01 {
+                    found = field
+                    break
+                }
+            }
+        }
+        return found
+    }
+
+    on Tick {
+        match (frame) {
+            case 8 {
+                Check(ActiveCues() == 0, "fresh fields are dormant")
+                Record(first, 2, 1, 80, 96, 0)
+                Record(first, 1, 0, -60, 50, 0)
+                Record(first, 6, 1, 20, 150, 6)
+            }
+            case 10 {
+                Check(ActiveCues() == 4, "turn rejection and two drop layers retain independent fields")
+                turn := CueAt(80, 96)
+                blocked := CueAt(-60, 50)
+                packet = CueAt(20, 150)
+                landing = CueAt(20, 6)
+                Check(turn != world && blocked != world, "local input fields retain their action origins")
+                Check(packet != world && landing != world, "packet starts at the captured piece and landing shifts exactly six cells")
+                if turn != world && blocked != world {
+                    Check(turn.ParticleField3D.count == 48 && blocked.ParticleField3D.count == 12, "turn and rejection use restrained counts")
+                    Check(turn.Transform3D.position.z == 0, "field origin leaves captured front-face depth in the point payload")
+                }
+                if packet != world && landing != world {
+                    Check(packet.Geometry3D.primitive == 5 && landing.Geometry3D.primitive == 5, "cue configuration retains the supported octahedron mesh primitive")
+                    Check(packet.Geometry3D.height == 2.4 && landing.Geometry3D.height == 1, "drop elongation never leaks into contact geometry")
+                    Check(packet.ParticleField3D.count == 112 && landing.ParticleField3D.count == 56, "drop layers have bounded independent instance counts")
+                }
+                lights := find_entities_with_component("PointLight")
+                for candidate in lights {
+                    if abs(candidate.Transform.x - 32) < 0.01 && abs(candidate.PointLight.elevation + 28.7) < 0.01 {
+                        light = candidate
+                    }
+                }
+                Check(light != world, "grounded light sits below the lowest captured landing cell")
+                if light != world {
+                    Check(abs(light.Transform.y - 12.5) < 0.01, "light depth follows the captured front face")
+                    Check(light.PointLight.intensity == 0, "delayed impact light stays dark before packet arrival")
+                }
+            }
+            case 17 {
+                if light != world {
+                    Check(light.PointLight.intensity > 0.2 && light.PointLight.intensity <= 0.75, "impact light rises through its bounded attack")
+                }
+            }
+            case 30 {
+                if packet != world && landing != world {
+                    Check(packet.ParticleField3D.count == 0, "descending packet finishes its short lifetime")
+                    Check(landing.ParticleField3D.count == 56, "delayed landing keeps its full particle lifetime after arrival")
+                }
+            }
+            case 38 {
+                Check(ActiveCues() == 0, "all initial layers expire without replay")
+                if light != world {
+                    Check(light.PointLight.intensity == 0, "impact light reaches zero at its release endpoint")
+                }
+            }
+            case 40 {
+                for i in 0..31 {
+                    Record(first, 11, 1, 1000 + i, 1000, 0)
+                    Record(second, 11, 1, 2000 + i, 1000, 0)
+                    ReactionRules.Emit(world, 20, 1, 0, 1, 1, 1, 0)
+                }
+            }
+            case 42 {
+                Check(ActiveCues() == 96, "all fixed pool slots can carry independent live cues")
+                oldest = CueAt(1000, 1000)
+                Check(oldest != world, "oldest saturated cue remains present")
+                if oldest != world {
+                    old_age = oldest.ParticleField3D.time
+                }
+                Record(first, 1, 0, -500, -500, 0)
+            }
+            case 44 {
+                Check(world.VisualState.cue_dropped == 1, "full pool counts the skipped incoming cue")
+                Check(world.VisualState.cue_overwrites == 0, "saturation never overwrites live geometry")
+                Check(CueAt(-500, -500) == world, "a saturated pool does not replace a visible cue")
+                if oldest != world {
+                    Check(oldest.ParticleField3D.time > old_age && oldest.ParticleField3D.count == 80, "oldest cue keeps its clock and geometry under saturation")
+                }
+                Check(first.ReactionQueue.dropped == 0 && second.ReactionQueue.dropped == 0 && world.ReactionQueue.dropped == 0, "cosmetic saturation does not drop event queue records")
+                world.Session.reduced_motion = true
+            }
+            case 46 {
+                Check(ActiveCues() > 0, "reduced motion releases visible cues over several frames")
+            }
+            case 50 {
+                Check(ActiveCues() == 0, "retirement completes before slots are reused")
+                Record(first, 2, 1, 80, 96, 0)
+                Record(first, 6, 1, 20, 150, 6)
+            }
+            case 52 {
+                Check(ActiveCues() == 2, "quiet hard drop uses one stationary contact confirmation")
+                turn := CueAt(80, 96)
+                quiet_drop := CueAt(20, 6)
+                Check(turn != world && quiet_drop != world, "quiet confirmations retain physical origins")
+                if turn != world && quiet_drop != world {
+                    Check(turn.ParticleField3D.count == 8 && quiet_drop.ParticleField3D.count == 8, "quiet confirmations keep the minimum count")
+                }
+                lights := find_entities_with_component("PointLight")
+                for candidate in lights {
+                    Check(candidate.PointLight.intensity == 0, "quiet input never creates a new reaction light")
+                }
+            }
+            case 62 {
+                Check(ActiveCues() == 0, "quiet confirmation fades finish without replay")
+                Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "pool diagnostics distinguish skips from destructive reuse")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

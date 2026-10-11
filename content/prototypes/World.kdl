@@ -11,6 +11,7 @@ components {
     GlobalBinding name="World"
     (object)Input
     Session arr=0.035 das=0.15 effects=2 ghost=#true master=0.8 music=0.65 seed=73129 sound=0.75
+    (object)StageState
     (object)VisualState
 }
 (array)behaviors "AudioReactive" "Shell"

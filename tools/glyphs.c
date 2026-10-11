@@ -26,12 +26,11 @@
 #include "vendor/libtess2/Include/tesselator.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include <stb_truetype.h>
-
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <stb_truetype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,11 +82,13 @@ static const struct
     { "saving_failed", "Could not save" },
     { "chapter", "CHAPTER" },
     { "rescue", "RESCUE" },
-    { "music", "M  Connect music" },
-    { "audio_share_hint", "Choose a music tab and share its audio" },
+    { "music", "M  Connect audio" },
+    { "audio_share_hint", "Choose a playing tab and share audio" },
     { "audio_no_source", "Audio sharing unavailable" },
     { "audio_cancelled", "Audio sharing cancelled" },
     { "audio_ended", "Audio sharing ended" },
+    { "audio_connected", "Audio connected" },
+    { "audio_quiet", "Audio connected - quiet" },
     { "setting_effects_off", "Effects off" },
     { "setting_effects_low", "Effects low" },
     { "setting_effects_full", "Effects full" },
@@ -101,16 +102,9 @@ static const struct
     { "setting_ms", "ms" },
     { "setting_percent", "%" },
     { "play_controls", "Arrows  Move     X / Z  Rotate     Space  Drop     C  Hold" },
-    { "settings_controls",
-      "1 - 4  Mode     V  Effects     F  Motion     G  Ghost     9 / 0  Volume" },
-    { "connect_music", "Connect your music" },
-    { "music_youtube", "1  YouTube" },
-    { "music_spotify", "2  Spotify" },
-    { "music_tidal", "3  TIDAL" },
-    { "music_listen", "M  Share music audio" },
-    { "music_score", "4  Use game score" },
-    { "music_intro", "Play a track, then share its audio" },
-    { "music_play", "Play a track to begin" },
+    { "settings_controls", "1 - 4  Mode     V  Effects     F  Motion     G  Ghost     9 / 0  Volume" },
+    { "music_listen", "M  Connect audio" },
+    { "music_score", "Enter  Play" },
     { "music_retry", "M  Try again" },
     { "pause_hint", "P  Pause" },
 
@@ -290,11 +284,13 @@ static void fill(render_mesh_asset *mesh, const Edge *edges, const int *contours
     for (int i = 0; i < acount(edges); i++) {
         Point a = edges[i].a, b = edges[i].b;
         /* TrueType outer contours are clockwise; holes reverse winding. */
-        quad(mesh,
-             (CF_V3){ b.x, b.y, -DEPTH * .5f },
-             (CF_V3){ a.x, a.y, -DEPTH * .5f },
-             (CF_V3){ a.x, a.y, DEPTH * .5f },
-             (CF_V3){ b.x, b.y, DEPTH * .5f });
+        quad(
+            mesh,
+            (CF_V3){ b.x, b.y, -DEPTH * .5f },
+            (CF_V3){ a.x, a.y, -DEPTH * .5f },
+            (CF_V3){ a.x, a.y, DEPTH * .5f },
+            (CF_V3){ b.x, b.y, DEPTH * .5f }
+        );
     }
     afree(points);
     tessDeleteTess(tess);
@@ -327,9 +323,7 @@ static float letter(render_mesh_asset *mesh, const stbtt_fontinfo *font, int c, 
                 apush(contours, acount(edges));
                 start = p;
                 break;
-            case STBTT_vline:
-                edge(&edges, previous, p);
-                break;
+            case STBTT_vline: edge(&edges, previous, p); break;
             case STBTT_vcurve: {
                 Point control = { x + v->cx * scale, (v->cy - y0) * scale - .5f };
                 curve(&edges, previous, control, p, 0);
@@ -546,7 +540,7 @@ static bool same(CF_V3 a, CF_V3 b)
 /* Each triangle edge must have exactly one oppositely wound neighbor, even
  * where vertices are split for flat normals. This catches a missing bevel
  * face, wrong corner, or winding that a position-only bounds check misses. */
-static void closed(const render_mesh_asset *mesh)
+static void closed(const render_mesh_asset *mesh, float bevel)
 {
     float volume = 0;
     for (int i = 0; i < acount(mesh->indices); i += 3) {
@@ -569,12 +563,13 @@ static void closed(const render_mesh_asset *mesh)
             assert(neighbors == 1);
         }
     }
-    assert(volume > .97f && volume < .98f);
+    float expected_volume = 1 - 6 * bevel * bevel + 16.0f / 3 * bevel * bevel * bevel;
+    assert(fabsf(volume - expected_volume) < .0001f);
 }
 
-static void block()
+static void block(const char *name, float bevel)
 {
-    const float inner = .5f - .07f;
+    const float inner = .5f - bevel;
     render_mesh_asset mesh = { 0 };
     for (int axis = 0; axis < 3; axis++) {
         int u = (axis + 1) % 3, v = (axis + 2) % 3;
@@ -624,10 +619,13 @@ static void block()
     assert(acount(mesh.vertices) == 96 && acount(mesh.indices) == 132);
     assert(same(mesh.min, (CF_V3){ -.5f, -.5f, -.5f }));
     assert(same(mesh.max, (CF_V3){ .5f, .5f, .5f }));
-    closed(&mesh);
-    write_mesh(&mesh, "content/meshes/Block.mesh");
+    closed(&mesh, bevel);
+    char path[512];
+    int count = snprintf(path, sizeof path, "content/meshes/%s.mesh", name);
+    assert(count > 0 && (size_t)count < sizeof path);
+    write_mesh(&mesh, path);
     render_mesh_asset_free(&mesh);
-    puts("Block                1.000000 x 1.000000 x 1.000000  44 triangles, bevel 0.07");
+    printf("%-20s 1.000000 x 1.000000 x 1.000000  44 triangles, bevel %.2f\n", name, bevel);
 }
 
 static void directory(const char *path)
@@ -704,7 +702,10 @@ int main(int argc, char **argv)
             assert(!chdir(argv[2]));
         }
         directory("content/meshes");
-        block();
+        block("Block", .04f);
+        block("BlockPetal", .13f);
+        block("BlockDune", .08f);
+        block("BlockOrbit", .2f);
         return 0;
     }
     if ((argc == 3 || argc == 4) && !strcmp(argv[1], "--preview")) {

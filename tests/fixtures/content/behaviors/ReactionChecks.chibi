@@ -105,52 +105,52 @@ behavior ReactionChecks {
             case 11 {
                 Check(rejected_rotations == 1, "competing explicit rotation publishes rejection")
             }
-            case 13 {
+            case 17 {
                 Check(soft_starts == 1 && soft_stops == 1 && soft_steps > 0, "soft press descent and release all react")
                 world.Session.arr = 0
                 world.Session.das = 0
             }
-            case 16 {
+            case 20 {
                 Check(rejected == 1, "held move emits one initial wall rejection")
                 Check(max_batch >= 4 && max_batch <= 21, "bounded repeat preserves several reactions in one tick")
                 still_serial = serial
                 wall_column = board.BoardState.column
             }
-            case 17 {
+            case 21 {
                 Check(serial == still_serial, "holding a blocked direction does not flood feedback")
             }
-            case 19 {
+            case 23 {
                 Check(rejected == 2 && board.BoardState.column == wall_column, "explicit wall press reacts again")
                 still_serial = serial
             }
-            case 23 {
+            case 27 {
                 Check(serial == still_serial, "repeated wall press also settles after one rejection")
             }
-            case 29 {
+            case 33 {
                 Check(rejected >= 4, "direction changes and successful moves rearm wall feedback")
                 left := ReactionRules.Read(board, serial - 1)
                 right := ReactionRules.Read(board, serial)
                 Check(left.ReactionEvent.kind == 1 && right.ReactionEvent.kind == 1 && left.ReactionEvent.result == 0 && right.ReactionEvent.result == 0, "opposing explicit presses each retain their rejection")
                 Check(left.ReactionEvent.direction == -1 && right.ReactionEvent.direction == 1, "opposing presses retain both directions")
             }
-            case 42 {
+            case 136 {
                 Check(soft_starts == 3 && soft_stops == 2, "grounded soft press and release both react")
                 slot := ReactionRules.Read(board, serial)
                 Check(slot.ReactionEvent.kind == 3 && slot.ReactionEvent.result == 0, "grounded press emits rejection without a fake descent")
             }
-            case 63 {
+            case 157 {
                 Check(soft_steps >= 10, "soft held descent reports actual row distance")
                 world.Session.screen = 2
             }
-            case 65 {
+            case 159 {
                 Check(soft_stops == 3, "pause releases an active soft drop")
                 world.Session.run += 1
             }
-            case 67 {
+            case 161 {
                 Check(serial == 0 && board.ReactionQueue.run == world.Session.run, "restart resets the board queue before new actions")
                 world.Session.screen = 1
             }
-            case 70 {
+            case 164 {
                 Check(serial == 1, "first action after restart is retained")
                 move := ReactionRules.Read(board, 1)
                 Check(move.ReactionEvent.kind == 1 && move.ReactionEvent.result == 1, "new run starts with its first move")

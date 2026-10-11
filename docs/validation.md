@@ -1,5 +1,23 @@
 # Validation record
 
+## Layered reactions and evolving scenes — October 11, 2026
+
+The current revision replaces oversized action outlines with particles born on the four captured block faces, compact descending packets, delayed landing compression and short local lights. Births follow a logarithmic cumulative distribution; size and alpha have continuous attack, release and retirement envelopes. A saturated pool preserves live effects. Down taps advance one row, held Down repeats at ten cells per second, and faster automatic gravity remains authoritative.
+
+Four seeded scene families change particle formation, block finish and lighting together. Scene transitions follow chapters and measured musical changes, with heuristic phrase and track-boundary detection rather than provider metadata. The opening flow has two actions: Enter Play or M Connect audio. Connection readiness no longer depends on non-silent samples. Reconnection preserves the previous play, pause or result screen.
+
+Independent review caught and corrected an unbounded facet rotation at large seeds, an angular interpolation branch change, short-tap gravity stalling, and a one-frame lighting drift on pause. Regression cases cover each. The original VFX implementation fails twelve new physical/timing checks; restoring the former soft-drop rate or accumulated-clock handling fails the motion regressions. Fixture canonical formatting and project validation are separate from execution.
+
+The game dispatcher passed all 24 cases and 1,201 assertions in 40.151 seconds under one shared 60-second deadline. Project validation reported 107 assets, zero errors and zero warnings; final fixture formatting made no changes. A native Metal preview used a hidden Cocoa window, 60 simulation frames, two warmup frames and one saved 640 × 360 frame. It showed 147,784 particles including action cues. Its 14.918 ms saved-frame timing is a capture observation, not native FPS.
+
+The local browser export was exercised at 2560 × 1440 (1280 × 720 CSS, DPR 2). After 120 warmup frames, short 2.5-second samples measured Journey at 58.80 FPS, 16.7 ms median and 25.0 ms 95th percentile; Duet at 59.03 FPS, 16.7 ms median and 25.1 ms 95th percentile. Movement, rotation, hard drop and independent Duet drops were visible. The console contained only existing font-loading information. These observations are not sustained-play or cross-device guarantees.
+
+M reached the real sharing request. The in-app browser did not expose a usable source picker to this test, so completed external capture, provider playback, acoustic latency and human listening remain unverified. Authored connection-state, quiet-ready, retry and fallback behavior passed the controller tests. Native and web exports passed. The rebuilt packaged macOS application completed four hidden frames and three simulation steps in 2.532 seconds under a 30-second deadline.
+
+Engine `00db04340` adds generic shader exp/log/pow and typed 3D parameter writes. Scalar and vector curve cases round-trip authored graphs, evaluate expected values and compile real WGSL; the new curve cases failed before the additions. The typed parameter regression failed with the old setter and now passes across bytecode and SLJIT, including rejection of incorrect widths and non-finite values. Independent review found no remaining shader/parameter defects. Packaged startup also exposed temporary verifier scratch being charged against retained prepared storage. The fix keeps a separate bounded scratch preflight without raising limits. A constrained arithmetic-module regression fails against the original accounting and passes with exact retained charges and execution on bytecode and SLJIT. These changes require no project migration.
+
+The engine's admitted aggregates passed in Release without sanitizers: native 278 cases and 178,322 assertions in 9.753 seconds; language 178 cases and 10,510 assertions in 0.933 seconds; standalone tooling 92 cases and 22,540 assertions in 20.935 seconds. Each had its own production 60-second deadline. The native group includes the seven CPU shader/WGSL cases; the standalone tooling configuration does not include the graph compiler. Full native/render/Studio suites remain quarantined and unexecuted.
+
 This record covers the 3D Stillwater revision and the matching engine and packages in [toolchain.json](../toolchain.json). Publication verifies the live release separately from local exports.
 
 ## Music choice and fluid-motion revision

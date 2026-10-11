@@ -1,0 +1,5 @@
+name "StageLight"
+components {
+    PointLight color=0x96edffff radius=1700.0
+    (object)Transform
+}

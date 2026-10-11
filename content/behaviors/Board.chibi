@@ -33,7 +33,19 @@ behavior Board {
     stack_dirty := true
     piece_dirty := true
     preview_dirty := true
+    motion_dirty := false
     origin := -120
+    style_clock := 0
+    music_clock := 0
+    drawn_style := -1
+    style := 0
+    block_depth := 0.6
+    block_roughness := 0.24
+    block_metallic := 0.18
+    block_emission := 0.16
+    block_mesh := "content/meshes/Block.mesh"
+    music_lift := 0
+    music_scale := 0
 
     on Begin {
         world = get_global_variable("World")
@@ -344,7 +356,8 @@ behavior Board {
     function Fall(seconds: number, soft: bool) {
         interval := Rules.Gravity(self.BoardState.level)
         if soft {
-            interval = min(0.02, interval / 20)
+            // Ten cells per second stays controllable. Faster gravity still wins.
+            interval = min(0.1, interval)
         }
         start_row := row
         fall_clock += seconds
@@ -368,7 +381,7 @@ behavior Board {
             Impact()
             record := self.ReactionQueue.write
             ReactionRules.Emit(self, 4, 1, self.BoardState.impact_x, 228 - (start_row - 1) * 24, 1, row - start_row, current)
-            CaptureSpan(record)
+            CapturePiece(record, start_row)
         }
         grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
         if grounded {
@@ -403,8 +416,11 @@ behavior Board {
             ccw = input.P2CCW.pressed
             hold = input.P2Hold.pressed
         }
+        soft_pressed := soft && !soft_held
         if soft != soft_held {
             soft_held = soft
+            // Time collected at the old speed must not become a burst of rows.
+            fall_clock = 0
             if soft {
                 accepted := ReactionRules.Flag(Rules.Fits(grid, current, rotation, column, row + 1))
                 Emit(3, accepted, 1, 0, current)
@@ -433,6 +449,11 @@ behavior Board {
             HardDrop()
             return
         }
+        if soft_pressed {
+            // A short tap advances one cell. Holding continues at ten per
+            // second, or the current gravity speed when that is faster.
+            fall_clock = min(0.1, Rules.Gravity(self.BoardState.level))
+        }
         Fall(seconds, soft)
     }
 
@@ -440,16 +461,32 @@ behavior Board {
         Impact()
         record := self.ReactionQueue.write
         ReactionRules.Emit(self, kind, result, self.BoardState.impact_x, self.BoardState.impact_y, direction, amount, detail)
-        CaptureSpan(record)
+        CapturePiece(record, row)
     }
 
-    function CaptureSpan(record: entity) {
+    function CapturePiece(record: entity, action_row: int) {
         minimum: int = 4
         maximum: int = 0
         for block in 0..3 {
             cell := Pieces.Cell(current, rotation, block)
             minimum = min(minimum, cell.x)
             maximum = max(maximum, cell.x)
+            face_z := 3 + music_lift + 11 * block_depth * (1 + music_scale)
+            point := vec3(record.ReactionEvent.x + (cell.x - 1) * 24, 276 - (action_row + cell.y) * 24, face_z)
+            match (block) {
+                case 0 {
+                    record.ReactionEvent.point0 = point
+                }
+                case 1 {
+                    record.ReactionEvent.point1 = point
+                }
+                case 2 {
+                    record.ReactionEvent.point2 = point
+                }
+                case 3 {
+                    record.ReactionEvent.point3 = point
+                }
+            }
         }
         record.ReactionEvent.width = (maximum - minimum + 1) * 24
         record.ReactionEvent.center_offset = (minimum + maximum - 2) * 12
@@ -472,15 +509,18 @@ behavior Board {
 
     function Tile(slot: int, x: number, y: number, size: number, color: uint, ghost: bool) {
         tile := get(tiles, slot)
-        depth := size * 0.68
+        depth := size * block_depth
         z := 0
-        emission := 0.22
+        emission := block_emission
+        scale := vec3(1, 1, 1)
         if slot >= 200 && slot < 204 {
-            z = 3
-            emission = 0.46
+            z = 3 + music_lift
+            emission += 0.12 + music_scale * 1.5
+            scale = vec3(1 + music_scale * 0.25, 1 - music_scale * 0.4, 1 + music_scale)
         }
         tile.RenderState.hidden = false
         tile.Transform3D.position = { x: x, y: 8 - y, z: z }
+        tile.Transform3D.scale = scale
         tile.Geometry3D = { width: size, height: size, depth: depth }
         tile.Material.scene = color
         tile.Material.emission_color = color
@@ -491,7 +531,94 @@ behavior Board {
             tile.Transform3D.position = { x: x, y: 8 - y, z: -7 }
             tile.Material.scene = (color & 4294967040) | 112
             tile.Material.emission_intensity = 0.2
+            return
         }
+        tile.MeshAsset.source = block_mesh
+        rgba := cast<number>(color)
+        red := floor(rgba / 16777216)
+        green := floor(rgba / 65536) - red * 256
+        blue := floor(rgba / 256) - floor(rgba / 65536) * 256
+        tint := vec3(red / 255, green / 255, blue / 255)
+        set_material_parameter(tile, "Tint", tint)
+        set_material_parameter(tile, "Opacity", (rgba - floor(rgba / 256) * 256) / 255)
+        set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
+    }
+
+    function StyleWeight(index: number) -> (weight: number) {
+        distance := abs(style - index)
+        distance = clamp(min(distance, 4 - distance), 0, 1)
+        return 1 - distance * distance * (3 - 2 * distance)
+    }
+
+    function UpdateAppearance(seconds: number) {
+        style_clock += seconds
+        music_clock += seconds
+        style = world.StageState.style
+        if style_clock >= 0.25 || drawn_style < 0 {
+            style_clock = 0
+            if abs(style - drawn_style) > 0.004 {
+                aurora := StyleWeight(0)
+                petal := StyleWeight(1)
+                dune := StyleWeight(2)
+                orbit := StyleWeight(3)
+                block_depth = aurora * 0.6 + petal * 0.82 + dune * 0.42 + orbit * 0.74
+                block_roughness = aurora * 0.24 + petal * 0.38 + dune * 0.65 + orbit * 0.18
+                block_metallic = aurora * 0.18 + petal * 0.48 + dune * 0.08 + orbit * 0.62
+                block_emission = aurora * 0.16 + petal * 0.11 + dune * 0.08 + orbit * 0.2
+                block_mesh = "content/meshes/Block.mesh"
+                match (cast<int>(floor(style + 0.5)) % 4) {
+                    case 1 {
+                        block_mesh = "content/meshes/BlockPetal.mesh"
+                    }
+                    case 2 {
+                        block_mesh = "content/meshes/BlockDune.mesh"
+                    }
+                    case 3 {
+                        block_mesh = "content/meshes/BlockOrbit.mesh"
+                    }
+                }
+                drawn_style = style
+                stack_dirty = true
+                piece_dirty = true
+                preview_dirty = true
+            }
+        }
+        quiet := world.Session.reduced_motion || world.Session.effects == 0
+        if quiet {
+            if music_lift != 0 || music_scale != 0 {
+                music_lift = 0
+                music_scale = 0
+                motion_dirty = true
+            }
+            return
+        }
+        if world.Session.screen != 1 || music_clock < 0.033333333 {
+            return
+        }
+        elapsed := min(music_clock, 0.1)
+        music_clock = 0
+        pulse := clamp(world.VisualState.beat * 0.7 + world.VisualState.bass * 0.2 + world.VisualState.energy * 0.1, 0, 1)
+        music_lift += (pulse * 2.6 - music_lift) * (1 - exp(-elapsed * 18))
+        music_scale += (pulse * 0.075 - music_scale) * (1 - exp(-elapsed * 18))
+        motion_dirty = true
+    }
+
+    // Music updates four transforms. Landing queries and the settled grid stay idle.
+    function AnimatePiece() {
+        for slot in 200..203 {
+            tile := get(tiles, slot)
+            if tile.RenderState.hidden {
+                continue
+            }
+            position := tile.Transform3D.position
+            position.z = 3 + music_lift
+            tile.Transform3D.position = position
+            tile.Transform3D.scale = vec3(1 + music_scale * 0.25, 1 - music_scale * 0.4, 1 + music_scale)
+            emission := block_emission + 0.12 + music_scale * 1.5
+            tile.Material.emission_intensity = emission
+            set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
+        }
+        motion_dirty = false
     }
 
     function DrawStack() {
@@ -530,6 +657,7 @@ behavior Board {
             }
         }
         piece_dirty = false
+        motion_dirty = false
     }
 
     function Preview(first: int, kind: int, x: number, y: number, dim: bool) {
@@ -610,6 +738,9 @@ behavior Board {
         if piece_dirty {
             DrawPiece()
         }
+        if motion_dirty {
+            AnimatePiece()
+        }
         if preview_dirty {
             DrawPreviews()
         }
@@ -650,6 +781,7 @@ behavior Board {
             if soft_held {
                 Emit(5, 1, 0, 0, current)
                 soft_held = false
+                fall_clock = 0
             }
             repeat_blocked = false
             repeat_direction = 0
@@ -665,6 +797,7 @@ behavior Board {
         self.BoardState.column = column
         self.BoardState.row = row
         self.BoardState.rotation = rotation
+        UpdateAppearance(min(dt, 0.1))
         Render()
     }
 }

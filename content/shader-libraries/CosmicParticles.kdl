@@ -1,914 +1,1281 @@
 version 3
 name "CosmicParticles"
 domain "shader-library"
-id_counter 180000
-description "Continuous 3D particle currents with stable instance identities. Integrated flow and turning phase carry input momentum; smooth audio deforms the current without recycling particles."
+id_counter 300000
+description "Four continuous 3D particle families, stable identities, shared musical motion and cyclic stage palettes."
 (array)graphs {
     - kind="event" name="Functions"
     - {
-        id 1000
+        id 110
         kind "function"
         name "ParticleRandom"
-        description "Stable particle variation shared by both fields."
-        entry_id 1010
-        return_id 1020
+        description "Fixed random coordinates. Variation is sampled once at scene startup, never per frame."
+        entry_id 120
+        return_id 130
         call_depth_limit 64
         (array)nodes {
             - {
-                id 1010
+                id 120
                 type "Function Entry"
                 (array)outputs {
-                    - id=1030 name="Index" type="float" kind="data"
-                    - id=1040 name="Seed" type="float" kind="data"
+                    - id=140 name="Index" type="float" kind="data"
+                    - id=150 name="Seed" type="float" kind="data"
+                    - id=160 name="Variation" type="float" kind="data"
                 }
             }
             - {
-                id 1020
+                id 130
                 type "Return"
                 (array)inputs {
-                    - id=1050 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=170 name="Value" type="struct" type_name="ShaderVec3" kind="data"
                 }
             }
             - {
-                id 1060
+                id 180
                 type "Behavior Expression"
-                reference_name "fract(sin(vec3(Index * 0.731 + Seed * 0.113, Index * 0.593 + Seed * 0.317, Index * 0.419 + Seed * 0.713)) * vec3(4375.585, 2257.145, 1964.267))"
+                reference_name "fract(sin(vec3(Index * 0.731 + Seed * 0.113 + Variation * 0.017, Index * 0.593 + Seed * 0.317 + Variation * 0.029, Index * 0.419 + Seed * 0.713 + Variation * 0.043)) * vec3(4375.585, 2257.145, 1964.267))"
                 inputs {
-                    Index id=1090 type="float"
-                    Seed id=1100 type="float"
+                    Index id=190 type="float"
+                    Seed id=200 type="float"
+                    Variation id=210 type="float"
                 }
                 outputs {
-                    Result id=1110 type="struct" type_name="ShaderVec3"
+                    Result id=220 type="struct" type_name="ShaderVec3"
                 }
             }
         }
         (array)edges {
-            - from="1010.Index" to="1060.Index"
-            - from="1010.Seed" to="1060.Seed"
-            - from="1060.Result" to="1020.Value"
+            - from="120.Index" to="180.Index"
+            - from="120.Seed" to="180.Seed"
+            - from="120.Variation" to="180.Variation"
+            - from="180.Result" to="130.Value"
         }
     }
     - {
-        id 1120
+        id 230
         kind "function"
-        name "SpiralCoordinates"
-        description "Differential circulation and smooth depth waves across two volumetric arms."
-        entry_id 1130
-        return_id 1140
+        name "StageWeights"
+        description "Four cyclic weights sum to one, including the lattice-to-aurora wrap."
+        entry_id 240
+        return_id 250
         call_depth_limit 64
         (array)nodes {
+            - {
+                id 240
+                type "Function Entry"
+                (array)outputs {
+                    - id=260 name="Style" type="float" kind="data"
+                }
+            }
+            - {
+                id 250
+                type "Return"
+                (array)inputs {
+                    - id=270 name="Value" type="struct" type_name="ShaderVec4" kind="data"
+                }
+            }
+            - {
+                id 280
+                type "Behavior Expression"
+                reference_name "vec4(1 - smoothstep(0, 1, min(abs(Style), 4 - abs(Style))), 1 - smoothstep(0, 1, min(abs(Style - 1), 4 - abs(Style - 1))), 1 - smoothstep(0, 1, min(abs(Style - 2), 4 - abs(Style - 2))), 1 - smoothstep(0, 1, min(abs(Style - 3), 4 - abs(Style - 3))))"
+                inputs {
+                    Style id=290 type="float"
+                }
+                outputs {
+                    Result id=300 type="struct" type_name="ShaderVec4"
+                }
+            }
+        }
+        (array)edges {
+            - from="240.Style" to="280.Style"
+            - from="280.Result" to="250.Value"
+        }
+    }
+    - {
+        id 310
+        kind "function"
+        name "AuroraCurtain"
+        description "Five deep, vertically flowing aurora curtains with broad folded surfaces."
+        entry_id 320
+        return_id 330
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 320
+                type "Function Entry"
+                (array)outputs {
+                    - id=340 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=350 name="Phase" type="float" kind="data"
+                    - id=360 name="Bass" type="float" kind="data"
+                    - id=370 name="Mid" type="float" kind="data"
+                    - id=380 name="Reaction" type="float" kind="data"
+                }
+            }
+            - {
+                id 330
+                type "Return"
+                (array)inputs {
+                    - id=390 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 400
+                type "Behavior Expression"
+                reference_name "vec3((Random.x - 0.5) * 3400 + sin(Random.y * 7 + Phase * 0.23) * (45 + Mid * 70), (Random.y - 0.5) * 2000 + sin(Random.x * 9 + Phase * 0.19) * (140 + Bass * 130), -1700 + floor(Random.z * 5) * 165 + sin(Random.x * 10 + Phase * 0.21 + floor(Random.z * 5)) * (230 + Mid * 130 + Reaction * 80) + (fract(Random.z * 5) - 0.5) * 50)"
+                inputs {
+                    Random id=410 type="struct" type_name="ShaderVec3"
+                    Phase id=420 type="float"
+                    Bass id=430 type="float"
+                    Mid id=440 type="float"
+                    Reaction id=450 type="float"
+                }
+                outputs {
+                    Result id=460 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="320.Random" to="400.Random"
+            - from="320.Phase" to="400.Phase"
+            - from="320.Bass" to="400.Bass"
+            - from="320.Mid" to="400.Mid"
+            - from="320.Reaction" to="400.Reaction"
+            - from="400.Result" to="330.Value"
+        }
+    }
+    - {
+        id 470
+        kind "function"
+        name "PetalCoordinates"
+        description "A six-petal radial shell, curved through depth instead of a flat polar wheel."
+        entry_id 480
+        return_id 490
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 480
+                type "Function Entry"
+                (array)outputs {
+                    - id=500 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=510 name="Phase" type="float" kind="data"
+                    - id=520 name="Bass" type="float" kind="data"
+                    - id=530 name="Mid" type="float" kind="data"
+                    - id=540 name="Reaction" type="float" kind="data"
+                }
+            }
+            - {
+                id 490
+                type "Return"
+                (array)inputs {
+                    - id=550 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 560
+                type "Behavior Expression"
+                reference_name "vec3(430 + Random.y * 1230 + sin(Random.x * 37.6991118 + Phase * 0.18) * (110 + Bass * 130 + Reaction * 70), Random.x * 6.2831853 + Phase * 0.11 + sin(Random.y * 4 + Phase * 0.13) * (0.08 + Mid * 0.1), -1550 + sin(Random.y * 3.1415927) * 480 + cos(Random.x * 37.6991118 + Phase * 0.18) * 190 + (Random.z - 0.5) * 120)"
+                inputs {
+                    Random id=570 type="struct" type_name="ShaderVec3"
+                    Phase id=580 type="float"
+                    Bass id=590 type="float"
+                    Mid id=600 type="float"
+                    Reaction id=610 type="float"
+                }
+                outputs {
+                    Result id=620 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="480.Random" to="560.Random"
+            - from="480.Phase" to="560.Phase"
+            - from="480.Bass" to="560.Bass"
+            - from="480.Mid" to="560.Mid"
+            - from="480.Reaction" to="560.Reaction"
+            - from="560.Result" to="490.Value"
+        }
+    }
+    - {
+        id 630
+        kind "function"
+        name "PetalPosition"
+        description "Tilt the petal shell while retaining its central opening."
+        entry_id 640
+        return_id 650
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 640
+                type "Function Entry"
+                (array)outputs {
+                    - id=660 name="Shell" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 650
+                type "Return"
+                (array)inputs {
+                    - id=670 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 680
+                type "Behavior Expression"
+                reference_name "vec3(cos(Shell.y) * Shell.x, sin(Shell.y) * Shell.x * 0.79, Shell.z + sin(Shell.y) * Shell.x * 0.14)"
+                inputs {
+                    Shell id=690 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=700 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="640.Shell" to="680.Shell"
+            - from="680.Result" to="650.Value"
+        }
+    }
+    - {
+        id 710
+        kind "function"
+        name "DuneRibbons"
+        description "Eleven horizontal dune ribbons roll independently through a deep landscape."
+        entry_id 720
+        return_id 730
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 720
+                type "Function Entry"
+                (array)outputs {
+                    - id=740 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=750 name="Phase" type="float" kind="data"
+                    - id=760 name="Bass" type="float" kind="data"
+                    - id=770 name="Mid" type="float" kind="data"
+                    - id=780 name="Reaction" type="float" kind="data"
+                }
+            }
+            - {
+                id 730
+                type "Return"
+                (array)inputs {
+                    - id=790 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 800
+                type "Behavior Expression"
+                reference_name "vec3((Random.x - 0.5) * 3550 + sin(Phase * 0.14 + Random.y * 4) * (55 + Mid * 40), -810 + floor(Random.y * 11) * 162 + sin(Random.x * 8 + floor(Random.y * 11) * 0.63 + Phase * 0.22) * (95 + Bass * 100 + Reaction * 70) + (fract(Random.y * 11) - 0.5) * 34, -1550 + cos(Random.x * 5 + Random.y * 4 + Phase * 0.16) * 470 + (Random.z - 0.5) * 100)"
+                inputs {
+                    Random id=810 type="struct" type_name="ShaderVec3"
+                    Phase id=820 type="float"
+                    Bass id=830 type="float"
+                    Mid id=840 type="float"
+                    Reaction id=850 type="float"
+                }
+                outputs {
+                    Result id=860 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="720.Random" to="800.Random"
+            - from="720.Phase" to="800.Phase"
+            - from="720.Bass" to="800.Bass"
+            - from="720.Mid" to="800.Mid"
+            - from="720.Reaction" to="800.Reaction"
+            - from="800.Result" to="730.Value"
+        }
+    }
+    - {
+        id 870
+        kind "function"
+        name "OrbitCoordinates"
+        description "Three woven, closed knot tubes with continuous motion along their depth."
+        entry_id 880
+        return_id 890
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 880
+                type "Function Entry"
+                (array)outputs {
+                    - id=900 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=910 name="Phase" type="float" kind="data"
+                    - id=920 name="Bass" type="float" kind="data"
+                    - id=930 name="Mid" type="float" kind="data"
+                    - id=940 name="Reaction" type="float" kind="data"
+                }
+            }
+            - {
+                id 890
+                type "Return"
+                (array)inputs {
+                    - id=950 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 960
+                type "Behavior Expression"
+                reference_name "vec3(860 + sin(Random.x * 18.8495559 + Phase * 0.19) * (260 + Bass * 100) + cos(Random.y * 6.2831853) * (65 + Mid * 70), Random.x * 6.2831853 + Phase * 0.09 + floor(Random.z * 3) * 2.0943951, -1550 + cos(Random.x * 18.8495559 + Phase * 0.19) * 470 + sin(Random.y * 6.2831853) * (100 + Reaction * 110) + (fract(Random.z * 3) - 0.5) * 40)"
+                inputs {
+                    Random id=970 type="struct" type_name="ShaderVec3"
+                    Phase id=980 type="float"
+                    Bass id=990 type="float"
+                    Mid id=1000 type="float"
+                    Reaction id=1010 type="float"
+                }
+                outputs {
+                    Result id=1020 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="880.Random" to="960.Random"
+            - from="880.Phase" to="960.Phase"
+            - from="880.Bass" to="960.Bass"
+            - from="880.Mid" to="960.Mid"
+            - from="880.Reaction" to="960.Reaction"
+            - from="960.Result" to="890.Value"
+        }
+    }
+    - {
+        id 1030
+        kind "function"
+        name "OrbitPosition"
+        description "Spread the knot lattice around the playfield with genuine near and far arcs."
+        entry_id 1040
+        return_id 1050
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 1040
+                type "Function Entry"
+                (array)outputs {
+                    - id=1060 name="Orbit" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 1050
+                type "Return"
+                (array)inputs {
+                    - id=1070 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 1080
+                type "Behavior Expression"
+                reference_name "vec3(cos(Orbit.y) * Orbit.x * 1.42, sin(Orbit.y) * Orbit.x * 0.88, Orbit.z + sin(Orbit.y) * 160)"
+                inputs {
+                    Orbit id=1090 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=1100 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="1040.Orbit" to="1080.Orbit"
+            - from="1080.Result" to="1050.Value"
+        }
+    }
+    - {
+        id 1110
+        kind "function"
+        name "BlendStage"
+        description "The same particle moves continuously between neighboring field families."
+        entry_id 1120
+        return_id 1130
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 1120
+                type "Function Entry"
+                (array)outputs {
+                    - id=1140 name="Aurora" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1150 name="Petal" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1160 name="Dune" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1170 name="Orbit" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1180 name="Weights" type="struct" type_name="ShaderVec4" kind="data"
+                }
+            }
             - {
                 id 1130
-                type "Function Entry"
-                (array)outputs {
-                    - id=1150 name="Fraction" type="float" kind="data"
-                    - id=1160 name="Arm" type="float" kind="data"
-                    - id=1170 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=1180 name="Clock" type="float" kind="data"
-                    - id=1190 name="Energy" type="float" kind="data"
-                    - id=1200 name="Bass" type="float" kind="data"
-                    - id=1210 name="Mid" type="float" kind="data"
-                    - id=1220 name="Beat" type="float" kind="data"
-                    - id=1230 name="Reaction" type="float" kind="data"
-                    - id=80030 name="Turn" type="float" kind="data"
-                    - id=80010 name="Flow" type="float" kind="data"
-                }
-            }
-            - {
-                id 1140
                 type "Return"
                 (array)inputs {
-                    - id=1240 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1190 name="Value" type="struct" type_name="ShaderVec3" kind="data"
                 }
             }
             - {
-                id 1250
+                id 1200
                 type "Behavior Expression"
-                reference_name "vec3(590 + Fraction * 960 + (Random.x - 0.5) * (180 + Fraction * 80 + Energy * 95) + sin(Clock * 0.21 + Fraction * 15 + Random.y * 6.2831853) * (26 + Mid * 48) + (Beat * 38 + Reaction * 100) * (0.4 + Random.x), Fraction * 6.6 + Arm * 6.2831853 + Flow * (0.26 - Fraction * 0.12) + Turn * (0.5 + Fraction * 0.25) + (Random.y - 0.5) * (0.28 + Fraction * 0.22) + sin(Fraction * 12 + Clock * 0.14 + Random.z * 2) * (0.10 + Mid * 0.12), (Random.z - 0.5) * (260 + Fraction * 260 + Bass * 180) + sin(Fraction * 9 + Flow * 0.37 + Random.y * 6.2831853) * (65 + Bass * 120 + Reaction * 65))"
+                reference_name "Aurora * Weights.x + Petal * Weights.y + Dune * Weights.z + Orbit * Weights.w"
                 inputs {
-                    Turn id=80040 type="float"
-                    Flow id=80020 type="float"
-                    Fraction id=1280 type="float"
-                    Arm id=1290 type="float"
-                    Random id=1300 type="struct" type_name="ShaderVec3"
-                    Clock id=1310 type="float"
-                    Energy id=1320 type="float"
-                    Bass id=1330 type="float"
-                    Mid id=1340 type="float"
-                    Beat id=1350 type="float"
-                    Reaction id=1360 type="float"
+                    Aurora id=1210 type="struct" type_name="ShaderVec3"
+                    Petal id=1220 type="struct" type_name="ShaderVec3"
+                    Dune id=1230 type="struct" type_name="ShaderVec3"
+                    Orbit id=1240 type="struct" type_name="ShaderVec3"
+                    Weights id=1250 type="struct" type_name="ShaderVec4"
                 }
                 outputs {
-                    Result id=1370 type="struct" type_name="ShaderVec3"
+                    Result id=1260 type="struct" type_name="ShaderVec3"
                 }
             }
         }
         (array)edges {
-            - from="1130.Fraction" to="1250.Fraction"
-            - from="1130.Arm" to="1250.Arm"
-            - from="1130.Random" to="1250.Random"
-            - from="1130.Clock" to="1250.Clock"
-            - from="1130.Energy" to="1250.Energy"
-            - from="1130.Bass" to="1250.Bass"
-            - from="1130.Mid" to="1250.Mid"
-            - from="1130.Beat" to="1250.Beat"
-            - from="1130.Reaction" to="1250.Reaction"
-            - from="1130.Flow" to="1250.Flow"
-            - from="1130.Turn" to="1250.Turn"
-            - from="1250.Result" to="1140.Value"
+            - from="1120.Aurora" to="1200.Aurora"
+            - from="1120.Petal" to="1200.Petal"
+            - from="1120.Dune" to="1200.Dune"
+            - from="1120.Orbit" to="1200.Orbit"
+            - from="1120.Weights" to="1200.Weights"
+            - from="1200.Result" to="1130.Value"
         }
     }
     - {
-        id 1380
+        id 1270
         kind "function"
-        name "SpiralPosition"
-        description "A tilted 3D disc with a broad central opening."
-        entry_id 1390
-        return_id 1400
+        name "BoardProjection"
+        description "Project distant particles onto the board plane from the authored camera."
+        entry_id 1280
+        return_id 1290
         call_depth_limit 64
         (array)nodes {
             - {
-                id 1390
+                id 1280
                 type "Function Entry"
                 (array)outputs {
-                    - id=1410 name="Orbit" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=1420 name="Chapter" type="float" kind="data"
+                    - id=1300 name="Position" type="struct" type_name="ShaderVec3" kind="data"
                 }
             }
             - {
-                id 1400
+                id 1290
                 type "Return"
                 (array)inputs {
-                    - id=1430 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1310 name="Value" type="struct" type_name="ShaderVec3" kind="data"
                 }
             }
             - {
-                id 1440
+                id 1320
                 type "Behavior Expression"
-                reference_name "vec3(Orbit.x * (cos(Orbit.y) * 0.94 + sin(Orbit.y) * 0.12), Orbit.x * (sin(Orbit.y) * 0.81 - cos(Orbit.y) * 0.20) + 38, -1140 + Orbit.x * sin(Orbit.y) * 0.31 + Orbit.z - Chapter * 8)"
+                reference_name "vec3((Position.x - 90) * 1080 / max(1080 - Position.z, 1) + 90, (Position.y - 50) * 1080 / max(1080 - Position.z, 1) + 50, 0)"
                 inputs {
-                    Orbit id=1470 type="struct" type_name="ShaderVec3"
-                    Chapter id=1480 type="float"
+                    Position id=1330 type="struct" type_name="ShaderVec3"
                 }
                 outputs {
-                    Result id=1490 type="struct" type_name="ShaderVec3"
+                    Result id=1340 type="struct" type_name="ShaderVec3"
                 }
             }
         }
         (array)edges {
-            - from="1390.Orbit" to="1440.Orbit"
-            - from="1390.Chapter" to="1440.Chapter"
-            - from="1440.Result" to="1400.Value"
+            - from="1280.Position" to="1320.Position"
+            - from="1320.Result" to="1290.Value"
         }
     }
     - {
-        id 1500
+        id 1350
         kind "function"
         name "BoardQuiet"
-        description "Subdues stars behind the playfield without cutting a dark rectangle into space."
-        entry_id 1510
-        return_id 1520
+        description "A transparent twelve-percent field remains inside each projected well; Duet attenuates both boards."
+        entry_id 1360
+        return_id 1370
         call_depth_limit 64
         (array)nodes {
             - {
-                id 1510
+                id 1360
                 type "Function Entry"
                 (array)outputs {
-                    - id=1530 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1380 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1390 name="Duet" type="float" kind="data"
                 }
             }
             - {
-                id 1520
+                id 1370
                 type "Return"
                 (array)inputs {
-                    - id=1540 name="Value" type="float" kind="data"
+                    - id=1400 name="Value" type="float" kind="data"
                 }
             }
             - {
-                id 1550
+                id 1410
                 type "Behavior Expression"
-                reference_name "mix(0.22, 1, smoothstep(0.80, 1.65, max(abs(Position.x) / 130, abs(Position.y - 20) / 250) * 1080 / max(1080 - Position.z, 1)))"
+                reference_name "mix(0.12, 1, smoothstep(0.78, 1.65, max(mix(abs(Position.x), abs(abs(Position.x) - 254), Duet) / 148, abs(Position.y - 20) / 268)))"
                 inputs {
-                    Position id=1580 type="struct" type_name="ShaderVec3"
+                    Position id=1420 type="struct" type_name="ShaderVec3"
+                    Duet id=1430 type="float"
                 }
                 outputs {
-                    Result id=1590 type="float"
+                    Result id=1440 type="float"
                 }
             }
         }
         (array)edges {
-            - from="1510.Position" to="1550.Position"
-            - from="1550.Result" to="1520.Value"
+            - from="1360.Position" to="1410.Position"
+            - from="1360.Duet" to="1410.Duet"
+            - from="1410.Result" to="1370.Value"
         }
     }
     - {
-        id 1600
+        id 1450
         kind "function"
-        name "ParticlePalette"
-        description "Cyan and ultraviolet grain with uncommon gold points."
-        entry_id 1610
-        return_id 1620
+        name "StagePalette"
+        description "Turquoise/plum, copper/rose, blue/ice and violet/mint follow the same stage blend."
+        entry_id 1460
+        return_id 1470
         call_depth_limit 64
         (array)nodes {
             - {
-                id 1610
+                id 1460
                 type "Function Entry"
                 (array)outputs {
-                    - id=1630 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=1640 name="Chapter" type="float" kind="data"
+                    - id=1480 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1490 name="Weights" type="struct" type_name="ShaderVec4" kind="data"
                 }
             }
             - {
-                id 1620
+                id 1470
                 type "Return"
                 (array)inputs {
-                    - id=1650 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1500 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                }
+            }
+            - {
+                id 1510
+                type "Behavior Expression"
+                reference_name "mix(vec3(0.12, 0.94, 0.77), vec3(0.53, 0.20, 0.93), Random.x) * Weights.x + mix(vec3(1.12, 0.46, 0.13), vec3(0.93, 0.20, 0.49), Random.x) * Weights.y + mix(vec3(0.10, 0.43, 1.15), vec3(0.70, 1.02, 1.10), Random.x) * Weights.z + mix(vec3(0.66, 0.27, 1.15), vec3(0.19, 1.02, 0.69), Random.x) * Weights.w"
+                inputs {
+                    Random id=1520 type="struct" type_name="ShaderVec3"
+                    Weights id=1530 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Result id=1540 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="1460.Random" to="1510.Random"
+            - from="1460.Weights" to="1510.Weights"
+            - from="1510.Result" to="1470.Value"
+        }
+    }
+    - {
+        id 1550
+        kind "function"
+        name "ParticleRadiance"
+        description "Restrained steady radiance eases down during transitions instead of flashing."
+        entry_id 1560
+        return_id 1570
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 1560
+                type "Function Entry"
+                (array)outputs {
+                    - id=1580 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1590 name="Energy" type="float" kind="data"
+                    - id=1600 name="Treble" type="float" kind="data"
+                    - id=1610 name="Beat" type="float" kind="data"
+                    - id=1620 name="Reaction" type="float" kind="data"
+                    - id=1630 name="Quiet" type="float" kind="data"
+                    - id=1640 name="Style" type="float" kind="data"
+                }
+            }
+            - {
+                id 1570
+                type "Return"
+                (array)inputs {
+                    - id=1650 name="Value" type="float" kind="data"
                 }
             }
             - {
                 id 1660
                 type "Behavior Expression"
-                reference_name "mix(mix(mix(vec3(0.18, 0.95, 1.30), vec3(0.68, 0.20, 1.20), 0.5 + 0.5 * sin(Random.x * 6.2831853 + Chapter * 0.42)), vec3(1.35, 0.98, 0.46), step(0.958, Random.y)), vec3(1.10, 1.25, 1.35), step(0.986, Random.z))"
+                reference_name "(0.075 + 0.11 * Random.z * Random.z + Energy * 0.035 + Treble * 0.012 + Beat * 0.01 + Reaction * 0.026) * Quiet * (0.88 + 0.12 * cos(Style * 3.1415927) * cos(Style * 3.1415927))"
                 inputs {
-                    Random id=1690 type="struct" type_name="ShaderVec3"
-                    Chapter id=1700 type="float"
+                    Random id=1670 type="struct" type_name="ShaderVec3"
+                    Energy id=1680 type="float"
+                    Treble id=1690 type="float"
+                    Beat id=1700 type="float"
+                    Reaction id=1710 type="float"
+                    Quiet id=1720 type="float"
+                    Style id=1730 type="float"
                 }
                 outputs {
-                    Result id=1710 type="struct" type_name="ShaderVec3"
+                    Result id=1740 type="float"
                 }
             }
         }
         (array)edges {
-            - from="1610.Random" to="1660.Random"
-            - from="1610.Chapter" to="1660.Chapter"
-            - from="1660.Result" to="1620.Value"
+            - from="1560.Random" to="1660.Random"
+            - from="1560.Energy" to="1660.Energy"
+            - from="1560.Treble" to="1660.Treble"
+            - from="1560.Beat" to="1660.Beat"
+            - from="1560.Reaction" to="1660.Reaction"
+            - from="1560.Quiet" to="1660.Quiet"
+            - from="1560.Style" to="1660.Style"
+            - from="1660.Result" to="1570.Value"
         }
     }
     - {
-        id 1720
+        id 1750
         kind "function"
-        name "SpiralRadiance"
-        description "Stable low radiance with subtle smooth musical gain. Motion carries the response."
-        entry_id 1730
-        return_id 1740
+        name "ParticleSize"
+        description "Solid grains retain projected size through depth and gently ease during morphs."
+        entry_id 1760
+        return_id 1770
         call_depth_limit 64
         (array)nodes {
             - {
-                id 1730
+                id 1760
                 type "Function Entry"
                 (array)outputs {
-                    - id=1750 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=1770 name="Energy" type="float" kind="data"
-                    - id=1780 name="Bass" type="float" kind="data"
-                    - id=1790 name="Treble" type="float" kind="data"
-                    - id=1800 name="Beat" type="float" kind="data"
-                    - id=1810 name="Reaction" type="float" kind="data"
-                    - id=1820 name="Quiet" type="float" kind="data"
+                    - id=1780 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1790 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1800 name="Style" type="float" kind="data"
                 }
             }
             - {
-                id 1740
+                id 1770
                 type "Return"
                 (array)inputs {
-                    - id=1830 name="Value" type="float" kind="data"
+                    - id=1810 name="Value" type="float" kind="data"
                 }
             }
             - {
-                id 1840
+                id 1820
                 type "Behavior Expression"
-                reference_name "(0.24 + 0.30 * Random.z * Random.z + Energy * 0.055 + Bass * 0.025 + Treble * 0.018 + Beat * 0.012 + Reaction * 0.025) * Quiet"
+                reference_name "(1.45 + 0.46 * Random.x + 0.16 * Random.y * Random.y) * max(0.75, (1080 - Position.z) / 2300) * (0.94 + 0.06 * cos(Style * 3.1415927) * cos(Style * 3.1415927))"
                 inputs {
-                    Random id=1870 type="struct" type_name="ShaderVec3"
-                    Energy id=1890 type="float"
-                    Bass id=1900 type="float"
-                    Treble id=1910 type="float"
-                    Beat id=1920 type="float"
-                    Reaction id=1930 type="float"
-                    Quiet id=1940 type="float"
+                    Random id=1830 type="struct" type_name="ShaderVec3"
+                    Position id=1840 type="struct" type_name="ShaderVec3"
+                    Style id=1850 type="float"
                 }
                 outputs {
-                    Result id=1950 type="float"
+                    Result id=1860 type="float"
                 }
             }
         }
         (array)edges {
-            - from="1730.Random" to="1840.Random"
-            - from="1730.Energy" to="1840.Energy"
-            - from="1730.Bass" to="1840.Bass"
-            - from="1730.Treble" to="1840.Treble"
-            - from="1730.Beat" to="1840.Beat"
-            - from="1730.Reaction" to="1840.Reaction"
-            - from="1730.Quiet" to="1840.Quiet"
-            - from="1840.Result" to="1740.Value"
+            - from="1760.Random" to="1820.Random"
+            - from="1760.Position" to="1820.Position"
+            - from="1760.Style" to="1820.Style"
+            - from="1820.Result" to="1770.Value"
         }
     }
     - {
-        id 1960
-        kind "function"
-        name "SpiralSize"
-        description "Depth-compensated geometry keeps distant grains from crossing subpixel visibility."
-        entry_id 1970
-        return_id 1980
-        call_depth_limit 64
-        (array)nodes {
-            - {
-                id 1970
-                type "Function Entry"
-                (array)outputs {
-                    - id=1990 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=80090 name="Position" type="struct" type_name="ShaderVec3" kind="data"
-                }
-            }
-            - {
-                id 1980
-                type "Return"
-                (array)inputs {
-                    - id=2020 name="Value" type="float" kind="data"
-                }
-            }
-            - {
-                id 2030
-                type "Behavior Expression"
-                reference_name "(0.86 + 0.22 * Random.x + 0.16 * step(0.988, Random.y)) * max(0.8, (1080 - Position.z) / 2300)"
-                inputs {
-                    Position id=80100 type="struct" type_name="ShaderVec3"
-                    Random id=2060 type="struct" type_name="ShaderVec3"
-                }
-                outputs {
-                    Result id=2090 type="float"
-                }
-            }
-        }
-        (array)edges {
-            - from="1970.Random" to="2030.Random"
-            - from="1970.Position" to="2030.Position"
-            - from="2030.Result" to="1980.Value"
-        }
-    }
-    - {
-        id 2100
+        id 1870
         kind "function"
         name "ParticleColor"
-        description "HDR color for the additive geometry pass."
-        entry_id 2110
-        return_id 2120
+        description "Additive HDR color uses a continuous radiance envelope."
+        entry_id 1880
+        return_id 1890
         call_depth_limit 64
         (array)nodes {
             - {
-                id 2110
+                id 1880
                 type "Function Entry"
                 (array)outputs {
-                    - id=2130 name="Tint" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=2140 name="Radiance" type="float" kind="data"
+                    - id=1900 name="Tint" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=1910 name="Radiance" type="float" kind="data"
                 }
             }
             - {
-                id 2120
+                id 1890
                 type "Return"
                 (array)inputs {
-                    - id=2150 name="Value" type="struct" type_name="ShaderVec4" kind="data"
+                    - id=1920 name="Value" type="struct" type_name="ShaderVec4" kind="data"
                 }
             }
             - {
-                id 2160
+                id 1930
                 type "Behavior Expression"
                 reference_name "vec4(Tint.x * Radiance, Tint.y * Radiance, Tint.z * Radiance, 1)"
                 inputs {
-                    Tint id=2190 type="struct" type_name="ShaderVec3"
-                    Radiance id=2200 type="float"
+                    Tint id=1940 type="struct" type_name="ShaderVec3"
+                    Radiance id=1950 type="float"
                 }
                 outputs {
-                    Result id=2210 type="struct" type_name="ShaderVec4"
+                    Result id=1960 type="struct" type_name="ShaderVec4"
                 }
             }
         }
         (array)edges {
-            - from="2110.Tint" to="2160.Tint"
-            - from="2110.Radiance" to="2160.Radiance"
-            - from="2160.Result" to="2120.Value"
+            - from="1880.Tint" to="1930.Tint"
+            - from="1880.Radiance" to="1930.Radiance"
+            - from="1930.Result" to="1890.Value"
         }
     }
     - {
-        id 2220
+        id 1970
         kind "function"
         name "StarPosition"
-        description "Distant points move slowly through genuine scene depth."
-        entry_id 2230
-        return_id 2240
+        description "Sparse distant dust retains separate parallax and shares the stage palette."
+        entry_id 1980
+        return_id 1990
         call_depth_limit 64
         (array)nodes {
             - {
-                id 2230
+                id 1980
                 type "Function Entry"
                 (array)outputs {
-                    - id=2250 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=2260 name="Clock" type="float" kind="data"
-                    - id=2270 name="Bass" type="float" kind="data"
-                    - id=2280 name="Mid" type="float" kind="data"
-                    - id=80070 name="Turn" type="float" kind="data"
-                    - id=80050 name="Flow" type="float" kind="data"
+                    - id=2000 name="Random" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=2010 name="Phase" type="float" kind="data"
+                    - id=2020 name="Bass" type="float" kind="data"
+                    - id=2030 name="Mid" type="float" kind="data"
                 }
             }
             - {
-                id 2240
+                id 1990
                 type "Return"
                 (array)inputs {
-                    - id=2290 name="Value" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=2040 name="Value" type="struct" type_name="ShaderVec3" kind="data"
                 }
             }
             - {
-                id 2300
+                id 2050
                 type "Behavior Expression"
-                reference_name "vec3((Random.x - 0.5) * 5700 + sin(Flow * 0.16 + Turn * 0.22 + Random.z * 6.2831853) * (65 + Mid * 50), (Random.y - 0.5) * 3600 + cos(Flow * 0.13 + Random.x * 6.2831853) * (55 + Bass * 55), -600 - Random.z * 2600 + sin(Clock * 0.09 + Random.y * 6.2831853) * 45)"
+                reference_name "vec3((Random.x - 0.5) * 5900 + sin(Phase * 0.10 + Random.z * 6.2831853) * (90 + Mid * 60), (Random.y - 0.5) * 3650 + cos(Phase * 0.08 + Random.x * 6.2831853) * (70 + Bass * 55), -750 - Random.z * 2700 + sin(Phase * 0.065 + Random.y * 6.2831853) * 65)"
                 inputs {
-                    Turn id=80080 type="float"
-                    Flow id=80060 type="float"
-                    Random id=2330 type="struct" type_name="ShaderVec3"
-                    Clock id=2340 type="float"
-                    Bass id=2350 type="float"
-                    Mid id=2360 type="float"
+                    Random id=2060 type="struct" type_name="ShaderVec3"
+                    Phase id=2070 type="float"
+                    Bass id=2080 type="float"
+                    Mid id=2090 type="float"
                 }
                 outputs {
-                    Result id=2370 type="struct" type_name="ShaderVec3"
+                    Result id=2100 type="struct" type_name="ShaderVec3"
                 }
             }
         }
         (array)edges {
-            - from="2230.Random" to="2300.Random"
-            - from="2230.Clock" to="2300.Clock"
-            - from="2230.Bass" to="2300.Bass"
-            - from="2230.Mid" to="2300.Mid"
-            - from="2230.Flow" to="2300.Flow"
-            - from="2230.Turn" to="2300.Turn"
-            - from="2300.Result" to="2240.Value"
+            - from="1980.Random" to="2050.Random"
+            - from="1980.Phase" to="2050.Phase"
+            - from="1980.Bass" to="2050.Bass"
+            - from="1980.Mid" to="2050.Mid"
+            - from="2050.Result" to="1990.Value"
         }
     }
     - {
-        id 2380
+        id 2110
         kind "function"
-        name "StarRadiance"
-        description "Steady distant stars retain brightness while the surrounding flow moves."
-        entry_id 2390
-        return_id 2400
+        name "Vortex"
+        description "131072 stateless GPU grains form four smoothly evolving 3D scenes. No CPU entity per particle."
+        entry_id 2120
+        return_id 2130
         call_depth_limit 64
         (array)nodes {
             - {
-                id 2390
+                id 2120
                 type "Function Entry"
                 (array)outputs {
-                    - id=2410 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=2430 name="Treble" type="float" kind="data"
-                    - id=2440 name="Beat" type="float" kind="data"
-                    - id=2450 name="Reaction" type="float" kind="data"
-                    - id=2460 name="Quiet" type="float" kind="data"
+                    - id=2140 name="Index" type="float" kind="data"
+                    - id=2150 name="Count" type="float" kind="data"
+                    - id=2160 name="Seed" type="float" kind="data"
+                    - id=2170 name="Energy" type="float" kind="data"
+                    - id=2180 name="Bass" type="float" kind="data"
+                    - id=2190 name="Mid" type="float" kind="data"
+                    - id=2200 name="Treble" type="float" kind="data"
+                    - id=2210 name="Beat" type="float" kind="data"
+                    - id=2220 name="Reaction" type="float" kind="data"
+                    - id=2240 name="Turn" type="float" kind="data"
+                    - id=2250 name="Flow" type="float" kind="data"
+                    - id=2260 name="Style" type="float" kind="data"
+                    - id=2270 name="Variation" type="float" kind="data"
+                    - id=2280 name="Duet" type="float" kind="data"
+                }
+            }
+            - {
+                id 2130
+                type "Return"
+                (array)inputs {
+                    - id=2290 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=2300 name="Size" type="float" kind="data"
+                    - id=2310 name="Color" type="struct" type_name="ShaderVec4" kind="data"
+                }
+            }
+            - {
+                id 2320
+                type "Call Pure Function"
+                reference_name "ParticleRandom"
+                inputs {
+                    Index id=2330 type="float"
+                    Seed id=2340 type="float"
+                    Variation id=2350 type="float"
+                }
+                outputs {
+                    Value id=2360 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2370
+                type "Call Pure Function"
+                reference_name "StageWeights"
+                inputs {
+                    Style id=2380 type="float"
+                }
+                outputs {
+                    Value id=2390 type="struct" type_name="ShaderVec4"
                 }
             }
             - {
                 id 2400
-                type "Return"
-                (array)inputs {
-                    - id=2470 name="Value" type="float" kind="data"
+                type "Behavior Expression"
+                reference_name "Flow + Turn * 0.6 + Variation * 0.0017"
+                inputs {
+                    Flow id=2410 type="float"
+                    Turn id=2420 type="float"
+                    Variation id=2430 type="float"
+                }
+                outputs {
+                    Result id=2440 type="float"
                 }
             }
             - {
-                id 2480
-                type "Behavior Expression"
-                reference_name "(0.18 + 0.32 * Random.z * Random.z + Treble * 0.015 + Beat * 0.008 + Reaction * 0.015) * Quiet"
+                id 2450
+                type "Call Pure Function"
+                reference_name "AuroraCurtain"
                 inputs {
-                    Random id=2510 type="struct" type_name="ShaderVec3"
-                    Treble id=2530 type="float"
-                    Beat id=2540 type="float"
-                    Reaction id=2550 type="float"
-                    Quiet id=2560 type="float"
+                    Random id=2460 type="struct" type_name="ShaderVec3"
+                    Phase id=2470 type="float"
+                    Bass id=2480 type="float"
+                    Mid id=2490 type="float"
+                    Reaction id=2500 type="float"
                 }
                 outputs {
-                    Result id=2570 type="float"
+                    Value id=2510 type="struct" type_name="ShaderVec3"
                 }
             }
-        }
-        (array)edges {
-            - from="2390.Random" to="2480.Random"
-            - from="2390.Treble" to="2480.Treble"
-            - from="2390.Beat" to="2480.Beat"
-            - from="2390.Reaction" to="2480.Reaction"
-            - from="2390.Quiet" to="2480.Quiet"
-            - from="2480.Result" to="2400.Value"
-        }
-    }
-    - {
-        id 2580
-        kind "function"
-        name "StarSize"
-        description "Depth-compensated solid stars with stable projected coverage."
-        entry_id 2590
-        return_id 2600
-        call_depth_limit 64
-        (array)nodes {
+            - {
+                id 2520
+                type "Call Pure Function"
+                reference_name "PetalCoordinates"
+                inputs {
+                    Random id=2530 type="struct" type_name="ShaderVec3"
+                    Phase id=2540 type="float"
+                    Bass id=2550 type="float"
+                    Mid id=2560 type="float"
+                    Reaction id=2570 type="float"
+                }
+                outputs {
+                    Value id=2580 type="struct" type_name="ShaderVec3"
+                }
+            }
             - {
                 id 2590
-                type "Function Entry"
-                (array)outputs {
-                    - id=2610 name="Random" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=80110 name="Position" type="struct" type_name="ShaderVec3" kind="data"
-                }
-            }
-            - {
-                id 2600
-                type "Return"
-                (array)inputs {
-                    - id=2630 name="Value" type="float" kind="data"
-                }
-            }
-            - {
-                id 2640
-                type "Behavior Expression"
-                reference_name "(0.70 + 0.48 * Random.x * Random.x + 0.22 * step(0.995, Random.y)) * (1080 - Position.z) / 2200"
-                inputs {
-                    Position id=80120 type="struct" type_name="ShaderVec3"
-                    Random id=2670 type="struct" type_name="ShaderVec3"
-                }
-                outputs {
-                    Result id=2690 type="float"
-                }
-            }
-        }
-        (array)edges {
-            - from="2590.Random" to="2640.Random"
-            - from="2590.Position" to="2640.Position"
-            - from="2640.Result" to="2600.Value"
-        }
-    }
-    - {
-        id 2700
-        kind "function"
-        name "Vortex"
-        description "Dense, stateless 3D spiral. The component owns the clock; audio changes the field without spawning entities."
-        entry_id 2710
-        return_id 2720
-        call_depth_limit 64
-        (array)nodes {
-            - {
-                id 2710
-                type "Function Entry"
-                (array)outputs {
-                    - id=2730 name="Index" type="float" kind="data"
-                    - id=2740 name="Count" type="float" kind="data" default=65536.0
-                    - id=2750 name="Seed" type="float" kind="data" default=37.0
-                    - id=2760 name="Energy" type="float" kind="data"
-                    - id=2770 name="Bass" type="float" kind="data"
-                    - id=2780 name="Mid" type="float" kind="data"
-                    - id=2790 name="Treble" type="float" kind="data"
-                    - id=2800 name="Beat" type="float" kind="data"
-                    - id=2810 name="Reaction" type="float" kind="data"
-                    - id=2820 name="Chapter" type="float" kind="data"
-                    - id=80150 name="Turn" type="float" kind="data"
-                    - id=80130 name="Flow" type="float" kind="data"
-                }
-            }
-            - {
-                id 2720
-                type "Return"
-                (array)inputs {
-                    - id=2830 name="Position" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=2840 name="Size" type="float" kind="data"
-                    - id=2850 name="Color" type="struct" type_name="ShaderVec4" kind="data"
-                }
-            }
-            - id=2860 type="Shader Time"
-            - {
-                id 2870
                 type "Call Pure Function"
-                reference_name "ParticleRandom"
+                reference_name "PetalPosition"
                 inputs {
-                    Index id=2880 type="float"
-                    Seed id=2890 type="float"
+                    Shell id=2600 type="struct" type_name="ShaderVec3"
                 }
                 outputs {
-                    Value id=2900 type="struct" type_name="ShaderVec3"
+                    Value id=2610 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2620
+                type "Call Pure Function"
+                reference_name "DuneRibbons"
+                inputs {
+                    Random id=2630 type="struct" type_name="ShaderVec3"
+                    Phase id=2640 type="float"
+                    Bass id=2650 type="float"
+                    Mid id=2660 type="float"
+                    Reaction id=2670 type="float"
+                }
+                outputs {
+                    Value id=2680 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2690
+                type "Call Pure Function"
+                reference_name "OrbitCoordinates"
+                inputs {
+                    Random id=2700 type="struct" type_name="ShaderVec3"
+                    Phase id=2710 type="float"
+                    Bass id=2720 type="float"
+                    Mid id=2730 type="float"
+                    Reaction id=2740 type="float"
+                }
+                outputs {
+                    Value id=2750 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2760
+                type "Call Pure Function"
+                reference_name "OrbitPosition"
+                inputs {
+                    Orbit id=2770 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Value id=2780 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2790
+                type "Call Pure Function"
+                reference_name "BlendStage"
+                inputs {
+                    Aurora id=2800 type="struct" type_name="ShaderVec3"
+                    Petal id=2810 type="struct" type_name="ShaderVec3"
+                    Dune id=2820 type="struct" type_name="ShaderVec3"
+                    Orbit id=2830 type="struct" type_name="ShaderVec3"
+                    Weights id=2840 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Value id=2850 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2860
+                type "Call Pure Function"
+                reference_name "ParticleSize"
+                inputs {
+                    Random id=2870 type="struct" type_name="ShaderVec3"
+                    Position id=2880 type="struct" type_name="ShaderVec3"
+                    Style id=2890 type="float"
+                }
+                outputs {
+                    Value id=2900 type="float"
                 }
             }
             - {
                 id 2910
-                type "Behavior Expression"
-                reference_name "fract(Index * 0.61803398875 + 0.5)"
-                inputs {
-                    Index id=2940 type="float"
-                }
-                outputs {
-                    Result id=2960 type="float"
-                }
-            }
-            - {
-                id 2970
-                type "Behavior Expression"
-                reference_name "fract(Index * 0.5)"
-                inputs {
-                    Index id=3000 type="float"
-                }
-                outputs {
-                    Result id=3010 type="float"
-                }
-            }
-            - {
-                id 3020
                 type "Call Pure Function"
-                reference_name "SpiralCoordinates"
+                reference_name "BoardProjection"
                 inputs {
-                    Fraction id=3030 type="float"
-                    Arm id=3040 type="float"
-                    Random id=3050 type="struct" type_name="ShaderVec3"
-                    Clock id=3060 type="float"
-                    Energy id=3070 type="float"
-                    Bass id=3080 type="float"
-                    Mid id=3090 type="float"
-                    Beat id=3100 type="float"
-                    Reaction id=3110 type="float"
-                    Turn id=80160 type="float"
-                    Flow id=80140 type="float"
+                    Position id=2920 type="struct" type_name="ShaderVec3"
                 }
                 outputs {
-                    Value id=3120 type="struct" type_name="ShaderVec3"
+                    Value id=2930 type="struct" type_name="ShaderVec3"
                 }
             }
             - {
-                id 3130
+                id 2940
                 type "Call Pure Function"
-                reference_name "SpiralPosition"
+                reference_name "BoardQuiet"
                 inputs {
-                    Orbit id=3140 type="struct" type_name="ShaderVec3"
-                    Chapter id=3150 type="float"
+                    Position id=2950 type="struct" type_name="ShaderVec3"
+                    Duet id=2960 type="float"
                 }
                 outputs {
-                    Value id=3160 type="struct" type_name="ShaderVec3"
+                    Value id=2970 type="float"
+                }
+            }
+            - {
+                id 2980
+                type "Call Pure Function"
+                reference_name "ParticleRadiance"
+                inputs {
+                    Random id=2990 type="struct" type_name="ShaderVec3"
+                    Energy id=3000 type="float"
+                    Treble id=3010 type="float"
+                    Beat id=3020 type="float"
+                    Reaction id=3030 type="float"
+                    Quiet id=3040 type="float"
+                    Style id=3050 type="float"
+                }
+                outputs {
+                    Value id=3060 type="float"
+                }
+            }
+            - {
+                id 3070
+                type "Call Pure Function"
+                reference_name "StagePalette"
+                inputs {
+                    Random id=3080 type="struct" type_name="ShaderVec3"
+                    Weights id=3090 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Value id=3100 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 3110
+                type "Call Pure Function"
+                reference_name "ParticleColor"
+                inputs {
+                    Tint id=3120 type="struct" type_name="ShaderVec3"
+                    Radiance id=3130 type="float"
+                }
+                outputs {
+                    Value id=3140 type="struct" type_name="ShaderVec4"
+                }
+            }
+        }
+        (array)edges {
+            - from="2120.Index" to="2320.Index"
+            - from="2120.Seed" to="2320.Seed"
+            - from="2120.Energy" to="2980.Energy"
+            - from="2120.Bass" to="2450.Bass"
+            - from="2120.Bass" to="2520.Bass"
+            - from="2120.Bass" to="2620.Bass"
+            - from="2120.Bass" to="2690.Bass"
+            - from="2120.Mid" to="2450.Mid"
+            - from="2120.Mid" to="2520.Mid"
+            - from="2120.Mid" to="2620.Mid"
+            - from="2120.Mid" to="2690.Mid"
+            - from="2120.Treble" to="2980.Treble"
+            - from="2120.Beat" to="2980.Beat"
+            - from="2120.Reaction" to="2450.Reaction"
+            - from="2120.Reaction" to="2520.Reaction"
+            - from="2120.Reaction" to="2620.Reaction"
+            - from="2120.Reaction" to="2690.Reaction"
+            - from="2120.Reaction" to="2980.Reaction"
+            - from="2120.Turn" to="2400.Turn"
+            - from="2120.Flow" to="2400.Flow"
+            - from="2120.Style" to="2370.Style"
+            - from="2120.Style" to="2860.Style"
+            - from="2120.Style" to="2980.Style"
+            - from="2120.Variation" to="2320.Variation"
+            - from="2120.Variation" to="2400.Variation"
+            - from="2120.Duet" to="2940.Duet"
+            - from="2320.Value" to="2450.Random"
+            - from="2320.Value" to="2520.Random"
+            - from="2320.Value" to="2620.Random"
+            - from="2320.Value" to="2690.Random"
+            - from="2320.Value" to="2860.Random"
+            - from="2320.Value" to="2980.Random"
+            - from="2320.Value" to="3070.Random"
+            - from="2370.Value" to="2790.Weights"
+            - from="2370.Value" to="3070.Weights"
+            - from="2400.Result" to="2450.Phase"
+            - from="2400.Result" to="2520.Phase"
+            - from="2400.Result" to="2620.Phase"
+            - from="2400.Result" to="2690.Phase"
+            - from="2450.Value" to="2790.Aurora"
+            - from="2520.Value" to="2590.Shell"
+            - from="2590.Value" to="2790.Petal"
+            - from="2620.Value" to="2790.Dune"
+            - from="2690.Value" to="2760.Orbit"
+            - from="2760.Value" to="2790.Orbit"
+            - from="2790.Value" to="2130.Position"
+            - from="2790.Value" to="2860.Position"
+            - from="2790.Value" to="2910.Position"
+            - from="2860.Value" to="2130.Size"
+            - from="2910.Value" to="2940.Position"
+            - from="2940.Value" to="2980.Quiet"
+            - from="2980.Value" to="3110.Radiance"
+            - from="3070.Value" to="3110.Tint"
+            - from="3110.Value" to="2130.Color"
+        }
+    }
+    - {
+        id 3150
+        kind "function"
+        name "Dust"
+        description "16384 distant GPU grains retain stable identities and the same cyclic palette."
+        entry_id 3160
+        return_id 3170
+        call_depth_limit 64
+        (array)nodes {
+            - {
+                id 3160
+                type "Function Entry"
+                (array)outputs {
+                    - id=3180 name="Index" type="float" kind="data"
+                    - id=3190 name="Count" type="float" kind="data"
+                    - id=3200 name="Seed" type="float" kind="data"
+                    - id=3210 name="Energy" type="float" kind="data"
+                    - id=3220 name="Bass" type="float" kind="data"
+                    - id=3230 name="Mid" type="float" kind="data"
+                    - id=3240 name="Treble" type="float" kind="data"
+                    - id=3250 name="Beat" type="float" kind="data"
+                    - id=3260 name="Reaction" type="float" kind="data"
+                    - id=3280 name="Turn" type="float" kind="data"
+                    - id=3290 name="Flow" type="float" kind="data"
+                    - id=3300 name="Style" type="float" kind="data"
+                    - id=3310 name="Variation" type="float" kind="data"
+                    - id=3320 name="Duet" type="float" kind="data"
                 }
             }
             - {
                 id 3170
-                type "Call Pure Function"
-                reference_name "SpiralSize"
-                inputs {
-                    Random id=3180 type="struct" type_name="ShaderVec3"
-                    Position id=80210 type="struct" type_name="ShaderVec3"
-                }
-                outputs {
-                    Value id=3210 type="float"
-                }
-            }
-            - {
-                id 3220
-                type "Call Pure Function"
-                reference_name "BoardQuiet"
-                inputs {
-                    Position id=3230 type="struct" type_name="ShaderVec3"
-                }
-                outputs {
-                    Value id=3240 type="float"
-                }
-            }
-            - {
-                id 3250
-                type "Call Pure Function"
-                reference_name "SpiralRadiance"
-                inputs {
-                    Random id=3260 type="struct" type_name="ShaderVec3"
-                    Energy id=3280 type="float"
-                    Bass id=3290 type="float"
-                    Treble id=3300 type="float"
-                    Beat id=3310 type="float"
-                    Reaction id=3320 type="float"
-                    Quiet id=3330 type="float"
-                }
-                outputs {
-                    Value id=3340 type="float"
-                }
-            }
-            - {
-                id 3350
-                type "Call Pure Function"
-                reference_name "ParticlePalette"
-                inputs {
-                    Random id=3360 type="struct" type_name="ShaderVec3"
-                    Chapter id=3370 type="float"
-                }
-                outputs {
-                    Value id=3380 type="struct" type_name="ShaderVec3"
-                }
-            }
-            - {
-                id 3390
-                type "Call Pure Function"
-                reference_name "ParticleColor"
-                inputs {
-                    Tint id=3400 type="struct" type_name="ShaderVec3"
-                    Radiance id=3410 type="float"
-                }
-                outputs {
-                    Value id=3420 type="struct" type_name="ShaderVec4"
-                }
-            }
-        }
-        (array)edges {
-            - from="2710.Index" to="2870.Index"
-            - from="2710.Index" to="2910.Index"
-            - from="2710.Index" to="2970.Index"
-            - from="2710.Seed" to="2870.Seed"
-            - from="2710.Energy" to="3020.Energy"
-            - from="2710.Energy" to="3250.Energy"
-            - from="2710.Bass" to="3020.Bass"
-            - from="2710.Bass" to="3250.Bass"
-            - from="2710.Mid" to="3020.Mid"
-            - from="2710.Treble" to="3250.Treble"
-            - from="2710.Beat" to="3020.Beat"
-            - from="2710.Beat" to="3250.Beat"
-            - from="2710.Reaction" to="3020.Reaction"
-            - from="2710.Reaction" to="3250.Reaction"
-            - from="2710.Chapter" to="3130.Chapter"
-            - from="2710.Chapter" to="3350.Chapter"
-            - from="2710.Flow" to="3020.Flow"
-            - from="2710.Turn" to="3020.Turn"
-            - from="2860.Value" to="3020.Clock"
-            - from="2870.Value" to="3020.Random"
-            - from="2870.Value" to="3170.Random"
-            - from="2870.Value" to="3250.Random"
-            - from="2870.Value" to="3350.Random"
-            - from="2910.Result" to="3020.Fraction"
-            - from="2970.Result" to="3020.Arm"
-            - from="3020.Value" to="3130.Orbit"
-            - from="3130.Value" to="2720.Position"
-            - from="3130.Value" to="3170.Position"
-            - from="3130.Value" to="3220.Position"
-            - from="3170.Value" to="2720.Size"
-            - from="3220.Value" to="3250.Quiet"
-            - from="3250.Value" to="3390.Radiance"
-            - from="3350.Value" to="3390.Tint"
-            - from="3390.Value" to="2720.Color"
-        }
-    }
-    - {
-        id 3430
-        kind "function"
-        name "Dust"
-        description "Sparse 3D stars behind the spiral."
-        entry_id 3440
-        return_id 3450
-        call_depth_limit 64
-        (array)nodes {
-            - {
-                id 3440
-                type "Function Entry"
-                (array)outputs {
-                    - id=3460 name="Index" type="float" kind="data"
-                    - id=3470 name="Count" type="float" kind="data" default=65536.0
-                    - id=3480 name="Seed" type="float" kind="data" default=37.0
-                    - id=3490 name="Energy" type="float" kind="data"
-                    - id=3500 name="Bass" type="float" kind="data"
-                    - id=3510 name="Mid" type="float" kind="data"
-                    - id=3520 name="Treble" type="float" kind="data"
-                    - id=3530 name="Beat" type="float" kind="data"
-                    - id=3540 name="Reaction" type="float" kind="data"
-                    - id=3550 name="Chapter" type="float" kind="data"
-                    - id=80190 name="Turn" type="float" kind="data"
-                    - id=80170 name="Flow" type="float" kind="data"
-                }
-            }
-            - {
-                id 3450
                 type "Return"
                 (array)inputs {
-                    - id=3560 name="Position" type="struct" type_name="ShaderVec3" kind="data"
-                    - id=3570 name="Size" type="float" kind="data"
-                    - id=3580 name="Color" type="struct" type_name="ShaderVec4" kind="data"
+                    - id=3330 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=3340 name="Size" type="float" kind="data"
+                    - id=3350 name="Color" type="struct" type_name="ShaderVec4" kind="data"
                 }
             }
-            - id=3590 type="Shader Time"
             - {
-                id 3600
+                id 3360
                 type "Call Pure Function"
                 reference_name "ParticleRandom"
                 inputs {
-                    Index id=3610 type="float"
-                    Seed id=3620 type="float"
+                    Index id=3370 type="float"
+                    Seed id=3380 type="float"
+                    Variation id=3390 type="float"
                 }
                 outputs {
-                    Value id=3630 type="struct" type_name="ShaderVec3"
+                    Value id=3400 type="struct" type_name="ShaderVec3"
                 }
             }
             - {
-                id 3640
+                id 3410
+                type "Call Pure Function"
+                reference_name "StageWeights"
+                inputs {
+                    Style id=3420 type="float"
+                }
+                outputs {
+                    Value id=3430 type="struct" type_name="ShaderVec4"
+                }
+            }
+            - {
+                id 3440
+                type "Behavior Expression"
+                reference_name "Flow + Turn * 0.6 + Variation * 0.0017"
+                inputs {
+                    Flow id=3450 type="float"
+                    Turn id=3460 type="float"
+                    Variation id=3470 type="float"
+                }
+                outputs {
+                    Result id=3480 type="float"
+                }
+            }
+            - {
+                id 3490
                 type "Call Pure Function"
                 reference_name "StarPosition"
                 inputs {
-                    Random id=3650 type="struct" type_name="ShaderVec3"
-                    Clock id=3660 type="float"
-                    Bass id=3670 type="float"
-                    Mid id=3680 type="float"
-                    Turn id=80200 type="float"
-                    Flow id=80180 type="float"
+                    Random id=3500 type="struct" type_name="ShaderVec3"
+                    Phase id=3510 type="float"
+                    Bass id=3520 type="float"
+                    Mid id=3530 type="float"
                 }
                 outputs {
-                    Value id=3690 type="struct" type_name="ShaderVec3"
+                    Value id=3540 type="struct" type_name="ShaderVec3"
                 }
             }
             - {
-                id 3700
+                id 3550
                 type "Call Pure Function"
-                reference_name "StarSize"
+                reference_name "ParticleSize"
                 inputs {
-                    Random id=3710 type="struct" type_name="ShaderVec3"
-                    Position id=80220 type="struct" type_name="ShaderVec3"
+                    Random id=3560 type="struct" type_name="ShaderVec3"
+                    Position id=3570 type="struct" type_name="ShaderVec3"
+                    Style id=3580 type="float"
                 }
                 outputs {
-                    Value id=3730 type="float"
+                    Value id=3590 type="float"
                 }
             }
             - {
-                id 3740
+                id 3600
+                type "Call Pure Function"
+                reference_name "BoardProjection"
+                inputs {
+                    Position id=3610 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Value id=3620 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 3630
                 type "Call Pure Function"
                 reference_name "BoardQuiet"
                 inputs {
-                    Position id=3750 type="struct" type_name="ShaderVec3"
+                    Position id=3640 type="struct" type_name="ShaderVec3"
+                    Duet id=3650 type="float"
                 }
                 outputs {
-                    Value id=3760 type="float"
+                    Value id=3660 type="float"
                 }
             }
             - {
-                id 3770
+                id 3670
                 type "Call Pure Function"
-                reference_name "StarRadiance"
+                reference_name "ParticleRadiance"
                 inputs {
-                    Random id=3780 type="struct" type_name="ShaderVec3"
-                    Treble id=3800 type="float"
-                    Beat id=3810 type="float"
-                    Reaction id=3820 type="float"
-                    Quiet id=3830 type="float"
+                    Random id=3680 type="struct" type_name="ShaderVec3"
+                    Energy id=3690 type="float"
+                    Treble id=3700 type="float"
+                    Beat id=3710 type="float"
+                    Reaction id=3720 type="float"
+                    Quiet id=3730 type="float"
+                    Style id=3740 type="float"
                 }
                 outputs {
-                    Value id=3840 type="float"
+                    Value id=3750 type="float"
                 }
             }
             - {
-                id 3850
+                id 3760
                 type "Call Pure Function"
-                reference_name "ParticlePalette"
+                reference_name "StagePalette"
                 inputs {
-                    Random id=3860 type="struct" type_name="ShaderVec3"
-                    Chapter id=3870 type="float"
+                    Random id=3770 type="struct" type_name="ShaderVec3"
+                    Weights id=3780 type="struct" type_name="ShaderVec4"
                 }
                 outputs {
-                    Value id=3880 type="struct" type_name="ShaderVec3"
+                    Value id=3790 type="struct" type_name="ShaderVec3"
                 }
             }
             - {
-                id 3890
+                id 3800
                 type "Call Pure Function"
                 reference_name "ParticleColor"
                 inputs {
-                    Tint id=3900 type="struct" type_name="ShaderVec3"
-                    Radiance id=3910 type="float"
+                    Tint id=3810 type="struct" type_name="ShaderVec3"
+                    Radiance id=3820 type="float"
                 }
                 outputs {
-                    Value id=3920 type="struct" type_name="ShaderVec4"
+                    Value id=3830 type="struct" type_name="ShaderVec4"
                 }
             }
         }
         (array)edges {
-            - from="3440.Index" to="3600.Index"
-            - from="3440.Seed" to="3600.Seed"
-            - from="3440.Bass" to="3640.Bass"
-            - from="3440.Mid" to="3640.Mid"
-            - from="3440.Treble" to="3770.Treble"
-            - from="3440.Beat" to="3770.Beat"
-            - from="3440.Reaction" to="3770.Reaction"
-            - from="3440.Chapter" to="3850.Chapter"
-            - from="3440.Flow" to="3640.Flow"
-            - from="3440.Turn" to="3640.Turn"
-            - from="3590.Value" to="3640.Clock"
-            - from="3600.Value" to="3640.Random"
-            - from="3600.Value" to="3700.Random"
-            - from="3600.Value" to="3770.Random"
-            - from="3600.Value" to="3850.Random"
-            - from="3640.Value" to="3450.Position"
-            - from="3640.Value" to="3700.Position"
-            - from="3640.Value" to="3740.Position"
-            - from="3700.Value" to="3450.Size"
-            - from="3740.Value" to="3770.Quiet"
-            - from="3770.Value" to="3890.Radiance"
-            - from="3850.Value" to="3890.Tint"
-            - from="3890.Value" to="3450.Color"
+            - from="3160.Index" to="3360.Index"
+            - from="3160.Seed" to="3360.Seed"
+            - from="3160.Energy" to="3670.Energy"
+            - from="3160.Bass" to="3490.Bass"
+            - from="3160.Mid" to="3490.Mid"
+            - from="3160.Treble" to="3670.Treble"
+            - from="3160.Beat" to="3670.Beat"
+            - from="3160.Reaction" to="3670.Reaction"
+            - from="3160.Turn" to="3440.Turn"
+            - from="3160.Flow" to="3440.Flow"
+            - from="3160.Style" to="3410.Style"
+            - from="3160.Style" to="3550.Style"
+            - from="3160.Style" to="3670.Style"
+            - from="3160.Variation" to="3360.Variation"
+            - from="3160.Variation" to="3440.Variation"
+            - from="3160.Duet" to="3630.Duet"
+            - from="3360.Value" to="3490.Random"
+            - from="3360.Value" to="3550.Random"
+            - from="3360.Value" to="3670.Random"
+            - from="3360.Value" to="3760.Random"
+            - from="3410.Value" to="3760.Weights"
+            - from="3440.Result" to="3490.Phase"
+            - from="3490.Value" to="3170.Position"
+            - from="3490.Value" to="3550.Position"
+            - from="3490.Value" to="3600.Position"
+            - from="3550.Value" to="3170.Size"
+            - from="3600.Value" to="3630.Position"
+            - from="3630.Value" to="3670.Quiet"
+            - from="3670.Value" to="3800.Radiance"
+            - from="3760.Value" to="3800.Tint"
+            - from="3800.Value" to="3170.Color"
         }
     }
-    - id=1070 kind="function" math_expression="fract(sin(vec3(Index * 0.731 + Seed * 0.113, Index * 0.593 + Seed * 0.317, Index * 0.419 + Seed * 0.713)) * vec3(4375.585, 2257.145, 1964.267))" expression_mode=1 entry_id=50000
-    - id=1260 kind="function" math_expression="vec3(590 + Fraction * 960 + (Random.x - 0.5) * (180 + Fraction * 80 + Energy * 95) + sin(Clock * 0.21 + Fraction * 15 + Random.y * 6.2831853) * (26 + Mid * 48) + (Beat * 38 + Reaction * 100) * (0.4 + Random.x), Fraction * 6.6 + Arm * 6.2831853 + Flow * (0.26 - Fraction * 0.12) + Turn * (0.5 + Fraction * 0.25) + (Random.y - 0.5) * (0.28 + Fraction * 0.22) + sin(Fraction * 12 + Clock * 0.14 + Random.z * 2) * (0.10 + Mid * 0.12), (Random.z - 0.5) * (260 + Fraction * 260 + Bass * 180) + sin(Fraction * 9 + Flow * 0.37 + Random.y * 6.2831853) * (65 + Bass * 120 + Reaction * 65))" expression_mode=1 entry_id=52000
-    - id=1450 kind="function" math_expression="vec3(Orbit.x * (cos(Orbit.y) * 0.94 + sin(Orbit.y) * 0.12), Orbit.x * (sin(Orbit.y) * 0.81 - cos(Orbit.y) * 0.20) + 38, -1140 + Orbit.x * sin(Orbit.y) * 0.31 + Orbit.z - Chapter * 8)" expression_mode=1 entry_id=54000
-    - id=1560 kind="function" math_expression="mix(0.22, 1, smoothstep(0.80, 1.65, max(abs(Position.x) / 130, abs(Position.y - 20) / 250) * 1080 / max(1080 - Position.z, 1)))" expression_mode=1 entry_id=56000
-    - id=1670 kind="function" math_expression="mix(mix(mix(vec3(0.18, 0.95, 1.30), vec3(0.68, 0.20, 1.20), 0.5 + 0.5 * sin(Random.x * 6.2831853 + Chapter * 0.42)), vec3(1.35, 0.98, 0.46), step(0.958, Random.y)), vec3(1.10, 1.25, 1.35), step(0.986, Random.z))" expression_mode=1 entry_id=58000
-    - id=1850 kind="function" math_expression="(0.24 + 0.30 * Random.z * Random.z + Energy * 0.055 + Bass * 0.025 + Treble * 0.018 + Beat * 0.012 + Reaction * 0.025) * Quiet" expression_mode=1 entry_id=60000
-    - id=2040 kind="function" math_expression="(0.86 + 0.22 * Random.x + 0.16 * step(0.988, Random.y)) * max(0.8, (1080 - Position.z) / 2300)" expression_mode=1 entry_id=62000
-    - id=2170 kind="function" math_expression="vec4(Tint.x * Radiance, Tint.y * Radiance, Tint.z * Radiance, 1)" expression_mode=1 entry_id=64000
-    - id=2310 kind="function" math_expression="vec3((Random.x - 0.5) * 5700 + sin(Flow * 0.16 + Turn * 0.22 + Random.z * 6.2831853) * (65 + Mid * 50), (Random.y - 0.5) * 3600 + cos(Flow * 0.13 + Random.x * 6.2831853) * (55 + Bass * 55), -600 - Random.z * 2600 + sin(Clock * 0.09 + Random.y * 6.2831853) * 45)" expression_mode=1 entry_id=66000
-    - id=2490 kind="function" math_expression="(0.18 + 0.32 * Random.z * Random.z + Treble * 0.015 + Beat * 0.008 + Reaction * 0.015) * Quiet" expression_mode=1 entry_id=68000
-    - id=2650 kind="function" math_expression="(0.70 + 0.48 * Random.x * Random.x + 0.22 * step(0.995, Random.y)) * (1080 - Position.z) / 2200" expression_mode=1 entry_id=70000
-    - id=2920 kind="function" math_expression="fract(Index * 0.61803398875 + 0.5)" expression_mode=1 entry_id=72000
-    - id=2980 kind="function" math_expression="fract(Index * 0.5)" expression_mode=1 entry_id=74000
+    - id=3840 kind="function" math_expression="fract(sin(vec3(Index * 0.731 + Seed * 0.113 + Variation * 0.017, Index * 0.593 + Seed * 0.317 + Variation * 0.029, Index * 0.419 + Seed * 0.713 + Variation * 0.043)) * vec3(4375.585, 2257.145, 1964.267))" expression_mode=1 entry_id=100000
+    - id=3860 kind="function" math_expression="vec4(1 - smoothstep(0, 1, min(abs(Style), 4 - abs(Style))), 1 - smoothstep(0, 1, min(abs(Style - 1), 4 - abs(Style - 1))), 1 - smoothstep(0, 1, min(abs(Style - 2), 4 - abs(Style - 2))), 1 - smoothstep(0, 1, min(abs(Style - 3), 4 - abs(Style - 3))))" expression_mode=1 entry_id=110000
+    - id=3880 kind="function" math_expression="vec3((Random.x - 0.5) * 3400 + sin(Random.y * 7 + Phase * 0.23) * (45 + Mid * 70), (Random.y - 0.5) * 2000 + sin(Random.x * 9 + Phase * 0.19) * (140 + Bass * 130), -1700 + floor(Random.z * 5) * 165 + sin(Random.x * 10 + Phase * 0.21 + floor(Random.z * 5)) * (230 + Mid * 130 + Reaction * 80) + (fract(Random.z * 5) - 0.5) * 50)" expression_mode=1 entry_id=120000
+    - id=3900 kind="function" math_expression="vec3(430 + Random.y * 1230 + sin(Random.x * 37.6991118 + Phase * 0.18) * (110 + Bass * 130 + Reaction * 70), Random.x * 6.2831853 + Phase * 0.11 + sin(Random.y * 4 + Phase * 0.13) * (0.08 + Mid * 0.1), -1550 + sin(Random.y * 3.1415927) * 480 + cos(Random.x * 37.6991118 + Phase * 0.18) * 190 + (Random.z - 0.5) * 120)" expression_mode=1 entry_id=130000
+    - id=3920 kind="function" math_expression="vec3(cos(Shell.y) * Shell.x, sin(Shell.y) * Shell.x * 0.79, Shell.z + sin(Shell.y) * Shell.x * 0.14)" expression_mode=1 entry_id=140000
+    - id=3940 kind="function" math_expression="vec3((Random.x - 0.5) * 3550 + sin(Phase * 0.14 + Random.y * 4) * (55 + Mid * 40), -810 + floor(Random.y * 11) * 162 + sin(Random.x * 8 + floor(Random.y * 11) * 0.63 + Phase * 0.22) * (95 + Bass * 100 + Reaction * 70) + (fract(Random.y * 11) - 0.5) * 34, -1550 + cos(Random.x * 5 + Random.y * 4 + Phase * 0.16) * 470 + (Random.z - 0.5) * 100)" expression_mode=1 entry_id=150000
+    - id=3960 kind="function" math_expression="vec3(860 + sin(Random.x * 18.8495559 + Phase * 0.19) * (260 + Bass * 100) + cos(Random.y * 6.2831853) * (65 + Mid * 70), Random.x * 6.2831853 + Phase * 0.09 + floor(Random.z * 3) * 2.0943951, -1550 + cos(Random.x * 18.8495559 + Phase * 0.19) * 470 + sin(Random.y * 6.2831853) * (100 + Reaction * 110) + (fract(Random.z * 3) - 0.5) * 40)" expression_mode=1 entry_id=160000
+    - id=3980 kind="function" math_expression="vec3(cos(Orbit.y) * Orbit.x * 1.42, sin(Orbit.y) * Orbit.x * 0.88, Orbit.z + sin(Orbit.y) * 160)" expression_mode=1 entry_id=170000
+    - id=4000 kind="function" math_expression="Aurora * Weights.x + Petal * Weights.y + Dune * Weights.z + Orbit * Weights.w" expression_mode=1 entry_id=180000
+    - id=4020 kind="function" math_expression="vec3((Position.x - 90) * 1080 / max(1080 - Position.z, 1) + 90, (Position.y - 50) * 1080 / max(1080 - Position.z, 1) + 50, 0)" expression_mode=1 entry_id=190000
+    - id=4040 kind="function" math_expression="mix(0.12, 1, smoothstep(0.78, 1.65, max(mix(abs(Position.x), abs(abs(Position.x) - 254), Duet) / 148, abs(Position.y - 20) / 268)))" expression_mode=1 entry_id=200000
+    - id=4060 kind="function" math_expression="mix(vec3(0.12, 0.94, 0.77), vec3(0.53, 0.20, 0.93), Random.x) * Weights.x + mix(vec3(1.12, 0.46, 0.13), vec3(0.93, 0.20, 0.49), Random.x) * Weights.y + mix(vec3(0.10, 0.43, 1.15), vec3(0.70, 1.02, 1.10), Random.x) * Weights.z + mix(vec3(0.66, 0.27, 1.15), vec3(0.19, 1.02, 0.69), Random.x) * Weights.w" expression_mode=1 entry_id=210000
+    - id=4080 kind="function" math_expression="(0.075 + 0.11 * Random.z * Random.z + Energy * 0.035 + Treble * 0.012 + Beat * 0.01 + Reaction * 0.026) * Quiet * (0.88 + 0.12 * cos(Style * 3.1415927) * cos(Style * 3.1415927))" expression_mode=1 entry_id=220000
+    - id=4100 kind="function" math_expression="(1.45 + 0.46 * Random.x + 0.16 * Random.y * Random.y) * max(0.75, (1080 - Position.z) / 2300) * (0.94 + 0.06 * cos(Style * 3.1415927) * cos(Style * 3.1415927))" expression_mode=1 entry_id=230000
+    - id=4120 kind="function" math_expression="vec4(Tint.x * Radiance, Tint.y * Radiance, Tint.z * Radiance, 1)" expression_mode=1 entry_id=240000
+    - id=4140 kind="function" math_expression="vec3((Random.x - 0.5) * 5900 + sin(Phase * 0.10 + Random.z * 6.2831853) * (90 + Mid * 60), (Random.y - 0.5) * 3650 + cos(Phase * 0.08 + Random.x * 6.2831853) * (70 + Bass * 55), -750 - Random.z * 2700 + sin(Phase * 0.065 + Random.y * 6.2831853) * 65)" expression_mode=1 entry_id=250000
+    - id=4160 kind="function" math_expression="Flow + Turn * 0.6 + Variation * 0.0017" expression_mode=1 entry_id=260000
 }

@@ -1,0 +1,12 @@
+// Four cyclic scene families: aurora, petals, dunes and orbital lattice.
+// Set a positive seed before Begin for a reproducible startup without save writes.
+component StageState {
+    style: number
+    seed: number
+    revision: int
+    target: int
+    clock: number
+    transition: number
+    // 1 startup, 2 chapter, 3 resumed signal, 4 sustained spectrum, 5 phrase/source.
+    reason: int
+}

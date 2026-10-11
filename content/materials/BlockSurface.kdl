@@ -1,0 +1,108 @@
+version 3
+name "BlockSurface"
+domain "material"
+id_counter 7000
+description "Lit block faces retain their piece color. Stage finish controls roughness, metallic reflection and a restrained emission; beat motion is authored on the four active transforms."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - id=100 type="Shader Surface Output"
+            - {
+                id 200
+                type "Shader Parameter"
+                reference_id 1
+                reference_name "Tint"
+                outputs {
+                    Value {
+                        type "struct"
+                        type_name "ShaderVec3"
+                        default x=0.44 y=0.86 z=0.94
+                    }
+                }
+            }
+            - {
+                id 300
+                type "Shader Parameter"
+                reference_id 2
+                reference_name "Finish"
+                outputs {
+                    Value {
+                        type "struct"
+                        type_name "ShaderVec3"
+                        default x=0.24 y=0.18 z=0.16
+                    }
+                }
+            }
+            - {
+                id 400
+                type "Behavior Expression"
+                reference_name "Tint.xyz"
+                inputs {
+                    Tint id=401 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=402 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 500
+                type "Behavior Expression"
+                reference_name "Tint.xyz * Finish.z"
+                inputs {
+                    Tint id=501 type="struct" type_name="ShaderVec3"
+                    Finish id=502 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=503 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 600
+                type "Behavior Expression"
+                reference_name "Finish.x"
+                inputs {
+                    Finish id=601 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=602 type="float"
+                }
+            }
+            - {
+                id 700
+                type "Behavior Expression"
+                reference_name "Finish.y"
+                inputs {
+                    Finish id=701 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=702 type="float"
+                }
+            }
+            - {
+                id 800
+                type "Shader Parameter"
+                reference_id 3
+                reference_name "Opacity"
+                outputs Value=1.0
+            }
+        }
+        (array)edges {
+            - from="200.Value" to="400.Tint"
+            - from="200.Value" to="500.Tint"
+            - from="300.Value" to="500.Finish"
+            - from="300.Value" to="600.Finish"
+            - from="300.Value" to="700.Finish"
+            - from="400.Result" to="100.Base Color"
+            - from="500.Result" to="100.Emission"
+            - from="600.Result" to="100.Roughness"
+            - from="700.Result" to="100.Metallic"
+            - from="800.Value" to="100.Opacity"
+        }
+    }
+    - id=1000 kind="function" math_expression="Tint.xyz" expression_mode=1 entry_id=1100
+    - id=2000 kind="function" math_expression="Tint.xyz * Finish.z" expression_mode=1 entry_id=2100
+    - id=3000 kind="function" math_expression="Finish.x" expression_mode=1 entry_id=3100
+    - id=4000 kind="function" math_expression="Finish.y" expression_mode=1 entry_id=4100
+}

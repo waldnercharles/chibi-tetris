@@ -8,6 +8,10 @@ behavior Environment {
     fields: entity[]
     lights: entity[]
     lives: number[]
+    retires: number[]
+    light_ages: number[]
+    light_peaks: number[]
+    light_delays: number[]
     cursors: entity[]
     sequences: int[] = [0, 0, 0]
     runs: int[] = [-1, -1, -1]
@@ -32,7 +36,11 @@ behavior Environment {
     visual_run: int = -1
     quality: int = -1
     was_moving := true
-    cue_width := 48
+    cue_point0 := vec3(0, 0, 10.5)
+    cue_point1 := vec3(0, 0, 10.5)
+    cue_point2 := vec3(0, 0, 10.5)
+    cue_point3 := vec3(0, 0, 10.5)
+    cue_delay := 0
 
     on Begin {
         world = get_global_variable("World")
@@ -44,29 +52,65 @@ behavior Environment {
             field := await spawn(ReactionField)
             fields = array_add(fields, field)
             lives = array_add(lives, 0)
+            retires = array_add(retires, -1)
         }
         for i in 0..7 {
             light := await spawn(ReactionLight)
             lights = array_add(lights, light)
+            light_ages = array_add(light_ages, 1)
+            light_peaks = array_add(light_peaks, 0)
+            light_delays = array_add(light_delays, 0)
         }
         ready = true
     }
 
-    function Light(x: number, y: number, strength: number, hue: number) {
+    // Lights use the same delayed arrival as contact geometry. A live light is
+    // never moved to another impact; its intensity reaches zero before reuse.
+    function Glow(position: CF_V3, strength: number, hue: number, delay: number) {
         if world.Session.effects == 0 || world.Session.reduced_motion {
             return
         }
+        available := false
+        for offset in 0..7 {
+            candidate := (light_slot + offset) % 8
+            if get(light_ages, candidate) >= 0.3 + get(light_delays, candidate) {
+                light_slot = candidate
+                available = true
+                break
+            }
+        }
+        if !available {
+            return
+        }
         light := get(lights, light_slot)
-        light_slot = (light_slot + 1) % 8
-        light.Transform = vec2(x, 35)
-        light.PointLight.elevation = y
-        light.PointLight.intensity = min(2.4, strength * 2)
-        light.PointLight.color = cast<uint>(69) << 24 | cast<uint>(186) << 16 | cast<uint>(255) << 8 | cast<uint>(255)
+        light.Transform = vec2(position.x, position.z)
+        light.PointLight.elevation = position.y
+        light.PointLight.radius = 64 + strength * 40
+        light.PointLight.intensity = 0
+        light.PointLight.color = cast<uint>(102) << 24 | cast<uint>(198) << 16 | cast<uint>(230) << 8 | cast<uint>(255)
         if hue > 0.5 {
-            light.PointLight.color = cast<uint>(184) << 24 | cast<uint>(65) << 16 | cast<uint>(255) << 8 | cast<uint>(255)
+            light.PointLight.color = cast<uint>(171) << 24 | cast<uint>(110) << 16 | cast<uint>(222) << 8 | cast<uint>(255)
         }
         if hue > 1.5 {
-            light.PointLight.color = cast<uint>(255) << 24 | cast<uint>(146) << 16 | cast<uint>(43) << 8 | cast<uint>(255)
+            light.PointLight.color = cast<uint>(246) << 24 | cast<uint>(147) << 16 | cast<uint>(69) << 8 | cast<uint>(255)
+        }
+        light_ages[light_slot] = 0
+        light_delays[light_slot] = delay
+        light_peaks[light_slot] = min(1.2, strength)
+        light_slot = (light_slot + 1) % 8
+    }
+
+    function Light(x: number, y: number, strength: number, hue: number) {
+        Glow(vec3(x, y, 8), strength, hue, 0)
+    }
+
+    // A mode change releases existing grains over 60ms instead of hiding them.
+    function Retire() {
+        for i in 0..95 {
+            field := get(fields, i)
+            if field.ParticleField3D.count > 0 && get(retires, i) < 0 {
+                retires[i] = 0.06
+            }
         }
     }
 
@@ -80,11 +124,10 @@ behavior Environment {
         turn_velocity = clamp(turn_velocity + direction * strength, -0.8, 0.8)
     }
 
-    // Patterns: sparks, dash, crescent, flowing wake, ripple, row, hold, brackets.
+    // Patterns: fracture, move edge, tangential turn, soft fall, contact,
+    // row release, hold, blocked edge, descending packets. Each field layers
+    // bright grains, a displaced soft wake and a few ballistic flecks on GPU.
     function Cue(pattern: int, x: number, y: number, direction: int, travel: int, strength: number, life: number, hue: number) {
-        // Reuse expired cues first; only retire the oldest visible cue if full.
-        oldest := slot
-        oldest_age := -1
         available := false
         for offset in 0..95 {
             candidate := (slot + offset) % 96
@@ -94,46 +137,58 @@ behavior Environment {
                 available = true
                 break
             }
-            age := item.ParticleField3D.time / max(get(lives, candidate), 0.01)
-            if age > oldest_age {
-                oldest = candidate
-                oldest_age = age
-            }
         }
         if !available {
-            slot = oldest
-            world.VisualState.cue_overwrites += 1
+            world.VisualState.cue_dropped += 1
+            return
         }
         field := get(fields, slot)
         quiet := world.Session.reduced_motion || world.Session.effects == 0
-        count: int = 64
-        if strength >= 0.4 {
-            count = 256
-        }
-        if strength >= 0.8 {
-            count = 768
-        }
-        if pattern == 3 && strength >= 0.4 {
-            count = 1024
+        count: int = 24
+        match (pattern) {
+            case 0 {
+                count = 80
+            }
+            case 1 {
+                count = 16
+            }
+            case 2 {
+                count = 48
+            }
+            case 3 {
+                count = 20
+            }
+            case 4 {
+                count = 56
+            }
+            case 5 {
+                count = 112
+            }
+            case 6 {
+                count = 32
+            }
+            case 7 {
+                count = 12
+            }
+            case 8 {
+                count = 112
+            }
         }
         if world.Session.effects == 1 {
-            count = max(24, count / 2)
+            count = max(8, count / 2)
         }
         if quiet {
-            count = 24
-            life = 0.08
+            count = 8
+            life = 0.14
+            cue_delay = 0
         }
-        field.Transform3D.position = vec3(x, y, 22)
+        field.Transform3D.position = vec3(x, y, 0)
         field.ParticleField3D.count = count
         field.ParticleField3D.seed += 37
         field.ParticleField3D.time = 0
-        // Adjacent solid grains overlap along the curved wake at either quality.
-        field.Geometry3D.height = 1
-        if pattern == 3 && !quiet {
-            field.Geometry3D.height = 1.8
-            if world.Session.effects == 1 {
-                field.Geometry3D.height = 3.2
-            }
+        field.Geometry3D = { primitive: 5, width: 1, height: 1, depth: 0.8 }
+        if pattern == 8 && !quiet {
+            field.Geometry3D.height = 2.4
         }
         set_material_parameter(field, "Pattern", cast<number>(pattern))
         set_material_parameter(field, "Direction", cast<number>(direction))
@@ -142,56 +197,72 @@ behavior Environment {
         set_material_parameter(field, "Life", life)
         set_material_parameter(field, "Quiet", cast<number>(ReactionRules.Flag(quiet)))
         set_material_parameter(field, "Hue", hue)
-        set_material_parameter(field, "Width", cue_width)
-        lives[slot] = life
+        set_material_parameter(field, "Point0", cue_point0)
+        set_material_parameter(field, "Point1", cue_point1)
+        set_material_parameter(field, "Point2", cue_point2)
+        set_material_parameter(field, "Point3", cue_point3)
+        set_material_parameter(field, "Delay", cue_delay)
+        set_material_parameter(field, "Fade", 1)
+        lives[slot] = cue_delay + life
+        retires[slot] = -1
         slot = (slot + 1) % 96
     }
 
     function BoardEvent(board: entity, record: entity) {
-        cue_width = max(24, record.ReactionEvent.width)
         kind := record.ReactionEvent.kind
         x := record.ReactionEvent.x
         piece_x := x + record.ReactionEvent.center_offset
         y := record.ReactionEvent.y
         amount := record.ReactionEvent.amount
         direction := record.ReactionEvent.direction
+        origin := vec3(x, y, 0)
+        cue_point0 = record.ReactionEvent.point0 - origin
+        cue_point1 = record.ReactionEvent.point1 - origin
+        cue_point2 = record.ReactionEvent.point2 - origin
+        cue_point3 = record.ReactionEvent.point3 - origin
+        cue_delay = 0
         if record.ReactionEvent.result == 0 {
-            Cue(7, x, y, direction, 0, 0.08, 0.1, 2)
+            Cue(7, x, y, direction, 0, 0.06, 0.16, 2)
             return
         }
         match (kind) {
             case 1 {
-                Cue(1, x, y, direction, 0, 0.03, 0.1, 0)
+                Cue(1, x, y, direction, 0, 0.04, 0.18, 0)
                 Push(0.12, cast<number>(direction))
             }
             case 2 {
-                Cue(2, x, y, direction, 0, 0.1, 0.12, 1)
+                Cue(2, x, y, direction, 0, 0.16, 0.28, 0.25)
                 Push(0.22, cast<number>(direction) * 1.5)
             }
             case 3 {
-                Cue(3, piece_x, y, 1, 2, 0.12, 0.22, 0)
+                Cue(3, x, y, 1, 0, 0.06, 0.18, 0)
                 Push(0.1, 0)
             }
             case 4 {
-                Cue(3, piece_x, y, 1, max(1, amount), 0.14, 0.22, 0)
+                Cue(3, x, y, 1, amount, 0.04, 0.18, 0)
                 Push(0.07, 0)
             }
             case 5 {
-                Cue(4, piece_x, y, 1, 0, 0.08, 0.18, 0)
+                Cue(4, x, y, 1, 0, 0.06, 0.18, 0)
             }
             case 6 {
-                Cue(3, piece_x, y, 1, amount, 0.65, 0.38, 0)
-                Cue(4, piece_x, y - amount * 24, 1, 0, 0.5, 0.4, 0.2)
-                Light(piece_x, y - amount * 24, 0.7, 0)
+                quiet := world.Session.reduced_motion || world.Session.effects == 0
+                if !quiet && amount > 0 {
+                    Cue(8, x, y, 1, amount, 0.5, 0.26, 0)
+                    cue_delay = 0.095
+                }
+                Cue(4, x, y - amount * 24, 1, 0, 0.45, 0.34, 0.1)
+                low := min(min(cue_point0.y, cue_point1.y), min(cue_point2.y, cue_point3.y))
+                front := (cue_point0.z + cue_point1.z + cue_point2.z + cue_point3.z) * 0.25
+                Glow(vec3(piece_x, y + low - amount * 24 - 10.7, front + 2), 0.75, 0, cue_delay)
                 Push(0.68, 0.22)
             }
             case 7 {
-                Cue(6, x, y, -1, 0, 0.2, 0.14, 1)
+                Cue(6, x, y, -1, 0, 0.13, 0.24, 0.4)
                 Push(0.2, -1)
             }
             case 8 {
-                Cue(4, piece_x, y, 1, 0, 0.2, 0.12, 0.2)
-                Light(piece_x, y, 0.2, 0)
+                Cue(4, x, y, 1, 0, 0.14, 0.24, 0.1)
                 Push(0.14, 0)
             }
             case 9 {
@@ -202,48 +273,48 @@ behavior Environment {
                 mask := record.ReactionEvent.detail
                 for row in 0..21 {
                     if (mask >> row & 1) != 0 {
-                        Cue(5, center, 228 - (row - 2) * 24, 1, 0, 0.5 + cast<number>(amount) * 0.12, 0.22, 0.25)
+                        Cue(5, center, 228 - (row - 2) * 24, 1, 0, 0.28 + cast<number>(amount) * 0.06, 0.32, 0.15)
                     }
                 }
-                Light(x, y, 0.5 + cast<number>(amount) * 0.2, 0)
+                Glow(vec3(piece_x, y, 10.5), 0.35 + cast<number>(amount) * 0.08, 0, 0)
                 Push(0.4 + cast<number>(amount) * 0.12, 0.4)
             }
             case 10 {
-                for arc in 0..3 {
-                    if arc < amount {
-                        Cue(4, x, y + arc * 16, 1, 0, 0.4, 0.24, 1)
-                    }
-                }
+                // The row already owns its release. Combo adds light and force.
+                Glow(vec3(piece_x, y, 10.5), 0.35, 0.4, 0.04)
                 Push(0.25, 0.5)
             }
             case 11 {
-                Cue(0, x, y, -1, 0, 0.85, 0.3, 2)
-                Light(x, y, 0.9, 2)
+                Cue(0, x, y, -1, 0, 0.65, 0.42, 2)
+                Glow(vec3(piece_x, y, 10.5), 0.6, 2, 0)
                 Push(0.7, -0.4)
             }
             case 12 {
-                Cue(0, x, 0, 1, 0, 1, 0.4, 0.4)
-                Light(x, 0, 1, 0)
+                Cue(0, x, y, 1, 0, 0.7, 0.46, 0.2)
+                Glow(vec3(piece_x, y, 10.5), 0.65, 0, 0)
                 Push(1, 0.6)
             }
         }
     }
 
     function SessionEvent(record: entity) {
-        cue_width = 48
+        cue_point0 = vec3(-6, 0, 10.5)
+        cue_point1 = vec3(-2, 0, 10.5)
+        cue_point2 = vec3(2, 0, 10.5)
+        cue_point3 = vec3(6, 0, 10.5)
+        cue_delay = 0
         kind := record.ReactionEvent.kind
-        hue := 0.2
         if record.ReactionEvent.result == 0 {
-            Cue(7, 180, 270, 1, 0, 0.12, 0.1, 2)
+            Cue(7, 180, 270, 1, 0, 0.04, 0.16, 2)
             return
         }
         if kind == 15 || kind == 16 || kind == 17 || kind == 19 {
-            Cue(4, -170, 0, 1, 0, 0.85, 0.28, 1)
-            Cue(4, 170, 0, -1, 0, 0.85, 0.28, 0)
+            Cue(4, -140, -228, 1, 0, 0.3, 0.3, 0.2)
+            Cue(4, 140, -228, -1, 0, 0.3, 0.3, 0)
             Push(0.7, 0.3)
             return
         }
-        Cue(2, 180, 270, 1, 0, 0.16, 0.12, hue)
+        Cue(1, 180, 270, 1, 0, 0.05, 0.18, 0.2)
     }
 
     function Events() {
@@ -289,7 +360,6 @@ behavior Environment {
         set_material_parameter(field, "Treble", world.VisualState.field_bands.z)
         set_material_parameter(field, "Beat", world.VisualState.field_response.y)
         set_material_parameter(field, "Reaction", world.VisualState.flow_energy)
-        set_material_parameter(field, "Chapter", world.VisualState.field_response.z)
         set_material_parameter(field, "Flow", flow)
         set_material_parameter(field, "Turn", turn)
     }
@@ -301,15 +371,7 @@ behavior Environment {
         delta := min(dt, 0.05)
         if visual_run != world.Session.run {
             visual_run = world.Session.run
-            for i in 0..95 {
-                field := get(fields, i)
-                field.ParticleField3D.count = 0
-                lives[i] = 0
-            }
-            for i in 0..7 {
-                light := get(lights, i)
-                light.PointLight.intensity = 0
-            }
+            Retire()
             impulse = 0
         }
         effects := world.Session.effects
@@ -319,10 +381,7 @@ behavior Environment {
             time += delta
         }
         if !moving && was_moving {
-            for i in 0..95 {
-                field := get(fields, i)
-                field.ParticleField3D.count = 0
-            }
+            Retire()
         }
         was_moving = moving
         if quality != effects {
@@ -357,6 +416,14 @@ behavior Environment {
             field := get(fields, i)
             if field.ParticleField3D.count > 0 {
                 field.ParticleField3D.time += delta
+                if get(retires, i) >= 0 {
+                    retires[i] = max(0, get(retires, i) - delta)
+                    fade := get(retires, i) / 0.06
+                    set_material_parameter(field, "Fade", fade * fade * (3 - 2 * fade))
+                    if get(retires, i) == 0 {
+                        field.ParticleField3D.count = 0
+                    }
+                }
                 if field.ParticleField3D.time >= get(lives, i) {
                     field.ParticleField3D.count = 0
                 }
@@ -364,10 +431,15 @@ behavior Environment {
         }
         for i in 0..7 {
             light := get(lights, i)
-            light.PointLight.intensity = max(0, light.PointLight.intensity - delta * 9)
+            light_ages[i] += delta
+            age := max(0, get(light_ages, i) - get(light_delays, i))
+            attack := clamp(age / 0.025, 0, 1)
+            release := clamp((0.3 - age) / 0.275, 0, 1)
+            intensity := get(light_peaks, i) * attack * attack * (3 - 2 * attack) * release * release * (3 - 2 * release)
             if !moving {
-                light.PointLight.intensity = 0
+                light_peaks[i] = max(0, get(light_peaks, i) - delta * 10)
             }
+            light.PointLight.intensity = intensity
         }
         Events()
         // Audio onsets release one pulse, then rearm after the envelope falls.
