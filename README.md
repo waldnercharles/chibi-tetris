@@ -15,6 +15,8 @@ The rules include seven-piece bags, SRS quarter turns, hold, five previews, a gh
 
 [Published browser release](https://waldnercharles.github.io/chibi-tetris/).
 
+[Edit Stillwater in the browser](https://waldnercharles.github.io/chibi-tetris/dev/). Add `?dev` to the play URL to open the same editor.
+
 The native export is `dist/Stillwater.app` on macOS. Open it normally. The local browser export is `dist/web`; serve it with `make serve`, then open [the local game](http://127.0.0.1:18769). Exports are generated locally and kept out of the source branch.
 
 | Action | Player one | Player two | Controller |
@@ -80,9 +82,35 @@ git push -u origin HEAD
 make publish
 ```
 
-`make publish` checks the remote source revision and pinned SDK/player, exports the game, preserves dependency licenses, writes `deployment.json` and `SHA256SUMS`, and pushes the export. It removes its temporary checkout on exit. Source pushes alone do not update the game.
+`make publish` checks the remote source revision and pinned SDK/player, exports the game and its `/dev/` editor, preserves dependency licenses, writes `deployment.json` and `SHA256SUMS`, and pushes the export. It removes its temporary checkout on exit. Source pushes alone do not update the game.
+
+The editor must use the game's exact engine revision. Publishing downloads and verifies the matching reusable Studio package. A feature engine without a matching public Studio package uses the game repository's `web-editor-<engine revision>` release, containing `studio.json` and the archive it names. `EDITOR=/path/to/editor` can select a locally built matching package. The manifest records both clean source revisions and the archive checksum. Projects with prototype `includes` also require the editor's `capabilities.prototype_includes` flag. Projects with WAV or OGG sound assets require `capabilities.project_audio`.
+
+The **Publish game editor** workflow refreshes `/dev/` after successful Pages deployments, so older source branches that publish only a player still receive an editor for their deployed source revision. It can also be run manually, or locally with `make publish-dev`. It preserves the deployed game and reads its `deployment.json`; it never substitutes source from a different release. Editor workspaces save locally and are isolated by source revision.
+
+In the pinned editor, edit prototypes using `includes` and their composed dependencies in the Text Editor. Inspector saves report an error and preserve their authored source. Changes to child definitions or entity-reference paths require reopening the project; root scalar edits update the live scene. Sound-file changes also require reopening the project.
 
 Wait for the repository's Pages deployment to finish. `make verify-published` uses the engine's 60-second production supervisor to compare the public revision, checksum manifest, game and player assets with the published branch. Then open the public URL and check music selection, movement/drop and Duet play in a bounded browser session. Publication is complete only after those checks pass.
+
+### Reuse for another repo or project folder
+
+The reusable workflow accepts a project folder and a folder within the deployed site. A repository that already publishes a player and `deployment.json` to `gh-pages` can call it with:
+
+```yaml
+jobs:
+  editor:
+    permissions:
+      contents: write
+      pages: write
+    uses: waldnercharles/chibi-tetris/.github/workflows/dev.yml@main
+    with:
+      project-path: projects/tetris
+      site-path: tetris
+```
+
+Use `.` for a standalone game. Each project owns its `toolchain.json`; each deployed folder owns its `deployment.json`. The local assembly helper also accepts explicit project, site and installed editor directories: `bash tools/assemble-dev.sh PROJECT_ROOT SITE EDITOR_DIR`.
+
+For a future combined examples site, use `projects/<name>` for source and `<name>/` plus `<name>/dev/` for the published routes. Assemble all selected projects before one publishing commit. This keeps each game's engine pin and provenance explicit while allowing one Pages deployment. A shared workflow avoids copying the publishing implementation into a GitHub template; no repository moves are needed to adopt it.
 
 ## Verify and edit
 

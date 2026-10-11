@@ -10,12 +10,16 @@ else
 TEST_LINK := -Wl,--gc-sections
 endif
 
-.PHONY: test test-build
+.PHONY: test test-build test-publishing
 test-build: $(TEST_BINARY)
 
-$(TEST_BINARY): tests/main.c $(ENGINE)/third_party/pico_headers/pico_unit.h $(ENGINE)/third_party/yyjson/yyjson.c
+$(TEST_BINARY): tests/main.c tests/publishing.h $(ENGINE)/third_party/pico_headers/pico_unit.h $(ENGINE)/third_party/yyjson/yyjson.c
 	mkdir -p build
 	$(CC) $(TEST_FLAGS) $(TEST_INCLUDES) tests/main.c $(ENGINE)/third_party/yyjson/yyjson.c $(TEST_LINK) -o $@
 
 test: test-build
 	STILLWATER_CTL="$(CTL)" STILLWATER_PROJECT="$(CURDIR)" python3 "$(ENGINE)/tools/test_policy.py" short "$(CURDIR)/$(TEST_BINARY)"
+
+test-publishing: test-build
+	python3 -c 'import runpy, sys; sys.exit(runpy.run_path(sys.argv[1])["run_commands"]([[sys.argv[2], "--publishing", sys.argv[3]]]))' \
+		"$(ENGINE)/tools/test_policy.py" "$(CURDIR)/$(TEST_BINARY)" "$(CURDIR)"

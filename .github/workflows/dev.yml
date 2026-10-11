@@ -1,0 +1,50 @@
+name: Publish game editor
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    # GitHub's generated Pages workflow exposes different run and workflow names.
+    workflows: [pages-build-deployment, pages build and deployment]
+    types: [completed]
+  workflow_call:
+    inputs:
+      project-path:
+        type: string
+        default: .
+      site-path:
+        type: string
+        default: .
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: publish-game-editor
+  cancel-in-progress: false
+
+jobs:
+  editor:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check out publishing tools
+        uses: actions/checkout@v4
+        with:
+          repository: waldnercharles/chibi-tetris
+          ref: main
+          path: .chibi/publisher
+      - name: Configure publishing identity
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Publish editor for the deployed game
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROJECT_PATH: ${{ inputs.project-path || '.' }}
+          SITE_PATH: ${{ inputs.site-path || '.' }}
+        run: bash .chibi/publisher/tools/publish-dev.sh "$PWD" "$PROJECT_PATH" "$SITE_PATH"
