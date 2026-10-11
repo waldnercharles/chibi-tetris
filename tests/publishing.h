@@ -38,7 +38,7 @@ static int publishing_count(const char *text, const char *needle)
     return count;
 }
 
-static void publishing_manifest(const char *engine)
+static void publishing_manifest(const char *engine, bool prototype_includes)
 {
     char manifest[512];
     snprintf(
@@ -47,11 +47,37 @@ static void publishing_manifest(const char *engine)
         "{\"format\":1,\"engine\":\"%s\",\"studio\":"
         "\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\","
         "\"archive\":\"editor.tar.gz\",\"sha256\":"
-        "\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}"
+        "\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"%"
+        "s}"
         "\n",
-        engine
+        engine,
+        prototype_includes ? ",\"capabilities\":{\"prototype_includes\":true}" : ""
     );
     publishing_write(publishing_editor, "studio.json", manifest);
+}
+
+static void publishing_commit()
+{
+    char *add[] = { "/usr/bin/git", "-C", publishing_repository,
+                    "add",          ".",  NULL };
+    assert(run(add, NULL, NULL) == 0);
+    char *commit[] = { "/usr/bin/git",
+                       "-C",
+                       publishing_repository,
+                       "-c",
+                       "user.name=Fixture",
+                       "-c",
+                       "user.email=fixture@example.invalid",
+                       "-c",
+                       "commit.gpgsign=false",
+                       "-c",
+                       "core.hooksPath=/dev/null",
+                       "commit",
+                       "--quiet",
+                       "-m",
+                       "Fixture",
+                       NULL };
+    assert(run(commit, NULL, NULL) == 0);
 }
 
 static int publishing_assemble(const char *root)
@@ -152,9 +178,9 @@ TEST_CASE(published_editor_nested_project)
 TEST_CASE(published_editor_rejects_mismatch_and_dirty_source)
 {
     char *before = publishing_read(publishing_site, "dev/project.json");
-    publishing_manifest("dddddddddddddddddddddddddddddddddddddddd");
+    publishing_manifest("dddddddddddddddddddddddddddddddddddddddd", false);
     REQUIRE(publishing_assemble(publishing_repository) != 0);
-    publishing_manifest(publishing_pin);
+    publishing_manifest(publishing_pin, false);
     publishing_write(publishing_repository, "content/Scene.kdl", "uncommitted\n");
     REQUIRE(publishing_assemble(publishing_repository) != 0);
     publishing_write(publishing_repository, "content/Scene.kdl", "name \"Scene\"\n");
@@ -165,6 +191,47 @@ TEST_CASE(published_editor_rejects_mismatch_and_dirty_source)
     free(before);
     free(after);
     REQUIRE(preserved);
+    return true;
+}
+
+TEST_CASE(published_editor_requires_prototype_includes)
+{
+    char nested[PATH_MAX], prototypes[PATH_MAX];
+    path_join(nested, publishing_repository, "games/Block Game");
+    path_join(prototypes, nested, "content/prototypes/layers");
+    char *directories[] = { "/bin/mkdir", "-p", prototypes, NULL };
+    REQUIRE(run(directories, NULL, NULL) == 0);
+    const char *source = "name \"World\"\n(array)includes \"Base\"\n";
+    publishing_write(prototypes, "World.kdl", source);
+    publishing_write(prototypes, "Base.kdl", "name \"Base\"\n");
+    /* Untracked prototypes are outside the committed publication. */
+    REQUIRE(publishing_assemble(nested) == 0);
+    publishing_commit();
+    /* A sibling project cannot require capabilities for this root. */
+    REQUIRE(publishing_assemble(publishing_repository) == 0);
+    char *before = publishing_read(publishing_site, "dev/project.json");
+    REQUIRE(publishing_assemble(nested) != 0);
+    char *after = publishing_read(publishing_site, "dev/project.json");
+    bool preserved = !strcmp(before, after);
+    free(before);
+    free(after);
+    REQUIRE(preserved);
+    publishing_manifest(publishing_pin, true);
+    REQUIRE(publishing_assemble(nested) == 0);
+    char archive[PATH_MAX], output[PATH_MAX];
+    path_join(archive, publishing_site, "dev/project.zip");
+    path_join(output, temporary, "included.kdl");
+    char *extract[] = { "/usr/bin/unzip",
+                        "-p",
+                        archive,
+                        "content/prototypes/layers/World.kdl",
+                        NULL };
+    REQUIRE(run(extract, NULL, output) == 0);
+    char *archived = publishing_read(temporary, "included.kdl");
+    bool unchanged = !strcmp(archived, source);
+    free(archived);
+    REQUIRE(unchanged);
+    publishing_manifest(publishing_pin, false);
     return true;
 }
 
@@ -210,27 +277,8 @@ static int publishing_main(const char *root)
                        "https://github.com/example/example-games.git",
                        NULL };
     assert(run(remote, NULL, NULL) == 0);
-    char *add[] = { "/usr/bin/git", "-C", publishing_repository,
-                    "add",          ".",  NULL };
-    assert(run(add, NULL, NULL) == 0);
-    char *commit[] = { "/usr/bin/git",
-                       "-C",
-                       publishing_repository,
-                       "-c",
-                       "user.name=Fixture",
-                       "-c",
-                       "user.email=fixture@example.invalid",
-                       "-c",
-                       "commit.gpgsign=false",
-                       "-c",
-                       "core.hooksPath=/dev/null",
-                       "commit",
-                       "--quiet",
-                       "-m",
-                       "Fixture",
-                       NULL };
-    assert(run(commit, NULL, NULL) == 0);
-    publishing_manifest(publishing_pin);
+    publishing_commit();
+    publishing_manifest(publishing_pin, false);
     publishing_write(publishing_editor, "chibi-studio.html", "<html><head></head><body><script>var Module={};</script><script src=chibi-default.js></script></body></html>\n");
     publishing_write(publishing_editor, "threads/chibi-studio.html", "<html><script>var Module = {};</script><script src=\"chibi-isolation.js\"></script></html>\n");
     const char *files[] = { "chibi-studio.js",
@@ -244,6 +292,7 @@ static int publishing_main(const char *root)
     publishing_write(publishing_site, "game.wasm", "player bytes\n");
     RUN_TEST_CASE(published_editor_root_and_repeat);
     RUN_TEST_CASE(published_editor_nested_project);
+    RUN_TEST_CASE(published_editor_requires_prototype_includes);
     RUN_TEST_CASE(published_editor_rejects_mismatch_and_dirty_source);
     pu_print_stats();
     if (pu_test_failed()) {

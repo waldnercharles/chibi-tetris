@@ -22,6 +22,16 @@ jq -e --arg engine "$engine" '.format == 1 and .engine == $engine and
     (.archive | type == "string" and test("^[A-Za-z0-9_.-]+\\.tar\\.gz$")) and
     (.sha256 | type == "string" and test("^[0-9a-f]{64}$"))' "$editor/studio.json" >/dev/null ||
     fail 'The editor manifest must match the committed engine pin.'
+# Match authored include nodes in this project's committed prototypes, including
+# nested folders. An engine pin alone does not establish Studio loader support.
+includes_status=0
+git -C "$repository" grep -q -E '(^|[;{])[[:space:]]*(\([^)]*\)[[:space:]]*)?(includes|"includes")([[:space:];{]|$)' \
+    "$revision" -- ":(glob)${prefix}content/prototypes/**/*.kdl" || includes_status=$?
+(( includes_status <= 1 )) || fail 'Could not inspect committed prototype includes.'
+if (( includes_status == 0 )); then
+    jq -e '.capabilities.prototype_includes == true' "$editor/studio.json" >/dev/null ||
+        fail 'The editor must declare capabilities.prototype_includes for this project.'
+fi
 for file in chibi-studio.html chibi-studio.js chibi-studio.wasm chibi-studio.data chibi-default.js; do
     [[ -f $editor/$file ]] || fail "Missing editor package file: $file"
 done
