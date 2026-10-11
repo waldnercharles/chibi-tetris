@@ -88,7 +88,7 @@ The editor must use the game's exact engine revision. Publishing downloads and v
 
 The **Publish game editor** workflow refreshes `/dev/` after successful Pages deployments, so older source branches that publish only a player still receive an editor for their deployed source revision. It can also be run manually, or locally with `make publish-dev`. It preserves the deployed game and reads its `deployment.json`; it never substitutes source from a different release. Editor workspaces save locally and are isolated by source revision.
 
-In the pinned editor, edit prototypes using `includes` in the Text Editor. Inspector saves report an error and preserve their authored source. Changes to child definitions or entity-reference paths require reopening the project; ordinary scalar edits update the live scene.
+In the pinned editor, edit prototypes using `includes` and their composed dependencies in the Text Editor. Inspector saves report an error and preserve their authored source. Changes to child definitions or entity-reference paths require reopening the project; root scalar edits update the live scene.
 
 Wait for the repository's Pages deployment to finish. `make verify-published` uses the engine's 60-second production supervisor to compare the public revision, checksum manifest, game and player assets with the published branch. Then open the public URL and check music selection, movement/drop and Duet play in a bounded browser session. Publication is complete only after those checks pass.
 
