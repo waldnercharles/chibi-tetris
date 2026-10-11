@@ -12,6 +12,15 @@ behavior CameraMotion {
         if world.Session.screen == 2 {
             return
         }
+        pan := 0
+        if world.Session.attract {
+            pan = -240
+        }
+        if world.Session.entering && !world.Session.reduced_motion {
+            progress := clamp((world.Session.intro_time - 0.15) / 1.75, 0, 1)
+            eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
+            pan = -240 * (1 - eased)
+        }
         x := 90
         y := 50
         z := 1080
@@ -27,7 +36,7 @@ behavior CameraMotion {
         cy := cos(yaw * 0.5)
         sx := sin(pitch * 0.5)
         cx := cos(pitch * 0.5)
-        self.Transform3D.position = vec3(x, y, z)
+        self.Transform3D.position = vec3(x + pan, y, z)
         self.Transform3D.rotation = { x: cy * sx, y: sy * cx, z: -sy * sx, w: cy * cx }
     }
 }

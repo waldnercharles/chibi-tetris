@@ -1,6 +1,6 @@
 # Completion status
 
-Stillwater's authored game now starts directly in a 3D Journey. The implementation includes four modes, saved progress, mesh text, procedural scenery and responses to measured music and successful player actions. The bounded game check passes ten C/pico_unit cases with 428 assertions against the integrated version 22 SDK. See [validation](validation.md) for the final toolchain, executed checks, captures and remaining limits.
+Stillwater opens with a live 3D demonstration beside music and mode controls. Explicit Play clears the demo through the shared row-clear effect, centers the camera and reveals a fresh player run. The implementation includes four modes, saved progress, mesh text, procedural scenery and responses to measured music and player actions. See [validation](validation.md) for the exact toolchain, executed checks, captures and remaining limits.
 
 ## Rules and modes
 
@@ -19,7 +19,7 @@ Source-level fixtures make additional assertions inside the authored runtime. Co
 
 The well, blocks, ghost, previews and text use 3D geometry. GPU particle fields form a deep spiral and star field that change with the chapter. Snapshot queues preserve the position and result of player actions, driving distinct pooled 3D cues. The lowest effects setting and reduced-motion option stop background motion and retain brief stationary confirmations.
 
-M switches between analysis of the real game output and external audio capture. Native capture needs a routed loopback device; browser capture needs the user's audio-sharing selection. Capture failure restores the bundled score. The three original music arrangements and twelve generated effects retain their documented provenance, level measurements and loop checks in [audio](audio.md).
+M requests external audio capture. Native capture needs a routed loopback device; browser capture needs the user's audio-sharing selection. Connecting a source waits for explicit Play. Capture failure leaves Play and retry available; Play chooses the bundled score when no stream is ready. The three original music arrangements and twelve generated effects retain their documented provenance, level measurements and loop checks in [audio](audio.md).
 
 Progress, best results and preferences use the SDK save service. Save failures appear as mesh text. Pause, results and settings controls remain inside the game scene. The [README](../README.md) lists the controls and build steps.
 

@@ -1,0 +1,53 @@
+behavior AttractRulesChecks {
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        grid := Rules.Empty()
+        flat := AttractRules.Evaluate(grid, 1, 0, 0)
+        tall := AttractRules.Evaluate(grid, 1, 1, 0)
+        Check(flat.valid && flat.landing == 20, "attract finds horizontal floor landing")
+        Check(tall.valid && tall.landing == 18, "attract finds vertical floor landing")
+        Check(flat.quality > tall.quality, "attract prefers a low even surface")
+        Check(flat.quality > -1000 && flat.quality < 1000, "attract quality is finite and bounded")
+        Check(identical(grid, Rules.Empty()), "attract evaluation leaves the empty grid unchanged")
+        wall := AttractRules.Evaluate(grid, 1, 0, -1)
+        Check(!wall.valid, "attract rejects a piece outside the wall")
+
+        for x in 4..9 {
+            grid = set_array_elem(grid, 210 + x, cast<int>(7))
+        }
+        complete := AttractRules.Evaluate(grid, 1, 0, 0)
+        bridge := AttractRules.Evaluate(grid, 1, 0, 1)
+        Check(complete.valid && complete.landing == 20, "attract fills the open end of a row")
+        Check(bridge.valid && bridge.landing == 19, "attract landing respects the existing stack")
+        Check(complete.quality > bridge.quality, "attract prefers a clear to covering empty cells")
+        Check(complete.quality == 4, "cleared row contributes no height or holes")
+        repeated := AttractRules.Evaluate(grid, 1, 0, 0)
+        Check(repeated.landing == complete.landing && repeated.quality == complete.quality, "attract evaluation is deterministic")
+        unchanged := true
+        for index in 0..219 {
+            expected: int = 0
+            if index >= 214 {
+                expected = 7
+            }
+            if get(grid, index) != expected {
+                unchanged = false
+            }
+        }
+        Check(unchanged, "attract evaluation leaves occupied cells and holes unchanged")
+
+        grid = set_array_elem(grid, 24, cast<int>(7))
+        blocked := AttractRules.Evaluate(grid, 1, 0, 3)
+        Check(!blocked.valid, "attract rejects a blocked spawn even when space lies below")
+        self.TestReport.done = true
+    }
+}

@@ -1,6 +1,7 @@
 version 1
 name "MotionChecks"
 (array)entities {
+    - name="Camera" prototype="Camera"
     - name="World" prototype="TestWorld"
     - {
         name "Board1"

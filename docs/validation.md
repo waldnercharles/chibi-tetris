@@ -1,5 +1,31 @@
 # Validation record
 
+## Attract mode, stable blocks and action trails — October 11, 2026
+
+The opening runs a real autoplayer beside compact audio and mode controls. Explicit Play releases the occupied demo rows through the existing line-clear effect, moves the camera to the board and reveals the HUD. Demo results do not advance player progress. The title, mode heading and chapter heading are removed from gameplay and results. Blocks share a small bevel, retain song-reactive finishes and have lower ordinary emission, rougher highlights and a narrower bloom radius.
+
+The reported dark checkerboard patches were reproduced in a fixed browser scene with the thinnest finish. A near-only A/B changed the camera near clip from 4 to 40 while both point and directional shadows stayed enabled. A sampled yellow face changed from 69 dark pixels out of 320 to zero; its median luminance remained approximately 145. The colored coat and opaque core were too close for the former camera depth precision. The authored motion regression guards a depth separation margin at the smallest preview scale and farthest viewing distance. It also checks the shared bevel, restrained idle emission and music-reactive opacity. No renderer or engine default changed.
+
+Move, rotate, hold and soft-drop reactions now leave longer, dimmer trails. Rotation follows the captured piece center. Hard drop has a compact 160 ms descent, contact fragments on exposed lower edges and a settling layer; the following lock event no longer duplicates the payoff. Ordinary grains receive partial scene lighting. Clear-layer counts and trajectories are unchanged. The [VFX research foundation](vfx-design-principles.md) records primary sources, practical design principles and limits; it is not yet an installed skill.
+
+| Check | Result |
+| --- | --- |
+| Attract and recovery | Four C cases / 35 dispatcher assertions plus 54 authored assertions; 7.97 seconds. |
+| Audio onboarding | Three cases / 43 assertions; 13.02 seconds. |
+| Motion and coating depth | One case / eight dispatcher assertions; 4.523 seconds. Eleven authored checks failed before the appearance and camera fixes. |
+| VFX and consumer | Two cases; 4.645 seconds under one shared deadline after the final size/opacity tuning. |
+| HUD and preview interactions | Six cases / 1,240 assertions; 56.675 seconds. |
+| Project validation | 111 assets, zero errors or warnings. |
+| Packaged macOS startup | Four hidden frames and three steps; 4.719 seconds under a 30-second deadline. |
+
+Every test command retained the 60-second production deadline. Review caught a same-run demo reset that rewound event serials and stopped subsequent effects; its regression failed before the queue fix. Coverage also includes external source loss during the clear transition, recovery without progress, a single explicit fallback start, connected-source preservation and actual text alpha during the HUD reveal. Authored assets and C sources are formatted. The unchanged pinned engine remains `287ff20417e43ca142d2a43807ce538a8287c098`.
+
+Native and web exports passed. The final browser candidate was exercised through attract play, the shared clear, centered play, rotation, hold, hard drop, independent Duet drops and pause. Frame captures show the drop packet arriving before contact grains and their softer tail. No checkerboard patches were observed, and console output contained only the existing font-loading information messages. At normal display size, 120 warmup frames followed by 2.5-second samples measured Journey at 58.80 FPS (16.7 ms median, 24.9 ms p95) and Duet at 58.80 FPS (16.7 ms median, 25.0 ms p95), with a 3134 × 2350 canvas, 1306 × 979 CSS and DPR 2.4. The earlier attract sample measured 58.80 FPS at 2560 × 1440 with a 16.7 ms median and 25.0 ms p95. These are short observations, not sustained-play guarantees. Publication and public browser play are verified again after the clean source commit.
+
+Diagnostic logs and images remain in ignored `build/piece-flicker` and `build/attract`; disposable diagnostic projects and web exports were removed.
+
+The game-wide aggregate remains incomplete from the previous revision and was not rerun or reconstructed. Full and quarantined native/render/Studio suites remain unexecuted. Completed external audio capture, service authentication, human listening and sustained cross-device performance are not established by these checks.
+
 ## Cosmic materials and lit particles — October 11, 2026
 
 Opaque graphite cores now sit beneath the colored block coats. Music changes coat opacity, roughness, metallic response and emission on both active and settled blocks. Four GPU compositions—nebula, accretion disk, cellular bloom and stellar current—morph over ten seconds; particle scale, rotation, opacity and light response vary with the composition. Surrounding solid facets were removed. Clear effects emit 2,656 instances per row across four independently timed layers.

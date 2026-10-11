@@ -27,13 +27,13 @@ The native export is `dist/Stillwater.app` on macOS. Open it normally. The local
 | Hold | C / Shift | R | Either shoulder |
 | Pause | P | P | Start |
 
-Press **Enter Play** for the bundled score, or **M Connect audio** to share music already playing in another tab. Select the music tab and enable audio in the browser's picker. A connected stream starts the game even when quiet. Browser and operating-system capture support varies; there is no service account sign-in inside the game.
+A live demonstration plays beside the opening controls. Choose a mode with **1–4** or click its label. Press **M Connect audio** to share music already playing in another tab, then select the music tab and enable audio in the browser's picker. Connection leaves you on this screen. **Enter Play** keeps a connected source, or uses the bundled score when no source is ready. Play clears the demonstration, centers the camera and reveals a fresh board. Browser and operating-system capture support varies; there is no service account sign-in inside the game.
 
-After music selection, these controls work inside the scene:
+These controls work inside the scene:
 
 | Action | Key |
 | --- | --- |
-| Start Journey / Endless / Forty lines / Duet | 1 / 2 / 3 / 4 |
+| Select a mode before Play; start Journey / Endless / Forty lines / Duet during play | 1 / 2 / 3 / 4 |
 | Pause or resume | P |
 | Resume when paused, restart after a result | Enter |
 | Restart the same run while paused or after a result | Backspace |

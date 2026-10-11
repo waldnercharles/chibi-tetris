@@ -23,19 +23,28 @@ description "A translucent blue backing with a broad quiet center for text and a
             - {
                 id 300
                 type "Behavior Expression"
-                reference_name "0.46 * (1 - smoothstep(0.52, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.52, 1, abs(UV.y * 2 - 1)))"
+                reference_name "Visibility * 0.46 * (1 - smoothstep(0.52, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.52, 1, abs(UV.y * 2 - 1)))"
                 inputs {
                     UV id=301 type="struct" type_name="ShaderVec2"
+                    Visibility id=303 type="float"
                 }
                 outputs {
                     Result id=302 type="float"
                 }
             }
+            - {
+                id 400
+                type "Shader Parameter"
+                reference_id 1
+                reference_name "Visibility"
+                outputs Value=1.0
+            }
         }
         (array)edges {
             - from="200.UV" to="300.UV"
             - from="300.Result" to="100.Opacity"
+            - from="400.Value" to="300.Visibility"
         }
     }
-    - id=10000 kind="function" math_expression="0.46 * (1 - smoothstep(0.52, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.52, 1, abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=11000
+    - id=10000 kind="function" math_expression="Visibility * 0.46 * (1 - smoothstep(0.52, 1, abs(UV.x * 2 - 1))) * (1 - smoothstep(0.52, 1, abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=11000
 }

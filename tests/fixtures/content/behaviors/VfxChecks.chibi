@@ -8,6 +8,11 @@ behavior VfxChecks {
     stars: entity
     packet: entity
     landing: entity
+    settling: entity
+    turning: entity
+    shifting: entity
+    holding: entity
+    falling: entity
     light: entity
     oldest: entity
     old_age := 0
@@ -35,6 +40,7 @@ behavior VfxChecks {
         ReactionRules.Initialize(second, 1)
         packet = world
         landing = world
+        settling = world
         light = world
         oldest = world
     }
@@ -99,6 +105,19 @@ behavior VfxChecks {
         return count
     }
 
+    function LayerAt(x: number, y: number, count: int) -> (found: entity) {
+        fields := find_entities_with_component("ParticleField3D")
+        for field in fields {
+            if field != vortex && field != stars && field.ParticleField3D.count == count {
+                position := field.Transform3D.position
+                if abs(position.x - x) < 0.01 && abs(position.y - y) < 0.01 {
+                    return field
+                }
+            }
+        }
+        return world
+    }
+
     function Clear(mask: int, amount: int) {
         record := first.ReactionQueue.write
         // A deliberately unrelated piece origin catches reconstruction from
@@ -114,24 +133,34 @@ behavior VfxChecks {
                 Record(first, 2, 1, 80, 96, 0)
                 Record(first, 1, 0, -60, 50, 0)
                 Record(first, 6, 1, 20, 150, 6)
+                Record(first, 8, 1, 20, 6, 0)
+                Record(first, 1, 1, -110, 120, 0)
+                Record(first, 7, 1, -160, 10, 0)
+                Record(first, 4, 1, 130, 80, 1)
             }
             case 10 {
-                Check(ActiveCues() == 4, "turn rejection and two drop layers retain independent fields")
-                turn := CueAt(80, 96)
+                Check(ActiveCues() == 8, "ordinary actions own their bounded layers and hard-drop lock does not replay its landing")
+                turning = CueAt(80, 96)
                 blocked := CueAt(-60, 50)
                 packet = CueAt(20, 150)
-                landing = CueAt(20, 6)
-                Check(turn != world && blocked != world, "local input fields retain their action origins")
+                landing = LayerAt(20, 6, 64)
+                settling = LayerAt(20, 6, 96)
+                shifting = CueAt(-110, 120)
+                holding = CueAt(-160, 10)
+                falling = CueAt(130, 80)
+                Check(turning != world && blocked != world, "local input fields retain their action origins")
                 Check(packet != world && landing != world, "packet starts at the captured piece and landing shifts exactly six cells")
-                if turn != world && blocked != world {
-                    Check(turn.ParticleField3D.count == 48 && blocked.ParticleField3D.count == 12, "turn and rejection use restrained counts")
-                    Check(turn.Shader.material == "ReactionParticles.Cue" && blocked.Shader.material == "ReactionParticles.Cue", "ordinary input keeps its compact contact shader")
-                    Check(turn.Transform3D.position.z == 0, "field origin leaves captured front-face depth in the point payload")
+                Check(settling != world, "hard-drop landing has an independent restrained settling tail")
+                Check(shifting != world && holding != world && falling != world, "move hold and soft fall preserve their own captured origins")
+                if turning != world && blocked != world {
+                    Check(turning.ParticleField3D.count == 72 && blocked.ParticleField3D.count == 12, "turn and rejection use restrained counts")
+                    Check(turning.Shader.material == "ReactionParticles.Cue" && blocked.Shader.material == "ReactionParticles.Cue", "ordinary input keeps its compact contact shader")
+                    Check(turning.Transform3D.position.z == 0, "field origin leaves captured front-face depth in the point payload")
                 }
                 if packet != world && landing != world {
                     Check(packet.Geometry3D.primitive == 5 && landing.Geometry3D.primitive == 5, "cue configuration retains the supported octahedron mesh primitive")
-                    Check(packet.Geometry3D.height == 2.4 && landing.Geometry3D.height == 1, "drop elongation never leaks into contact geometry")
-                    Check(packet.ParticleField3D.count == 112 && landing.ParticleField3D.count == 56, "drop layers have bounded independent instance counts")
+                    Check(packet.Geometry3D.height == 1.8 && landing.Geometry3D.height == 1, "drop elongation never leaks into contact geometry")
+                    Check(packet.ParticleField3D.count == 96 && landing.ParticleField3D.count == 64, "drop layers have bounded independent instance counts")
                 }
                 lights := find_entities_with_component("PointLight")
                 for candidate in lights {
@@ -147,20 +176,36 @@ behavior VfxChecks {
             }
             case 17 {
                 if light != world {
-                    Check(light.PointLight.intensity > 0.2 && light.PointLight.intensity <= 0.75, "impact light rises through its bounded attack")
+                    Check(light.PointLight.intensity == 0, "landing illumination waits for the full smoother packet transit")
+                }
+            }
+            case 22 {
+                if light != world {
+                    Check(light.PointLight.intensity > 0.1 && light.PointLight.intensity <= 0.45, "impact light rises through a restrained attack after arrival")
                 }
             }
             case 30 {
                 if packet != world && landing != world {
-                    Check(packet.ParticleField3D.count == 0, "descending packet finishes its short lifetime")
-                    Check(landing.ParticleField3D.count == 56, "delayed landing keeps its full particle lifetime after arrival")
+                    Check(packet.ParticleField3D.count == 96, "descending grains retain a smooth tail after their arrival")
+                    Check(landing.ParticleField3D.count == 64, "delayed landing keeps its full particle lifetime after arrival")
+                }
+                if settling != world {
+                    Check(settling.ParticleField3D.count == 96 && settling.ParticleField3D.time > 0.3, "settling dust retains its independent longer release")
+                }
+                if turning != world && shifting != world && holding != world && falling != world {
+                    Check(turning.ParticleField3D.count == 72 && shifting.ParticleField3D.count == 32, "rotation and movement trails outlive their former short flash")
+                    Check(holding.ParticleField3D.count == 48 && falling.ParticleField3D.count == 24, "hold and soft fall also retain smooth local tails")
                 }
             }
+            case 32 {
+                world.Session.reduced_motion = true
+            }
             case 38 {
-                Check(ActiveCues() == 0, "all initial layers expire without replay")
+                Check(ActiveCues() == 0, "long action tails retire smoothly without replay when motion is disabled")
                 if light != world {
                     Check(light.PointLight.intensity == 0, "impact light reaches zero at its release endpoint")
                 }
+                world.Session.reduced_motion = false
             }
             case 40 {
                 for i in 0..31 {
@@ -195,6 +240,7 @@ behavior VfxChecks {
                 Check(ActiveCues() == 0, "retirement completes before slots are reused")
                 Record(first, 2, 1, 80, 96, 0)
                 Record(first, 6, 1, 20, 150, 6)
+                Record(first, 8, 1, 20, 6, 0)
             }
             case 52 {
                 Check(ActiveCues() == 2, "quiet hard drop uses one stationary contact confirmation")
@@ -277,6 +323,37 @@ behavior VfxChecks {
             case 180 {
                 Check(ActiveCues() == 0, "quiet row confirmation reaches its normal release endpoint")
                 Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "the multirow celebration and mode changes never overwrite a live field")
+                world.Session.effects = 2
+                Record(first, 8, 1, 80, 30, 0)
+            }
+            case 182 {
+                landing = LayerAt(80, 30, 64)
+                settling = LayerAt(80, 30, 96)
+                Check(ActiveCues() == 2 && landing != world && settling != world, "natural gravity lock creates one contact and one settling layer")
+                lights := find_entities_with_component("PointLight")
+                found := false
+                for candidate in lights {
+                    if abs(candidate.Transform.x - 92) < 0.01 && abs(candidate.PointLight.elevation + 4.7) < 0.01 {
+                        found = true
+                        Check(abs(candidate.Transform.y - 12.5) < 0.01, "natural lock light uses the captured block front")
+                        Check(candidate.PointLight.intensity > 0.1 && candidate.PointLight.intensity <= 0.324, "natural lock has a smaller immediate light than hard drop")
+                    }
+                }
+                Check(found, "natural lock illumination belongs to its lowest occupied cells")
+            }
+            case 214 {
+                if landing != world && settling != world {
+                    Check(landing.ParticleField3D.count == 64 && settling.ParticleField3D.count == 96, "contact and settling remain alive through a restrained half-second release")
+                }
+            }
+            case 224 {
+                if landing != world && settling != world {
+                    Check(landing.ParticleField3D.count == 0 && settling.ParticleField3D.count == 96, "settling outlives the contact without restarting its clock")
+                }
+            }
+            case 248 {
+                Check(ActiveCues() == 0, "both natural landing layers finish before their fields are reused")
+                Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "long ordinary tails stay within the fixed pool")
                 self.TestReport.done = true
             }
         }

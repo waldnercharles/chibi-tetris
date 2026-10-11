@@ -38,9 +38,13 @@ behavior Shell {
         Mix()
         initialized = true
         if self.Session.audio_ready {
+            self.Session.hud_alpha = 1
             Start(0)
             return
         }
+        self.Session.attract = true
+        self.Session.hud_alpha = 0
+        self.Session.stage = chapter
         self.Session.screen = 0
         set_music_volume(0)
     }
@@ -108,6 +112,54 @@ behavior Shell {
         }
         RestartRun()
         ReactionRules.Emit(self, 16, 1, old_mode, mode, 0, mode, mode)
+    }
+
+    function EnterPlay() {
+        if !self.Session.audio_ready || self.Session.entering {
+            return
+        }
+        if !self.Session.attract {
+            self.Session.screen = cast<int>(clamp(self.Session.audio_return_screen, 1, 3))
+            pad1 = controller_connected(0)
+            pad2 = controller_connected(1)
+            return
+        }
+        self.Session.entering = true
+        self.Session.intro_time = 0
+    }
+
+    function Intro() {
+        if !self.Session.audio_ready {
+            self.Session.entering = false
+            self.Session.hud_alpha = 1
+            return
+        }
+        self.Session.intro_time += min(dt, 0.1)
+        clear_time := 1.6
+        duration := 2.4
+        if self.Session.reduced_motion {
+            clear_time = 0.18
+            duration = 0.36
+        }
+        if self.Session.attract && self.Session.intro_time >= clear_time {
+            self.Session.attract = false
+            Start(self.Session.selected_mode)
+        }
+        self.Session.hud_alpha = clamp((self.Session.intro_time - clear_time) / (duration - clear_time), 0, 1)
+        if self.Session.intro_time >= duration {
+            self.Session.entering = false
+            self.Session.hud_alpha = 1
+        }
+    }
+
+    function SelectMode(mode: int) {
+        if self.Session.attract {
+            previous := self.Session.selected_mode
+            self.Session.selected_mode = mode
+            ReactionRules.Emit(self, 16, 1, previous, mode, 0, mode, mode)
+            return
+        }
+        Start(mode)
     }
 
     function RestartRun() {
@@ -315,36 +367,37 @@ behavior Shell {
         }
         clock += dt
         Preferences()
-        if self.Session.screen == 0 {
-            if !self.Session.audio_ready {
-                return
-            }
-            if self.Session.run == 0 {
-                Start(0)
-                return
-            }
-            self.Session.screen = self.Session.audio_return_screen
-            if self.Session.screen < 1 || self.Session.screen > 3 {
-                self.Session.screen = 1
-            }
-            pad1 = controller_connected(0)
-            pad2 = controller_connected(1)
+        if self.Session.entering {
+            self.Session.play_request = false
+            Intro()
             return
         }
+        if self.Session.mode_request > 0 {
+            mode := self.Session.mode_request - 1
+            self.Session.mode_request = 0
+            SelectMode(mode)
+        }
         if input.JourneyMode.pressed {
-            Start(0)
+            SelectMode(0)
             return
         }
         if input.EndlessMode.pressed {
-            Start(1)
+            SelectMode(1)
             return
         }
         if input.SprintMode.pressed {
-            Start(2)
+            SelectMode(2)
             return
         }
         if input.DuetMode.pressed {
-            Start(3)
+            SelectMode(3)
+            return
+        }
+        if self.Session.screen == 0 {
+            if self.Session.play_request {
+                self.Session.play_request = false
+                EnterPlay()
+            }
             return
         }
         if self.Session.screen == 1 {
@@ -402,16 +455,16 @@ behavior Shell {
     }
 
     on Journey {
-        Start(0)
+        SelectMode(0)
     }
     on Endless {
-        Start(1)
+        SelectMode(1)
     }
     on Sprint {
-        Start(2)
+        SelectMode(2)
     }
     on Duet {
-        Start(3)
+        SelectMode(3)
     }
     on Resume {
         ResumePlay()

@@ -1,6 +1,6 @@
 name "Camera"
 components {
-    Camera far_clip=6000.0 fov=0.61086524 height=680.0 near_clip=4.0 width=1208.8889
+    Camera far_clip=6000.0 fov=0.61086524 height=680.0 near_clip=40.0 width=1208.8889
     GlobalBinding name="Camera"
     Transform3D {
         position x=90.0 y=50.0 z=1080.0

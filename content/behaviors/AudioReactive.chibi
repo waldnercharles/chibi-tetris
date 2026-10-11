@@ -51,8 +51,11 @@ behavior AudioReactive {
     function Controls() {
         request := self.Session.audio_request
         self.Session.audio_request = 0
+        if self.Session.entering {
+            return
+        }
         if self.Session.screen == 0 && input.Confirm.pressed {
-            request = 1
+            request = 3
         }
         if input.AudioSource.pressed {
             request = 2
@@ -60,9 +63,16 @@ behavior AudioReactive {
         match (request) {
             case 1 {
                 UseGameScore()
+                self.Session.play_request = true
             }
             case 2 {
                 Listen()
+            }
+            case 3 {
+                if !self.Session.audio_ready {
+                    UseGameScore()
+                }
+                self.Session.play_request = true
             }
         }
     }

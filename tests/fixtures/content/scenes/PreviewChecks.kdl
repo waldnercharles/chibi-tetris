@@ -2,7 +2,13 @@ version 1
 name "PreviewChecks"
 presentation "3d"
 (array)entities {
-    - name="World" prototype="World"
+    - {
+        name "World"
+        prototype "World"
+        components {
+            Session audio_ready=#true
+        }
+    }
     - {
         name "Board1"
         prototype "Board"

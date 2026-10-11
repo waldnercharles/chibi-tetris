@@ -1,0 +1,4 @@
+name "TextAttractSprint"
+components {
+    MeshAsset source="content/meshes/text/attract_sprint.mesh"
+}

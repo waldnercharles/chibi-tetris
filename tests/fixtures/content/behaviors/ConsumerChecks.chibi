@@ -64,6 +64,20 @@ behavior ConsumerChecks {
         return count
     }
 
+    function InstancesAt(x: number, y: number) -> (count: int) {
+        count = 0
+        fields := find_entities_with_component("ParticleField3D")
+        for field in fields {
+            if field != vortex && field != stars && field.ParticleField3D.count > 0 {
+                position := field.Transform3D.position
+                if abs(position.x - x) < 0.01 && abs(position.y - y) < 0.01 {
+                    count += field.ParticleField3D.count
+                }
+            }
+        }
+        return count
+    }
+
     function QuietCues(expected: int) {
         count: int = 0
         fields := find_entities_with_component("ParticleField3D")
@@ -165,7 +179,8 @@ behavior ConsumerChecks {
                 Check(CuesAt(-300, 160) == 1, "first board action retains its own origin")
                 Check(CuesAt(300, 160) == 1, "second board action retains its own origin")
                 Check(CuesAt(-300, 80) == 1 && CuesAt(-300, -112) == 2, "drop and landing fields retain their action coordinate frame")
-                Check(CuesAt(-300, -112) == 2, "combo adds no duplicate landing geometry")
+                Check(CuesAt(-300, -112) == 2, "lock and combo leave one contact layer and one settling tail")
+                Check(InstancesAt(-300, -112) == 160 && InstancesAt(300, -112) == 160, "each Duet landing retains exactly 64 contact grains and 96 settling grains")
                 Check(CuesAt(-254, -156) == 4 && CuesAt(254, -156) == 4, "all four clear layers retain each board and original row")
                 Check(CuesAt(180, 270) == 1, "rejected chapter receives one local confirmation")
                 Check(CuesAt(-170, 0) == 0 && CuesAt(170, 0) == 0, "rejected chapter never celebrates")

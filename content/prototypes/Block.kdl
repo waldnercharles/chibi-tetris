@@ -1,7 +1,7 @@
 name "Block"
 components {
     Geometry3D depth=13.0 height=20.0 width=20.0
-    Material emission_color=0x71dcefff emission_intensity=0.16 emission_multiplier=1.0 scene=0x71dcefff
+    Material emission_color=0x71dcefff emission_intensity=0.025 emission_multiplier=1.0 scene=0x71dcefff
     MeshAsset source="content/meshes/Block.mesh"
     RenderState hidden=#true
     Shader material="BlockSurface"

@@ -107,6 +107,12 @@ static const struct
     { "music_score", "Enter  Play" },
     { "music_retry", "M  Try again" },
     { "pause_hint", "P  Pause" },
+    { "attract_journey", "1  Journey" },
+    { "attract_endless", "2  Endless" },
+    { "attract_sprint", "3  Sprint" },
+    { "attract_duet", "4  Duet" },
+    { "attract_options", "V  Effects    F  Motion    G  Ghost" },
+    { "attract_volume", "9 / 0  Volume" },
 
 };
 
@@ -732,9 +738,6 @@ int main(int argc, char **argv)
         }
         directory("content/meshes");
         block("Block", .04f);
-        block("BlockPetal", .13f);
-        block("BlockDune", .08f);
-        block("BlockOrbit", .2f);
         return 0;
     }
     if ((argc == 3 || argc == 4) && !strcmp(argv[1], "--preview")) {

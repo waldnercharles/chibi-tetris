@@ -16,12 +16,12 @@ behavior Hud {
     hover_choice: int = -1
     pointer_choice: int = -1
     screen: int = -1
+    selected_mode: int = -1
     world_serial: int = -1
     setting_serial: int = 0
     setting_kind: int = 0
     setting_value: int = 0
     setting_time := 0
-    modes := ["journey", "endless", "sprint", "duet"]
 
     on Begin {
         world = get_global_variable("World")
@@ -128,22 +128,30 @@ behavior Hud {
         ModalLabel(slot, name, x, y, size)
         label := get(labels, slot)
         label.Material.scene = 0xaebec7ff
-        if hover_choice == choice {
+        if hover_choice == choice || choice >= 2 && world.Session.selected_mode == choice - 2 {
             label.Material.scene = 0xd2edf5ff
             label.Material.emission_intensity = 0.28
         }
     }
 
     function DrawConnection() {
+        x := 0
+        y := 0
         panel.Geometry3D.width = 610
         panel.Geometry3D.height = 330
-        ModalLabel(0, "stillwater", 0, 110, 36)
-        Choice(12, "music_score", 0, 0, 32, 22)
+        if world.Session.attract {
+            x = -440
+            y = 64
+            panel.Geometry3D.width = 450
+            panel.Geometry3D.height = 370
+        }
+        panel.Transform3D.position = vec3(x, -12, 64)
+        Choice(12, "music_score", 0, x, y + 32, 22)
         action_label := "music_listen"
         if world.Session.audio_status >= 3 {
             action_label = "music_retry"
         }
-        Choice(13, action_label, 1, 0, -25, 14)
+        Choice(13, action_label, 1, x, y - 25, 14)
         hint := ""
         match (world.Session.audio_status) {
             case 1 {
@@ -166,16 +174,24 @@ behavior Hud {
             }
         }
         if hint != "" {
-            ModalLabel(16, hint, 0, -83, 10)
+            ModalLabel(16, hint, x, y - 83, 9)
         }
         if world.Session.audio_status >= 3 && world.Session.audio_status != 3 {
-            ModalLabel(17, "audio_share_hint", 0, -115, 9)
+            ModalLabel(17, "audio_share_hint", x, y - 107, 8)
+        }
+        if world.Session.attract {
+            Choice(88, "attract_journey", 2, x - 80, -82, 12)
+            Choice(89, "attract_endless", 3, x + 80, -82, 12)
+            Choice(90, "attract_sprint", 4, x - 80, -114, 12)
+            Choice(91, "attract_duet", 5, x + 80, -114, 12)
+            ModalLabel(14, "attract_options", x, -156, 9)
+            ModalLabel(18, "attract_volume", x, -180, 9)
         }
     }
 
     function ReadPointer() {
         hover_choice = -1
-        if world.Session.screen != 0 {
+        if world.Session.screen != 0 || world.Session.entering {
             return
         }
         ray := get_pointer_ray()
@@ -187,19 +203,41 @@ behavior Hud {
             return
         }
         point := ray.Origin + ray.Direction * distance
+        x := 0
+        y := 0
+        if world.Session.attract {
+            x = -440
+            y = 64
+        }
         choice: int = -1
-        if abs(point.x) < 150 && abs(point.y - 32) < 22 {
+        if abs(point.x - x) < 150 && abs(point.y - y - 32) < 22 {
             choice = 0
         }
-        if abs(point.x) < 165 && abs(point.y + 25) < 21 {
+        if abs(point.x - x) < 165 && abs(point.y - y + 25) < 21 {
             choice = 1
+        }
+        if world.Session.attract {
+            for i in 0..3 {
+                option_x := x - 80 + i % 2 * 160
+                option_y := -82 - i / 2 * 32
+                if abs(point.x - option_x) < 68 && abs(point.y - option_y) < 14 {
+                    choice = i + 2
+                }
+            }
         }
         if choice < 0 {
             return
         }
         hover_choice = choice
         if input.Select.pressed {
-            world.Session.audio_request = choice + 1
+            if choice >= 2 {
+                world.Session.mode_request = choice - 1
+                return
+            }
+            world.Session.audio_request = 3
+            if choice == 1 {
+                world.Session.audio_request = 2
+            }
         }
     }
 
@@ -273,16 +311,20 @@ behavior Hud {
             backing.RenderState.hidden = true
         }
         timer_backing.RenderState.hidden = world.Session.mode != 2 || world.Session.screen == 0
-        panel.RenderState.hidden = world.Session.screen == 1
-        if world.Session.screen == 0 {
-            DrawConnection()
+        panel.RenderState.hidden = world.Session.screen == 1 || world.Session.entering
+        panel.Transform3D.position = vec3(0, 0, 64)
+        if world.Session.entering && world.Session.attract {
             RememberState()
             return
         }
-        Label(0, "stillwater", 0, 296, 24)
-        Label(1, get(modes, world.Session.mode), -40, 264, 9)
-        Label(2, "chapter", 34, 264, 7)
-        Number(60, 1, world.Session.stage + 1, 64, 264, 10)
+        if world.Session.screen == 0 {
+            DrawConnection()
+            if setting_time > 0 {
+                DrawSetting()
+            }
+            RememberState()
+            return
+        }
         BoardLabels(0, board1)
         if world.Session.mode == 2 {
             Label(64, "elapsed", -205, -98, 10)
@@ -307,7 +349,7 @@ behavior Hud {
             Label(13, "pause_hint", 0, -294, 8)
         }
         if world.Session.screen >= 2 {
-            for i in 1..96 {
+            for i in 0..96 {
                 Hide(i)
             }
             for backing in backings {
@@ -326,7 +368,26 @@ behavior Hud {
         if setting_time > 0 {
             DrawSetting()
         }
+        Reveal()
         RememberState()
+    }
+
+    function Reveal() {
+        opacity := 1
+        if world.Session.entering {
+            opacity = world.Session.hud_alpha
+        }
+        for label in labels {
+            if !label.RenderState.hidden {
+                alpha := cast<uint>(cast<int>(round(opacity * 255)))
+                label.Material.scene = (label.Material.scene & 4294967040) | alpha
+                label.Material.emission_intensity = 0.16 * opacity
+            }
+        }
+        for backing in backings {
+            set_material_parameter(backing, "Visibility", opacity)
+        }
+        set_material_parameter(timer_backing, "Visibility", opacity)
     }
 
     function RememberState() {
@@ -336,10 +397,17 @@ behavior Hud {
         audio_quiet = world.Session.audio_quiet
         pointer_choice = hover_choice
         screen = world.Session.screen
+        selected_mode = world.Session.selected_mode
         world_serial = world.ReactionQueue.serial
     }
 
     function DrawSetting() {
+        x := -375
+        y := 267
+        if world.Session.attract {
+            x = -440
+            y = -220
+        }
         label := ""
         match (setting_kind) {
             case 1 {
@@ -371,16 +439,16 @@ behavior Hud {
             return
         }
         if setting_kind < 4 {
-            Label(92, label, -375, 267, 8)
+            Label(92, label, x, y, 8)
             return
         }
-        Label(92, label, -399, 267, 8)
-        Number(93, 3, setting_value, -330, 267, 9)
+        Label(92, label, x - 24, y, 8)
+        Number(93, 3, setting_value, x + 45, y, 9)
         unit := "setting_ms"
         if setting_kind == 4 {
             unit = "setting_percent"
         }
-        Label(96, unit, -302, 267, 7)
+        Label(96, unit, x + 73, y, 7)
     }
 
     function ReadSettings(dt: number) -> (updated: bool) {
@@ -415,8 +483,11 @@ behavior Hud {
         ReadPointer()
         refresh += dt
         changed := ReadSettings(dt)
-        changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
+        changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial || selected_mode != world.Session.selected_mode
         if refresh < 0.1 && !changed {
+            if world.Session.entering && !world.Session.attract {
+                Reveal()
+            }
             return
         }
         refresh = 0

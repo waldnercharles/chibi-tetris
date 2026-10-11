@@ -170,7 +170,7 @@ behavior StageDirector {
         self.Environment.ambient_sky = Color(18 + 14 * nebula + 12 * cells, 20 + 11 * nebula, 36 + 8 * current)
         self.Environment.ambient_ground = Color(3 + 4 * disk, 4, 9 + 4 * current)
         self.Environment.bloom_strength = 0.2 + energy * 0.025 + reaction * 0.025
-        self.Environment.bloom_threshold = 0.8
+        self.Environment.bloom_threshold = 1.15
         self.Environment.exposure = -0.45
         for i in 0..2 {
             light := get(lights, i)

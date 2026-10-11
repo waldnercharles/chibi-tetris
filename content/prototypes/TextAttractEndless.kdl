@@ -1,0 +1,4 @@
+name "TextAttractEndless"
+components {
+    MeshAsset source="content/meshes/text/attract_endless.mesh"
+}

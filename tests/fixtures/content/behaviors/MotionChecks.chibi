@@ -96,7 +96,16 @@ behavior MotionChecks {
 
     function Style(mesh: string, depth: number) {
         active = Active()
-        Check(active.MeshAsset.source == mesh, "stage selects its block silhouette")
+        Check(active.MeshAsset.source == mesh, "stages retain one restrained beveled silhouette")
+        Check(active.Material.emission_intensity < 0.13, "idle blocks stay below the bright event emission range")
+        camera: entity = get_global_variable("Camera")
+        near := camera.Camera.near_clip
+        far := camera.Camera.far_clip
+        // Smallest preview coat/core gap, at the far edge of the Duet camera.
+        gap := depth * (16.0 / 22.0) * 0.015 * 0.5
+        distance: number = 1400
+        depth_steps := near * far / (far - near) * (1.0 / distance - 1.0 / (distance + gap)) * 16777215
+        Check(depth_steps > 16, "preview coat and body have a stable depth precision margin")
         Check(abs(active.Geometry3D.depth - depth) < 0.001, "stage changes block depth without changing its footprint")
         Check(active.Geometry3D.width == 22 && active.Geometry3D.height == 22, "block footprint remains inside its cell")
         Check(active.Shader.material == "BlockSurface", "stage blocks use a lit material")
@@ -194,15 +203,15 @@ behavior MotionChecks {
                 world.StageState.style = 1
             }
             case 96 {
-                Style("content/meshes/BlockPetal.mesh", 18.04)
+                Style("content/meshes/Block.mesh", 18.04)
                 world.StageState.style = 2
             }
             case 113 {
-                Style("content/meshes/BlockDune.mesh", 9.24)
+                Style("content/meshes/Block.mesh", 9.24)
                 world.StageState.style = 3
             }
             case 130 {
-                Style("content/meshes/BlockOrbit.mesh", 16.28)
+                Style("content/meshes/Block.mesh", 16.28)
                 world.Session.reduced_motion = false
             }
             case 134 {

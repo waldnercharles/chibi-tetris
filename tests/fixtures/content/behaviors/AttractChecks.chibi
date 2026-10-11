@@ -1,0 +1,108 @@
+// Production board, camera and HUD. Host readiness is supplied explicitly so
+// the no-device controller can verify the distinction between Connect and Play.
+behavior AttractChecks {
+    world: entity
+    board: entity
+    camera: entity
+    frame: int = 0
+    demo_lines: int = 0
+    demo_clears: int = 0
+    demo_events: int = 0
+    recovery_serial: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        camera = get_global_variable("Camera")
+    }
+
+    function LabelOpacity(source: string) -> (opacity: number) {
+        meshes := find_entities_with_component("MeshAsset")
+        for mesh in meshes {
+            if mesh.MeshAsset.source == source && !mesh.RenderState.hidden {
+                return cast<number>(mesh.Material.scene & 255) / 255
+            }
+        }
+        return -1
+    }
+
+    on Tick {
+        match (frame) {
+            case 10 {
+                Check(world.Session.attract && world.Session.screen == 0, "opening retains explicit play actions")
+                Check(camera.Transform3D.position.x < -100, "opening camera gives the real board its side composition")
+                Check(world.Session.run == 0 && world.Session.elapsed == 0, "demo has no player run or timer")
+            }
+            case 120 {
+                Check(board.BoardState.pieces > 0 && board.BoardState.drop_serial > 0, "attract play genuinely drops and locks pieces")
+                Check(board.BoardState.score > 0, "attract play uses ordinary board scoring")
+                Check(world.Session.run == 0 && world.Session.elapsed == 0, "real demo play never advances player progress")
+                Check(world.Session.selected_mode == 2 && world.Session.mode == 0, "mode choice leaves the demonstration in a single well")
+                world.Session.audio_source = 1
+                world.Session.audio_ready = true
+                recovery_serial = board.ReactionQueue.serial
+                board.BoardState.topout = true
+            }
+            case 130 {
+                Check(world.Session.screen == 0 && !world.Session.entering && world.Session.run == 0, "connected audio still waits for explicit Play")
+                Check(board.ReactionQueue.serial >= recovery_serial && !board.BoardState.topout, "demo recovery retains event continuity for visual consumers")
+                demo_lines = board.BoardState.lines
+                demo_clears = board.BoardState.clear_serial
+                demo_events = board.ReactionQueue.serial
+            }
+            case 144 {
+                Check(world.Session.entering && world.Session.attract && world.Session.run == 0, "Play begins a clear before resetting the demo")
+                Check(world.Session.audio_ready && world.Session.audio_source == 1, "Play preserves the selected connected source")
+                Check(board.BoardState.topout && board.BoardState.clear_serial == demo_clears + 1, "handoff releases the occupied demonstration rows once")
+                Check(board.BoardState.lines == demo_lines, "handoff release never awards line-clear progress")
+                found := false
+                for serial in demo_events + 1..board.ReactionQueue.serial {
+                    cue: entity = ReactionRules.Read(board, serial)
+                    if cue.ReactionEvent.kind == 9 {
+                        found = cue.ReactionEvent.result == 1 && cue.ReactionEvent.amount > 0 && cue.ReactionEvent.detail > 0
+                    }
+                }
+                Check(found, "handoff publishes the ordinary row-clear event and row mask")
+                Check(world.Session.hud_alpha == 0, "gameplay HUD waits for the clear")
+            }
+            case 210 {
+                Check(world.Session.attract && world.Session.entering && world.Session.run == 0, "demo reset waits for clear effects to finish")
+                Check(camera.Transform3D.position.x > -130 && camera.Transform3D.position.x < 90, "camera travels toward the play composition")
+                Check(board.BoardState.clear_serial == demo_clears + 1, "handoff emits no repeated clears")
+            }
+            case 260 {
+                Check(!world.Session.attract && world.Session.entering && world.Session.run == 1, "fresh run starts during the final reveal")
+                Check(world.Session.mode == 2 && world.Session.goal == 40, "Play honors the selected sprint mode")
+                Check(world.Session.hud_alpha > 0 && world.Session.hud_alpha < 1, "HUD materializes gradually")
+                opacity := LabelOpacity("content/meshes/text/elapsed.mesh")
+                Check(opacity > 0 && opacity < 1, "visible sprint text has partial material opacity during the reveal")
+                Check(world.Session.elapsed == 0 && board.BoardState.pieces == 0 && board.BoardState.score == 0, "reveal keeps the new board and timer still")
+            }
+            case 275 {
+                Check(board.BoardState.pieces == 0, "player hard drop is suppressed during the reveal")
+            }
+            case 310 {
+                Check(!world.Session.attract && !world.Session.entering && world.Session.hud_alpha == 1, "handoff completes with fully visible play HUD")
+                Check(world.Session.screen == 1 && world.Session.run == 1 && world.Session.elapsed > 0, "fresh player run begins after the handoff")
+                Check(camera.Transform3D.position.x > 80, "camera reaches the normal play composition")
+                Check(board.BoardState.pieces == 0 && board.BoardState.lines == 0, "demo stack and score do not leak into the player run")
+                Check(world.Session.audio_source == 1, "external source survives the entire handoff")
+                Check(LabelOpacity("content/meshes/text/elapsed.mesh") == 1, "finished handoff shows the actual sprint timer mesh")
+                Check(LabelOpacity("content/meshes/text/music_score.mesh") < 0 && LabelOpacity("content/meshes/text/attract_sprint.mesh") < 0, "opening action meshes disappear after Play")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

@@ -1,6 +1,15 @@
 // Shared session and user settings. Screen: 0 music, 1 play, 2 pause, 3 completed run.
 component Session {
     screen: int
+    // Initial live demo and the explicit Play handoff never advance run results.
+    attract: bool
+    entering: bool
+    intro_time: number
+    hud_alpha: number
+    selected_mode: int
+    // A pointer-selected mode plus one; zero leaves the selection unchanged.
+    mode_request: int
+    play_request: bool
     mode: int
     won: bool
     disconnected: bool
@@ -9,7 +18,7 @@ component Session {
     chapter_lines: int
     audio_source: int
     audio_status: int
-    // Commands: 0 none, 1 play with game score, 2 connect audio.
+    // Commands: 0 none, 1 play with game score, 2 connect audio, 3 play selected source.
     audio_request: int
     audio_return_screen: int
     // Ready after the host connects a stream or an explicit game-score choice.

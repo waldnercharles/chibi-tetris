@@ -1,0 +1,55 @@
+// Supply the readiness loss exposed by the audio host after the demo clear.
+behavior AttractRecoveryChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+    serial: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+    }
+
+    on Tick {
+        match (frame) {
+            case 3 {
+                world.Session.audio_source = 1
+                world.Session.audio_ready = true
+            }
+            case 8 {
+                Check(world.Session.entering && world.Session.attract && board.BoardState.topout, "recovery begins after the demo clear")
+                Check(board.BoardState.clear_serial == 1 && world.Session.audio_source == 1, "connected source reaches the clear handoff")
+                serial = board.ReactionQueue.serial
+                world.Session.audio_ready = false
+                world.Session.screen = 0
+            }
+            case 12 {
+                Check(world.Session.attract && !world.Session.entering && !world.Session.audio_ready, "lost source returns to explicit Play without a player run")
+                Check(world.Session.run == 0 && world.Session.elapsed == 0, "interrupted clear never creates progress")
+                Check(!board.BoardState.topout && board.ReactionQueue.serial >= serial, "demo resumes after audio failure with a continuous reaction queue")
+            }
+            case 24 {
+                Check(world.Session.entering && world.Session.audio_source == 0, "explicit retry can select the bundled score")
+                Check(board.BoardState.topout && board.BoardState.clear_serial == 1, "retry clears the recovered demo exactly once")
+                Check(board.ReactionQueue.serial > serial, "retry clear remains visible to existing reaction consumers")
+            }
+            case 180 {
+                Check(world.Session.screen == 1 && !world.Session.attract && !world.Session.entering, "audio failure retry completes its fresh handoff")
+                Check(world.Session.run == 1 && world.Session.elapsed > 0 && board.BoardState.pieces == 0, "retry begins exactly one clean player run")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

@@ -28,6 +28,7 @@ behavior Board {
     visible := false
     old_mode: int = -1
     old_screen: int = 0
+    old_entering := false
     old_ghost := false
     old_effects: int = -1
     stack_dirty := true
@@ -42,16 +43,23 @@ behavior Board {
     drawn_style := -1
     style := 0
     block_depth := 0.6
-    block_roughness := 0.24
-    block_metallic := 0.18
-    block_emission := 0.16
+    block_roughness := 0.54
+    block_metallic := 0.06
+    block_emission := 0.025
     block_opacity := 0.965
-    base_finish: CF_V3 = { x: 0.24, y: 0.18, z: 0.16 }
+    base_finish: CF_V3 = { x: 0.54, y: 0.06, z: 0.025 }
     base_opacity := 0.965
     finish_signal: CF_V3 = { x: 0, y: 0, z: 0 }
-    block_mesh := "content/meshes/Block.mesh"
     music_lift := 0
     music_scale := 0
+    demo_piece: int = -1
+    demo_candidate: int = 0
+    demo_column: int = 3
+    demo_rotation: int = 0
+    demo_quality := -1000000
+    demo_clock := 0
+    demo_wait := 0
+    demo_cleared := false
 
     on Begin {
         world = get_global_variable("World")
@@ -114,8 +122,10 @@ behavior Board {
     }
 
     function Reset() {
+        if seen_run != world.Session.run {
+            ReactionRules.Initialize(self, world.Session.run)
+        }
         seen_run = world.Session.run
-        ReactionRules.Initialize(self, seen_run)
         grid = Rules.Empty()
         queue = []
         seed = cast<int64>(world.Session.seed) % 2147483646
@@ -291,6 +301,100 @@ behavior Board {
         Impact()
         play_sound("hard_drop", 0.35)
         Lock()
+    }
+
+    // One candidate per tick bounds planning work. Execution uses the same
+    // rotation, translation, gravity, lock and clear paths as player input.
+    function Demo(seconds: number) {
+        if self.BoardState.topout {
+            Reset()
+            demo_piece = -1
+            demo_cleared = false
+        }
+        if demo_piece != self.BoardState.pieces {
+            demo_piece = self.BoardState.pieces
+            demo_candidate = 0
+            demo_quality = -1000000
+            demo_column = column
+            demo_rotation = rotation
+            demo_clock = 0
+            demo_wait = 0
+        }
+        if demo_candidate < 44 {
+            facing := demo_candidate / 11
+            x := demo_candidate % 11 - 2
+            candidate := AttractRules.Evaluate(grid, current, facing, x)
+            if candidate.valid && candidate.quality > demo_quality {
+                demo_quality = candidate.quality
+                demo_column = x
+                demo_rotation = facing
+            }
+            demo_candidate += 1
+            return
+        }
+        demo_clock += seconds
+        if demo_clock < 0.1 {
+            return
+        }
+        demo_clock = 0
+        if rotation != demo_rotation {
+            direction := 1
+            if (demo_rotation - rotation + 4) % 4 == 3 {
+                direction = -1
+            }
+            previous := rotation
+            Rotate(direction)
+            if rotation == previous {
+                demo_rotation = rotation
+            }
+            return
+        }
+        if column != demo_column {
+            direction := 1
+            if demo_column < column {
+                direction = -1
+            }
+            if !Shift(direction, true) {
+                demo_column = column
+            }
+            return
+        }
+        demo_wait += 0.1
+        if demo_wait < 0.4 {
+            Fall(0.1, false)
+            return
+        }
+        HardDrop()
+    }
+
+    function ClearDemo() {
+        // Include the falling piece in the same row release as the stack.
+        if !self.BoardState.topout {
+            Rules.Place(grid, current, rotation, column, row)
+        }
+        mask: int = 0
+        count: int = 0
+        for y in 2..21 {
+            occupied := false
+            for x in 0..9 {
+                occupied = occupied || get(grid, y * 10 + x) != 0
+            }
+            if occupied {
+                mask = mask | 1 << y
+                count += 1
+            }
+        }
+        if count > 0 {
+            Emit(9, 1, 0, count, mask)
+            self.BoardState.clear_serial += 1
+            self.BoardState.last_clear = count
+            play_sound("clear4", 0.45)
+        }
+        grid = Rules.Empty()
+        self.BoardState.topout = true
+        stack_dirty = true
+        piece_dirty = true
+        demo_cleared = true
     }
 
     function Horizontal(left: bool, right: bool, left_pressed: bool, right_pressed: bool, seconds: number) {
@@ -508,7 +612,7 @@ behavior Board {
     function Finish(tile: entity, active: bool) {
         emission := block_emission
         if active {
-            emission += 0.12 + music_scale * 1.5
+            emission += 0.035 + music_scale * 0.5
         }
         // The coat changes alpha; the mesh's inner BlockCore always writes depth.
         alpha := cast<uint>(cast<int>(floor(block_opacity * 255)))
@@ -541,7 +645,7 @@ behavior Board {
             tile.Material.emission_intensity = 0.2
             return
         }
-        tile.MeshAsset.source = block_mesh
+        tile.MeshAsset.source = "content/meshes/Block.mesh"
         rgba := cast<number>(color)
         red := floor(rgba / 16777216)
         green := floor(rgba / 65536) - red * 256
@@ -571,20 +675,8 @@ behavior Board {
                 dune := StyleWeight(2)
                 orbit := StyleWeight(3)
                 block_depth = aurora * 0.6 + petal * 0.82 + dune * 0.42 + orbit * 0.74
-                base_finish = vec3(aurora * 0.24 + petal * 0.38 + dune * 0.65 + orbit * 0.18, aurora * 0.18 + petal * 0.48 + dune * 0.08 + orbit * 0.62, aurora * 0.16 + petal * 0.11 + dune * 0.08 + orbit * 0.2)
+                base_finish = vec3(aurora * 0.54 + petal * 0.62 + dune * 0.66 + orbit * 0.5, aurora * 0.06 + petal * 0.1 + dune * 0.02 + orbit * 0.12, aurora * 0.025 + petal * 0.02 + dune * 0.018 + orbit * 0.03)
                 base_opacity = aurora * 0.965 + petal * 0.975 + dune * 0.99 + orbit * 0.95
-                block_mesh = "content/meshes/Block.mesh"
-                match (cast<int>(floor(style + 0.5)) % 4) {
-                    case 1 {
-                        block_mesh = "content/meshes/BlockPetal.mesh"
-                    }
-                    case 2 {
-                        block_mesh = "content/meshes/BlockDune.mesh"
-                    }
-                    case 3 {
-                        block_mesh = "content/meshes/BlockOrbit.mesh"
-                    }
-                }
                 drawn_style = style
                 stack_dirty = true
                 piece_dirty = true
@@ -628,7 +720,7 @@ behavior Board {
     function UpdateFinish() {
         roughness := clamp(base_finish.x - finish_signal.y * 0.08 + finish_signal.z * 0.035, 0.14, 0.7)
         metallic := clamp(base_finish.y + finish_signal.x * 0.07 + finish_signal.z * 0.04, 0, 0.72)
-        emission := base_finish.z + finish_signal.y * 0.05 + finish_signal.x * 0.025
+        emission := base_finish.z + finish_signal.y * 0.025 + finish_signal.x * 0.015
         opacity := clamp(base_opacity + finish_signal.x * 0.015 - finish_signal.z * 0.01, 0.94, 1)
         if abs(roughness - block_roughness) + abs(metallic - block_metallic) + abs(emission - block_emission) + abs(opacity - block_opacity) < 0.0001 {
             return
@@ -729,7 +821,7 @@ behavior Board {
 
     function DrawPreviews() {
         preview_tiles = []
-        if world.Session.screen != 1 {
+        if world.Session.screen != 1 || world.Session.entering {
             for i in 208..231 {
                 Hide(i)
             }
@@ -744,7 +836,7 @@ behavior Board {
     }
 
     function Render() {
-        show := world.Session.screen >= 1 && world.Session.screen <= 3
+        show := world.Session.attract || world.Session.screen >= 1 && world.Session.screen <= 3
         if self.BoardState.index == 1 && world.Session.mode != 3 {
             show = false
         }
@@ -817,7 +909,16 @@ behavior Board {
         }
         self.BoardState.level = level
         enabled := self.BoardState.index == 0 || world.Session.mode == 3
-        if world.Session.screen == 1 && old_screen == 1 && !restarted && enabled && !self.BoardState.topout {
+        if world.Session.attract && self.BoardState.index == 0 {
+            if world.Session.entering {
+                if !demo_cleared {
+                    ClearDemo()
+                }
+            } else {
+                Demo(min(dt, 0.1))
+            }
+        }
+        if world.Session.screen == 1 && old_screen == 1 && !world.Session.entering && !restarted && enabled && !self.BoardState.topout {
             Controls(min(dt, 0.1))
         }
         if world.Session.screen != 1 {
@@ -830,10 +931,11 @@ behavior Board {
             repeat_direction = 0
             repeat_clock = 0
         }
-        if old_screen != world.Session.screen {
+        if old_screen != world.Session.screen || old_entering != world.Session.entering {
             preview_dirty = true
         }
         old_screen = world.Session.screen
+        old_entering = world.Session.entering
         self.BoardState.current = current
         self.BoardState.held = held
         self.BoardState.can_hold = !hold_used

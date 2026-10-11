@@ -1,7 +1,7 @@
 version 3
 name "ReactionParticles"
 domain "shader-library"
-id_counter 1000000
+id_counter 1200000
 description "Captured 3D contact cues and independent clear releases. Fracture fronts, lit tumbling fragments, flowing microembers and expanding energy use fixed instanced fields with continuous envelopes and analytic drag."
 (array)graphs {
     - kind="event" name="Functions"
@@ -41,6 +41,9 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
                     - id=200 name="Position" type="struct" type_name="ShaderVec3" kind="data"
                     - id=201 name="Size" type="float" kind="data"
                     - id=202 name="Color" type="struct" type_name="ShaderVec4" kind="data"
+                    - id=203 name="Scale" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=204 name="Rotation" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=205 name="Lighting" type="float" kind="data"
                 }
             }
             - id=13 type="Shader Time"
@@ -111,7 +114,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 1500
                 type "Behavior Expression"
-                reference_name "life * 0.26 * (exp(log(65) * quantile) - 1) / 64"
+                reference_name "life * 0.2 * (exp(log(65) * quantile) - 1) / 64"
                 inputs {
                     life id=1501 type="float"
                     quantile id=1502 type="float"
@@ -123,7 +126,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 1600
                 type "Behavior Expression"
-                reference_name "life * (0.56 + random.z * 0.16)"
+                reference_name "life * (0.62 + random.z * 0.14)"
                 inputs {
                     life id=1601 type="float"
                     random id=1602 type="struct" type_name="ShaderVec3"
@@ -160,7 +163,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 1900
                 type "Behavior Expression"
-                reference_name "smoothstep(0, min(0.016, duration * 0.16), elapsed) * (1 - smoothstep(duration * 0.28, duration, elapsed)) * fade"
+                reference_name "smoothstep(0, min(0.05, duration * 0.22), elapsed) * (1 - smoothstep(duration * 0.18, duration, elapsed)) * fade"
                 inputs {
                     elapsed id=1901 type="float"
                     duration id=1902 type="float"
@@ -185,7 +188,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 2100
                 type "Behavior Expression"
-                reference_name "(1 - exp(-7 * motion)) / 7"
+                reference_name "(1 - exp(-4.2 * motion)) / 4.2"
                 inputs {
                     motion id=2101 type="float"
                 }
@@ -207,7 +210,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 2300
                 type "Behavior Expression"
-                reference_name "point - center + vec3(edge.xy * 0.45, 0)"
+                reference_name "point - center + vec3(edge.xy, 0)"
                 inputs {
                     point id=2301 type="struct" type_name="ShaderVec3"
                     center id=2302 type="struct" type_name="ShaderVec3"
@@ -220,13 +223,14 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 2400
                 type "Behavior Expression"
-                reference_name "vec3(-radial.y, radial.x, 0) * -direction / max(length(radial.xy), 1)"
+                reference_name "-direction * (0.35 + random.z * 0.25) * (1 - exp(-4.2 * motion))"
                 inputs {
-                    radial id=2401 type="struct" type_name="ShaderVec3"
-                    direction id=2402 type="float"
+                    direction id=2401 type="float"
+                    random id=2402 type="struct" type_name="ShaderVec3"
+                    motion id=2403 type="float"
                 }
                 outputs {
-                    Result id=2490 type="struct" type_name="ShaderVec3"
+                    Result id=2490 type="float"
                 }
             }
             - {
@@ -270,7 +274,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 2800
                 type "Behavior Expression"
-                reference_name "point + vec3(-direction * 10.7, (random.y - 0.5) * 19, 0.35) + vec3(-direction * (18 + random.z * 34), (random.y - 0.5) * 12, (random.z - 0.5) * 5) * drag"
+                reference_name "point + vec3(-direction * 10.7, (random.y - 0.5) * 19, 0.35) + vec3(-direction * (12 + random.z * 18), (random.y - 0.5) * 8, (random.z - 0.5) * 6) * drag"
                 inputs {
                     point id=2801 type="struct" type_name="ShaderVec3"
                     random id=2802 type="struct" type_name="ShaderVec3"
@@ -284,16 +288,14 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 2900
                 type "Behavior Expression"
-                reference_name "point + edge + tangent * ((55 + random.z * 65) * drag - wake * 3) + vec3((random.x - 0.5) * 8 * wake, -motion * motion * 50, (random.z - 0.5) * 4 * wake) * (1 - quiet)"
+                reference_name "center + vec3(radial.x * cos(angle) - radial.y * sin(angle), radial.x * sin(angle) + radial.y * cos(angle), radial.z) + vec3((random.x - 0.5) * 4 * drag, -12 * gravity_time, 0.35 + (random.z - 0.5) * 5 * drag)"
                 inputs {
-                    point id=2901 type="struct" type_name="ShaderVec3"
-                    edge id=2902 type="struct" type_name="ShaderVec3"
-                    tangent id=2903 type="struct" type_name="ShaderVec3"
+                    center id=2901 type="struct" type_name="ShaderVec3"
+                    radial id=2902 type="struct" type_name="ShaderVec3"
+                    angle id=2903 type="float"
                     random id=2904 type="struct" type_name="ShaderVec3"
                     drag id=2905 type="float"
-                    wake id=2906 type="float"
-                    motion id=2907 type="float"
-                    quiet id=2908 type="float"
+                    gravity_time id=2906 type="float"
                 }
                 outputs {
                     Result id=2990 type="struct" type_name="ShaderVec3"
@@ -302,7 +304,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3000
                 type "Behavior Expression"
-                reference_name "point + vec3((random.x - 0.5) * 16, -10.7 - 30 * drag, 0.35 + (random.z - 0.5) * drag * 6)"
+                reference_name "point + vec3((random.x - 0.5) * 16, -10.7 - 18 * drag, 0.35 + (random.z - 0.5) * drag * 8)"
                 inputs {
                     point id=3001 type="struct" type_name="ShaderVec3"
                     random id=3002 type="struct" type_name="ShaderVec3"
@@ -315,13 +317,13 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3100
                 type "Behavior Expression"
-                reference_name "point + vec3((random.x - 0.5) * 20, -10.7, 0.35) + vec3((random.x - 0.5) * (45 + fleck * 60) * drag, fleck * ((30 + random.z * 45) * motion - 150 * motion * motion), (random.z - 0.5) * (6 + fleck * 12) * drag)"
+                reference_name "point + vec3((random.x - 0.5) * 20, -10.7, 0.35) + vec3((random.x - 0.5) * (25 + fleck * 24), fleck * (18 + random.z * 22), (random.z - 0.5) * (12 + fleck * 18)) * drag - vec3(0, 50 * gravity_time, 0)"
                 inputs {
                     point id=3101 type="struct" type_name="ShaderVec3"
                     random id=3102 type="struct" type_name="ShaderVec3"
                     fleck id=3103 type="float"
                     drag id=3104 type="float"
-                    motion id=3105 type="float"
+                    gravity_time id=3105 type="float"
                 }
                 outputs {
                     Result id=3190 type="struct" type_name="ShaderVec3"
@@ -330,7 +332,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3300
                 type "Behavior Expression"
-                reference_name "point + edge + (center - point) * drag * 1.2 + vec3(0, 20 * drag, 0)"
+                reference_name "point + edge + (center - point) * drag * 0.65 + vec3(0, 12 * drag, 8 * drag)"
                 inputs {
                     point id=3301 type="struct" type_name="ShaderVec3"
                     edge id=3302 type="struct" type_name="ShaderVec3"
@@ -344,13 +346,13 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3400
                 type "Behavior Expression"
-                reference_name "point + vec3(direction * 10.7, (random.y - 0.5) * 18, 0.35) + vec3(-direction * 16 * drag, -motion * motion * 40, (random.z - 0.5) * drag * 3)"
+                reference_name "point + vec3(direction * 10.7, (random.y - 0.5) * 18, 0.35) + vec3(-direction * 9 * drag, -8 * gravity_time, (random.z - 0.5) * drag * 3)"
                 inputs {
                     point id=3401 type="struct" type_name="ShaderVec3"
                     direction id=3402 type="float"
                     random id=3403 type="struct" type_name="ShaderVec3"
                     drag id=3404 type="float"
-                    motion id=3405 type="float"
+                    gravity_time id=3405 type="float"
                 }
                 outputs {
                     Result id=3490 type="struct" type_name="ShaderVec3"
@@ -359,7 +361,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3500
                 type "Behavior Expression"
-                reference_name "smoothstep(0, 0.11, max(0, age - delay)) * (1 - quiet)"
+                reference_name "smoothstep(0, 0.16, max(0, age - delay)) * (1 - quiet)"
                 inputs {
                     age id=3501 type="float"
                     delay id=3502 type="float"
@@ -372,13 +374,14 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3600
                 type "Behavior Expression"
-                reference_name "point + vec3((random.y - 0.5) * 3, -travel * 24 * progress + min(travel * 24 * progress, 18) * random.z * (0.2 + wake * 0.8), 0.35 + (random.x - 0.5) * 2)"
+                reference_name "point + vec3((random.y - 0.5) * 2, -travel * 24 * progress + tail * random.z * (0.2 + wake * 0.6), 0.35 + (random.x - 0.5) * 1.2)"
                 inputs {
                     point id=3601 type="struct" type_name="ShaderVec3"
                     random id=3602 type="struct" type_name="ShaderVec3"
                     travel id=3603 type="float"
                     progress id=3604 type="float"
                     wake id=3605 type="float"
+                    tail id=3606 type="float"
                 }
                 outputs {
                     Result id=3690 type="struct" type_name="ShaderVec3"
@@ -387,7 +390,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3700
                 type "Behavior Expression"
-                reference_name "p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8)))"
+                reference_name "p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8))) + p12 * (1 - step(0.5, abs(pattern - 12)))"
                 inputs {
                     pattern id=3701 type="float"
                     p0 id=3702 type="struct" type_name="ShaderVec3"
@@ -395,9 +398,10 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
                     p2 id=3704 type="struct" type_name="ShaderVec3"
                     p3 id=3705 type="struct" type_name="ShaderVec3"
                     p4 id=3706 type="struct" type_name="ShaderVec3"
-                    p6 id=3708 type="struct" type_name="ShaderVec3"
-                    p7 id=3709 type="struct" type_name="ShaderVec3"
-                    p8 id=3710 type="struct" type_name="ShaderVec3"
+                    p6 id=3707 type="struct" type_name="ShaderVec3"
+                    p7 id=3708 type="struct" type_name="ShaderVec3"
+                    p8 id=3709 type="struct" type_name="ShaderVec3"
+                    p12 id=3710 type="struct" type_name="ShaderVec3"
                 }
                 outputs {
                     Result id=3790 type="struct" type_name="ShaderVec3"
@@ -406,13 +410,14 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 3800
                 type "Behavior Expression"
-                reference_name "(0.58 + random.z * 0.5 + wake * 1.6) * (0.8 + strength * 0.65) * (1 - phase * 0.3) * envelope"
+                reference_name "(0.9 + random.z * 0.65 + wake * 0.35) * (0.78 + strength * 0.35) * (1 - phase * 0.24) * envelope * (2 - envelope) * (1 + (1 - step(0.5, abs(pattern - 4))) * 0.3) * (1 - (1 - step(0.5, abs(pattern - 12))) * 0.25)"
                 inputs {
                     random id=3801 type="struct" type_name="ShaderVec3"
                     wake id=3802 type="float"
                     strength id=3803 type="float"
                     phase id=3804 type="float"
                     envelope id=3805 type="float"
+                    pattern id=3806 type="float"
                 }
                 outputs {
                     Result id=3890 type="float"
@@ -432,7 +437,7 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - {
                 id 4000
                 type "Behavior Expression"
-                reference_name "vec4(mix(vec3(1.55, 1.78, 1.95), palette, smoothstep(0, 0.55, phase)) * (0.7 + strength * 0.4), envelope * (0.42 + random.z * 0.18) * (1 - wake * 0.78) * (1 - quiet * 0.35))"
+                reference_name "vec4(mix(vec3(0.85, 1.1, 1.25), palette, smoothstep(0, 0.42, phase)) * (0.62 + strength * 0.32), envelope * (0.42 + random.z * 0.18) * (1 - wake * 0.45) * (1 - quiet * 0.25) * (1 - (1 - step(0.5, abs(pattern - 12))) * 0.3))"
                 inputs {
                     palette id=4001 type="struct" type_name="ShaderVec3"
                     phase id=4002 type="float"
@@ -441,9 +446,126 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
                     random id=4005 type="struct" type_name="ShaderVec3"
                     wake id=4006 type="float"
                     quiet id=4007 type="float"
+                    pattern id=4008 type="float"
                 }
                 outputs {
                     Result id=4090 type="struct" type_name="ShaderVec4"
+                }
+            }
+            - {
+                id 4100
+                type "Behavior Expression"
+                reference_name "1 - max(max((1 - step(0.5, abs(point.x - p0.x))) * (1 - step(0.5, abs(point.y - p0.y - 24))), (1 - step(0.5, abs(point.x - p1.x))) * (1 - step(0.5, abs(point.y - p1.y - 24)))), max((1 - step(0.5, abs(point.x - p2.x))) * (1 - step(0.5, abs(point.y - p2.y - 24))), (1 - step(0.5, abs(point.x - p3.x))) * (1 - step(0.5, abs(point.y - p3.y - 24)))))"
+                inputs {
+                    point id=4101 type="struct" type_name="ShaderVec3"
+                    p0 id=4102 type="struct" type_name="ShaderVec3"
+                    p1 id=4103 type="struct" type_name="ShaderVec3"
+                    p2 id=4104 type="struct" type_name="ShaderVec3"
+                    p3 id=4105 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=4190 type="float"
+                }
+            }
+            - {
+                id 4200
+                type "Behavior Expression"
+                reference_name "mix(1, contact, max(1 - step(0.5, abs(pattern - 4)), 1 - step(0.5, abs(pattern - 12))))"
+                inputs {
+                    contact id=4201 type="float"
+                    pattern id=4202 type="float"
+                }
+                outputs {
+                    Result id=4290 type="float"
+                }
+            }
+            - {
+                id 4300
+                type "Behavior Expression"
+                reference_name "envelope * visibility"
+                inputs {
+                    envelope id=4301 type="float"
+                    visibility id=4302 type="float"
+                }
+                outputs {
+                    Result id=4390 type="float"
+                }
+            }
+            - {
+                id 4400
+                type "Behavior Expression"
+                reference_name "point + vec3((random.x - 0.5) * 20, -10.7, 0.6) + vec3((random.x - 0.5) * 32, 6 + random.y * 12, 5 + random.z * 10) * drag - vec3(0, 18 * gravity_time, 0) + vec3(sin(random.z * 6.283185 + motion * 3) - sin(random.z * 6.283185), sin(random.x * 6.283185 + motion * 2) - sin(random.x * 6.283185), sin(random.y * 6.283185 + motion * 2.5) - sin(random.y * 6.283185)) * (1 - exp(-2.4 * motion)) * 2.5"
+                inputs {
+                    point id=4401 type="struct" type_name="ShaderVec3"
+                    random id=4402 type="struct" type_name="ShaderVec3"
+                    drag id=4403 type="float"
+                    gravity_time id=4404 type="float"
+                    motion id=4405 type="float"
+                }
+                outputs {
+                    Result id=4490 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 4500
+                type "Behavior Expression"
+                reference_name "(motion - drag) / 4.2"
+                inputs {
+                    motion id=4501 type="float"
+                    drag id=4502 type="float"
+                }
+                outputs {
+                    Result id=4590 type="float"
+                }
+            }
+            - {
+                id 4600
+                type "Behavior Expression"
+                reference_name "mix(vec3(1, 1, 1), vec3(1.7, 0.65, 0.65), 1 - step(0.5, abs(pattern - 1))) * mix(vec3(1, 1, 1), vec3(0.8, 0.8, 0.65), 1 - step(0.5, abs(pattern - 12))) * vec3(0.8 + random.x * 0.35, 0.85 + random.y * 0.3, 0.8 + random.z * 0.3)"
+                inputs {
+                    pattern id=4601 type="float"
+                    random id=4602 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=4690 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 4700
+                type "Behavior Expression"
+                reference_name "vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) * (1.4 + motion * 1.6)"
+                inputs {
+                    random id=4701 type="struct" type_name="ShaderVec3"
+                    motion id=4702 type="float"
+                }
+                outputs {
+                    Result id=4790 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 4800
+                type "Behavior Expression"
+                reference_name "(0.18 + (1 - step(0.5, abs(pattern - 4))) * 0.3 + (1 - step(0.5, abs(pattern - 12))) * 0.28) * (1 - quiet)"
+                inputs {
+                    pattern id=4801 type="float"
+                    quiet id=4802 type="float"
+                }
+                outputs {
+                    Result id=4890 type="float"
+                }
+            }
+            - {
+                id 4900
+                type "Behavior Expression"
+                reference_name "min(travel * 24 * progress, 12) * (1 - smoothstep(0.16, 0.32, max(0, age - delay)))"
+                inputs {
+                    travel id=4901 type="float"
+                    progress id=4902 type="float"
+                    age id=4903 type="float"
+                    delay id=4904 type="float"
+                }
+                outputs {
+                    Result id=4990 type="float"
                 }
             }
         }
@@ -454,34 +576,47 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - from="11.Seed" to="1000.seed"
             - from="11.Seed" to="1400.seed"
             - from="11.Pattern" to="3700.pattern"
+            - from="11.Pattern" to="3800.pattern"
+            - from="11.Pattern" to="4000.pattern"
+            - from="11.Pattern" to="4200.pattern"
+            - from="11.Pattern" to="4600.pattern"
+            - from="11.Pattern" to="4800.pattern"
             - from="11.Direction" to="2400.direction"
             - from="11.Direction" to="2800.direction"
             - from="11.Direction" to="3400.direction"
             - from="11.Travel" to="3600.travel"
+            - from="11.Travel" to="4900.travel"
             - from="11.Strength" to="3800.strength"
             - from="11.Strength" to="4000.strength"
             - from="11.Life" to="1500.life"
             - from="11.Life" to="1600.life"
             - from="11.Quiet" to="2000.quiet"
-            - from="11.Quiet" to="2900.quiet"
             - from="11.Quiet" to="3500.quiet"
             - from="11.Quiet" to="4000.quiet"
+            - from="11.Quiet" to="4800.quiet"
             - from="11.Hue" to="3900.hue"
             - from="11.Point0" to="1200.p0"
             - from="11.Point0" to="1300.p0"
+            - from="11.Point0" to="4100.p0"
             - from="11.Point1" to="1200.p1"
             - from="11.Point1" to="1300.p1"
+            - from="11.Point1" to="4100.p1"
             - from="11.Point2" to="1200.p2"
             - from="11.Point2" to="1300.p2"
+            - from="11.Point2" to="4100.p2"
             - from="11.Point3" to="1200.p3"
             - from="11.Point3" to="1300.p3"
+            - from="11.Point3" to="4100.p3"
             - from="11.Delay" to="1700.delay"
             - from="11.Delay" to="3500.delay"
+            - from="11.Delay" to="4900.delay"
             - from="11.Fade" to="1900.fade"
             - from="13.Value" to="1700.age"
             - from="13.Value" to="3500.age"
+            - from="13.Value" to="4900.age"
             - from="1000.Result" to="1600.random"
             - from="1000.Result" to="2200.random"
+            - from="1000.Result" to="2400.random"
             - from="1000.Result" to="2500.random"
             - from="1000.Result" to="2600.random"
             - from="1000.Result" to="2700.random"
@@ -493,17 +628,22 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - from="1000.Result" to="3600.random"
             - from="1000.Result" to="3800.random"
             - from="1000.Result" to="4000.random"
+            - from="1000.Result" to="4400.random"
+            - from="1000.Result" to="4600.random"
+            - from="1000.Result" to="4700.random"
             - from="1100.Result" to="1200.cell"
             - from="1200.Result" to="2300.point"
             - from="1200.Result" to="2700.point"
             - from="1200.Result" to="2800.point"
-            - from="1200.Result" to="2900.point"
             - from="1200.Result" to="3000.point"
             - from="1200.Result" to="3100.point"
             - from="1200.Result" to="3300.point"
             - from="1200.Result" to="3400.point"
             - from="1200.Result" to="3600.point"
+            - from="1200.Result" to="4100.point"
+            - from="1200.Result" to="4400.point"
             - from="1300.Result" to="2300.center"
+            - from="1300.Result" to="2900.center"
             - from="1300.Result" to="3300.center"
             - from="1400.Result" to="1500.quantile"
             - from="1500.Result" to="1700.birth"
@@ -514,13 +654,13 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - from="1700.Result" to="2000.elapsed"
             - from="1800.Result" to="3800.phase"
             - from="1800.Result" to="4000.phase"
-            - from="1900.Result" to="3800.envelope"
-            - from="1900.Result" to="4000.envelope"
+            - from="1900.Result" to="4300.envelope"
             - from="2000.Result" to="2100.motion"
+            - from="2000.Result" to="2400.motion"
             - from="2000.Result" to="2700.motion"
-            - from="2000.Result" to="2900.motion"
-            - from="2000.Result" to="3100.motion"
-            - from="2000.Result" to="3400.motion"
+            - from="2000.Result" to="4400.motion"
+            - from="2000.Result" to="4500.motion"
+            - from="2000.Result" to="4700.motion"
             - from="2100.Result" to="2700.drag"
             - from="2100.Result" to="2800.drag"
             - from="2100.Result" to="2900.drag"
@@ -528,15 +668,15 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - from="2100.Result" to="3100.drag"
             - from="2100.Result" to="3300.drag"
             - from="2100.Result" to="3400.drag"
+            - from="2100.Result" to="4400.drag"
+            - from="2100.Result" to="4500.drag"
             - from="2200.Result" to="2300.edge"
             - from="2200.Result" to="2700.edge"
-            - from="2200.Result" to="2900.edge"
             - from="2200.Result" to="3300.edge"
-            - from="2300.Result" to="2400.radial"
-            - from="2400.Result" to="2900.tangent"
+            - from="2300.Result" to="2900.radial"
+            - from="2400.Result" to="2900.angle"
             - from="2500.Result" to="2600.fleck"
             - from="2500.Result" to="3100.fleck"
-            - from="2600.Result" to="2900.wake"
             - from="2600.Result" to="3600.wake"
             - from="2600.Result" to="3800.wake"
             - from="2600.Result" to="4000.wake"
@@ -548,11 +688,25 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
             - from="3300.Result" to="3700.p6"
             - from="3400.Result" to="3700.p7"
             - from="3500.Result" to="3600.progress"
+            - from="3500.Result" to="4900.progress"
             - from="3600.Result" to="3700.p8"
             - from="3700.Result" to="12.Position"
             - from="3800.Result" to="12.Size"
             - from="3900.Result" to="4000.palette"
             - from="4000.Result" to="12.Color"
+            - from="4100.Result" to="4200.contact"
+            - from="4200.Result" to="4300.visibility"
+            - from="4300.Result" to="3800.envelope"
+            - from="4300.Result" to="4000.envelope"
+            - from="4400.Result" to="3700.p12"
+            - from="4500.Result" to="2900.gravity_time"
+            - from="4500.Result" to="3100.gravity_time"
+            - from="4500.Result" to="3400.gravity_time"
+            - from="4500.Result" to="4400.gravity_time"
+            - from="4600.Result" to="12.Scale"
+            - from="4700.Result" to="12.Rotation"
+            - from="4800.Result" to="12.Lighting"
+            - from="4900.Result" to="3600.tail"
         }
     }
     - {
@@ -1086,31 +1240,16 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
     - id=500200 kind="function" math_expression="p0 * (1 - step(0.5, cell)) + p1 * (step(0.5, cell) - step(1.5, cell)) + p2 * (step(1.5, cell) - step(2.5, cell)) + p3 * step(2.5, cell)" expression_mode=1 entry_id=608000
     - id=500300 kind="function" math_expression="(p0 + p1 + p2 + p3) * 0.25" expression_mode=1 entry_id=612000
     - id=500400 kind="function" math_expression="fract(sin(index * 71.37 + seed * 5) * 19417.345)" expression_mode=1 entry_id=616000
-    - id=500500 kind="function" math_expression="life * 0.26 * (exp(log(65) * quantile) - 1) / 64" expression_mode=1 entry_id=620000
     - id=500600 kind="function" math_expression="life * (0.56 + random.z * 0.16)" expression_mode=1 entry_id=624000
     - id=500700 kind="function" math_expression="max(0, age - delay - birth)" expression_mode=1 entry_id=628000
     - id=500800 kind="function" math_expression="clamp(elapsed / max(duration, 0.001), 0, 1)" expression_mode=1 entry_id=632000
     - id=500900 kind="function" math_expression="smoothstep(0, min(0.016, duration * 0.16), elapsed) * (1 - smoothstep(duration * 0.28, duration, elapsed)) * fade" expression_mode=1 entry_id=636000
     - id=501000 kind="function" math_expression="elapsed * (1 - quiet)" expression_mode=1 entry_id=640000
-    - id=501100 kind="function" math_expression="(1 - exp(-7 * motion)) / 7" expression_mode=1 entry_id=644000
     - id=501200 kind="function" math_expression="vec3(mix((random.x - 0.5) * 21, (step(0.5, random.z) * 2 - 1) * 10.7, step(0.5, random.y)), mix((step(0.5, random.z) * 2 - 1) * 10.7, (random.x - 0.5) * 21, step(0.5, random.y)), 0.35)" expression_mode=1 entry_id=648000
-    - id=501300 kind="function" math_expression="point - center + vec3(edge.xy * 0.45, 0)" expression_mode=1 entry_id=652000
-    - id=501400 kind="function" math_expression="vec3(-radial.y, radial.x, 0) * -direction / max(length(radial.xy), 1)" expression_mode=1 entry_id=656000
     - id=501500 kind="function" math_expression="step(0.78, random.y)" expression_mode=1 entry_id=660000
     - id=501600 kind="function" math_expression="step(0.48, random.y) * (1 - fleck)" expression_mode=1 entry_id=664000
     - id=501700 kind="function" math_expression="point + edge + vec3((random.x - 0.5) * 100, 25 + random.y * 55, (random.z - 0.5) * 12) * drag - vec3(0, motion * motion * 110, 0)" expression_mode=1 entry_id=668000
-    - id=501800 kind="function" math_expression="point + vec3(-direction * 10.7, (random.y - 0.5) * 19, 0.35) + vec3(-direction * (18 + random.z * 34), (random.y - 0.5) * 12, (random.z - 0.5) * 5) * drag" expression_mode=1 entry_id=672000
-    - id=501900 kind="function" math_expression="point + edge + tangent * ((55 + random.z * 65) * drag - wake * 3) + vec3((random.x - 0.5) * 8 * wake, -motion * motion * 50, (random.z - 0.5) * 4 * wake) * (1 - quiet)" expression_mode=1 entry_id=676000
-    - id=502000 kind="function" math_expression="point + vec3((random.x - 0.5) * 16, -10.7 - 30 * drag, 0.35 + (random.z - 0.5) * drag * 6)" expression_mode=1 entry_id=680000
-    - id=502100 kind="function" math_expression="point + vec3((random.x - 0.5) * 20, -10.7, 0.35) + vec3((random.x - 0.5) * (45 + fleck * 60) * drag, fleck * ((30 + random.z * 45) * motion - 150 * motion * motion), (random.z - 0.5) * (6 + fleck * 12) * drag)" expression_mode=1 entry_id=684000
-    - id=502200 kind="function" math_expression="point + edge + (center - point) * drag * 1.2 + vec3(0, 20 * drag, 0)" expression_mode=1 entry_id=688000
-    - id=502300 kind="function" math_expression="point + vec3(direction * 10.7, (random.y - 0.5) * 18, 0.35) + vec3(-direction * 16 * drag, -motion * motion * 40, (random.z - 0.5) * drag * 3)" expression_mode=1 entry_id=692000
-    - id=502400 kind="function" math_expression="smoothstep(0, 0.11, max(0, age - delay)) * (1 - quiet)" expression_mode=1 entry_id=696000
-    - id=502500 kind="function" math_expression="point + vec3((random.y - 0.5) * 3, -travel * 24 * progress + min(travel * 24 * progress, 18) * random.z * (0.2 + wake * 0.8), 0.35 + (random.x - 0.5) * 2)" expression_mode=1 entry_id=700000
-    - id=502600 kind="function" math_expression="p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8)))" expression_mode=1 entry_id=704000
-    - id=502700 kind="function" math_expression="(0.58 + random.z * 0.5 + wake * 1.6) * (0.8 + strength * 0.65) * (1 - phase * 0.3) * envelope" expression_mode=1 entry_id=708000
     - id=502800 kind="function" math_expression="mix(mix(vec3(0.17, 0.65, 0.88), vec3(0.66, 0.3, 0.9), clamp(hue, 0, 1)), vec3(1.0, 0.34, 0.065), clamp(hue - 1, 0, 1))" expression_mode=1 entry_id=712000
-    - id=502900 kind="function" math_expression="vec4(mix(vec3(1.55, 1.78, 1.95), palette, smoothstep(0, 0.55, phase)) * (0.7 + strength * 0.4), envelope * (0.42 + random.z * 0.18) * (1 - wake * 0.78) * (1 - quiet * 0.35))" expression_mode=1 entry_id=716000
     - id=503000 kind="function" math_expression="mix(life * 0.26 * (exp(log(65) * quantile) - 1) / 64, (abs(source.x) / 118 * 0.04 + quantile * 0.008) * life / 0.24, layers.x)" expression_mode=1 entry_id=720000
     - id=503100 kind="function" math_expression="source + vec3((random.x - 0.5) * 60, (random.y - 0.5) * 45, 16 + random.z * 24) * drag_time" expression_mode=1 entry_id=724000
     - id=503200 kind="function" math_expression="fracture * layers.x + debris * layers.y + embers * layers.z + energy * layers.w" expression_mode=1 entry_id=728000
@@ -1132,4 +1271,30 @@ description "Captured 3D contact cues and independent clear releases. Fracture f
     - id=504800 kind="function" math_expression="mix(vec3(1, 1, 1), vec3(2.2, 0.38, 0.6), layers.x * (1 - quiet)) * mix(vec3(1, 1, 1), vec3(1.2 + random.x * 0.8, 0.5 + random.y * 0.55, 0.65 + random.z * 0.55), layers.y * (1 - quiet))" expression_mode=1 entry_id=792000
     - id=504900 kind="function" math_expression="vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) * (2.2 + motion * 8) * layers.y * (1 - quiet)" expression_mode=1 entry_id=796000
     - id=505000 kind="function" math_expression="(layers.y * 0.85 + layers.z * 0.35) * (1 - quiet)" expression_mode=1 entry_id=800000
+    - id=850000 kind="function" math_expression="(0.18 + (1 - step(0.5, abs(pattern - 4))) * 0.3 + (1 - step(0.5, abs(pattern - 12))) * 0.28) * (1 - quiet)" expression_mode=1 entry_id=1000000
+    - id=850100 kind="function" math_expression="(0.9 + random.z * 0.65 + wake * 0.35) * (0.78 + strength * 0.35) * (1 - phase * 0.24) * envelope * (2 - envelope) * (1 + (1 - step(0.5, abs(pattern - 4))) * 0.3) * (1 - (1 - step(0.5, abs(pattern - 12))) * 0.25)" expression_mode=1 entry_id=1004000
+    - id=850200 kind="function" math_expression="(1 - exp(-4.2 * motion)) / 4.2" expression_mode=1 entry_id=1008000
+    - id=850300 kind="function" math_expression="(motion - drag) / 4.2" expression_mode=1 entry_id=1012000
+    - id=850400 kind="function" math_expression="-direction * (0.35 + random.z * 0.25) * (1 - exp(-4.2 * motion))" expression_mode=1 entry_id=1016000
+    - id=850500 kind="function" math_expression="1 - max(max((1 - step(0.5, abs(point.x - p0.x))) * (1 - step(0.5, abs(point.y - p0.y - 24))), (1 - step(0.5, abs(point.x - p1.x))) * (1 - step(0.5, abs(point.y - p1.y - 24)))), max((1 - step(0.5, abs(point.x - p2.x))) * (1 - step(0.5, abs(point.y - p2.y - 24))), (1 - step(0.5, abs(point.x - p3.x))) * (1 - step(0.5, abs(point.y - p3.y - 24)))))" expression_mode=1 entry_id=1020000
+    - id=850600 kind="function" math_expression="center + vec3(radial.x * cos(angle) - radial.y * sin(angle), radial.x * sin(angle) + radial.y * cos(angle), radial.z) + vec3((random.x - 0.5) * 4 * drag, -12 * gravity_time, 0.35 + (random.z - 0.5) * 5 * drag)" expression_mode=1 entry_id=1024000
+    - id=850700 kind="function" math_expression="envelope * visibility" expression_mode=1 entry_id=1028000
+    - id=850800 kind="function" math_expression="life * (0.62 + random.z * 0.14)" expression_mode=1 entry_id=1032000
+    - id=850900 kind="function" math_expression="life * 0.2 * (exp(log(65) * quantile) - 1) / 64" expression_mode=1 entry_id=1036000
+    - id=851000 kind="function" math_expression="min(travel * 24 * progress, 12) * (1 - smoothstep(0.16, 0.32, max(0, age - delay)))" expression_mode=1 entry_id=1040000
+    - id=851100 kind="function" math_expression="mix(1, contact, max(1 - step(0.5, abs(pattern - 4)), 1 - step(0.5, abs(pattern - 12))))" expression_mode=1 entry_id=1044000
+    - id=851200 kind="function" math_expression="mix(vec3(1, 1, 1), vec3(1.7, 0.65, 0.65), 1 - step(0.5, abs(pattern - 1))) * mix(vec3(1, 1, 1), vec3(0.8, 0.8, 0.65), 1 - step(0.5, abs(pattern - 12))) * vec3(0.8 + random.x * 0.35, 0.85 + random.y * 0.3, 0.8 + random.z * 0.3)" expression_mode=1 entry_id=1048000
+    - id=851300 kind="function" math_expression="p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8))) + p12 * (1 - step(0.5, abs(pattern - 12)))" expression_mode=1 entry_id=1052000
+    - id=851400 kind="function" math_expression="point + edge + (center - point) * drag * 0.65 + vec3(0, 12 * drag, 8 * drag)" expression_mode=1 entry_id=1056000
+    - id=851500 kind="function" math_expression="point + vec3((random.x - 0.5) * 16, -10.7 - 18 * drag, 0.35 + (random.z - 0.5) * drag * 8)" expression_mode=1 entry_id=1060000
+    - id=851600 kind="function" math_expression="point + vec3((random.x - 0.5) * 20, -10.7, 0.35) + vec3((random.x - 0.5) * (25 + fleck * 24), fleck * (18 + random.z * 22), (random.z - 0.5) * (12 + fleck * 18)) * drag - vec3(0, 50 * gravity_time, 0)" expression_mode=1 entry_id=1064000
+    - id=851700 kind="function" math_expression="point + vec3((random.x - 0.5) * 20, -10.7, 0.6) + vec3((random.x - 0.5) * 32, 6 + random.y * 12, 5 + random.z * 10) * drag - vec3(0, 18 * gravity_time, 0) + vec3(sin(random.z * 6.283185 + motion * 3) - sin(random.z * 6.283185), sin(random.x * 6.283185 + motion * 2) - sin(random.x * 6.283185), sin(random.y * 6.283185 + motion * 2.5) - sin(random.y * 6.283185)) * (1 - exp(-2.4 * motion)) * 2.5" expression_mode=1 entry_id=1068000
+    - id=851800 kind="function" math_expression="point + vec3((random.y - 0.5) * 2, -travel * 24 * progress + tail * random.z * (0.2 + wake * 0.6), 0.35 + (random.x - 0.5) * 1.2)" expression_mode=1 entry_id=1072000
+    - id=851900 kind="function" math_expression="point + vec3(-direction * 10.7, (random.y - 0.5) * 19, 0.35) + vec3(-direction * (12 + random.z * 18), (random.y - 0.5) * 8, (random.z - 0.5) * 6) * drag" expression_mode=1 entry_id=1076000
+    - id=852000 kind="function" math_expression="point + vec3(direction * 10.7, (random.y - 0.5) * 18, 0.35) + vec3(-direction * 9 * drag, -8 * gravity_time, (random.z - 0.5) * drag * 3)" expression_mode=1 entry_id=1080000
+    - id=852100 kind="function" math_expression="point - center + vec3(edge.xy, 0)" expression_mode=1 entry_id=1084000
+    - id=852200 kind="function" math_expression="smoothstep(0, 0.16, max(0, age - delay)) * (1 - quiet)" expression_mode=1 entry_id=1088000
+    - id=852300 kind="function" math_expression="smoothstep(0, min(0.05, duration * 0.22), elapsed) * (1 - smoothstep(duration * 0.18, duration, elapsed)) * fade" expression_mode=1 entry_id=1092000
+    - id=852400 kind="function" math_expression="vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) * (1.4 + motion * 1.6)" expression_mode=1 entry_id=1096000
+    - id=852500 kind="function" math_expression="vec4(mix(vec3(0.85, 1.1, 1.25), palette, smoothstep(0, 0.42, phase)) * (0.62 + strength * 0.32), envelope * (0.42 + random.z * 0.18) * (1 - wake * 0.45) * (1 - quiet * 0.25) * (1 - (1 - step(0.5, abs(pattern - 12))) * 0.3))" expression_mode=1 entry_id=1100000
 }

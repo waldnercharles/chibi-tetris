@@ -15,6 +15,7 @@ behavior Environment {
     cursors: entity[]
     sequences: int[] = [0, 0, 0]
     runs: int[] = [-1, -1, -1]
+    drop_serials: int[] = [-1, -1]
     slot: int = 0
     light_slot: int = 0
     ready := false
@@ -127,7 +128,7 @@ behavior Environment {
 
     // Patterns: fracture, move edge, tangential turn, soft fall, contact,
     // fracture front, hold, blocked edge, descending packets, clear debris,
-    // microembers and expanding energy. These are fixed instanced fields.
+    // microembers, expanding energy and settling dust. These are fixed instanced fields.
     function Cue(pattern: int, x: number, y: number, direction: int, travel: int, strength: number, life: number, hue: number) {
         available := false
         for offset in 0..95 {
@@ -151,28 +152,28 @@ behavior Environment {
                 count = 80
             }
             case 1 {
-                count = 16
+                count = 32
             }
             case 2 {
-                count = 48
+                count = 72
             }
             case 3 {
-                count = 20
+                count = 24
             }
             case 4 {
-                count = 56
+                count = 64
             }
             case 5 {
                 count = 320
             }
             case 6 {
-                count = 32
+                count = 48
             }
             case 7 {
                 count = 12
             }
             case 8 {
-                count = 112
+                count = 96
             }
             case 9 {
                 count = 96
@@ -182,6 +183,9 @@ behavior Environment {
             }
             case 11 {
                 count = 192
+            }
+            case 12 {
+                count = 96
             }
         }
         if world.Session.effects == 1 {
@@ -198,12 +202,12 @@ behavior Environment {
         field.ParticleField3D.seed += 37
         field.ParticleField3D.time = 0
         field.Shader.material = "ReactionParticles.Cue"
-        if pattern == 5 || pattern >= 9 {
+        if pattern == 5 || pattern >= 9 && pattern <= 11 {
             field.Shader.material = "ReactionParticles.Release"
         }
         field.Geometry3D = { primitive: 5, width: 1, height: 1, depth: 0.8 }
         if pattern == 8 && !quiet {
-            field.Geometry3D.height = 2.4
+            field.Geometry3D.height = 1.8
         }
         set_material_parameter(field, "Pattern", cast<number>(pattern))
         set_material_parameter(field, "Direction", cast<number>(direction))
@@ -221,6 +225,21 @@ behavior Environment {
         lives[slot] = cue_delay + life
         retires[slot] = -1
         slot = (slot + 1) % 96
+    }
+
+    // Flecks mark the contact, then finer grains settle through its captured depth.
+    // Both layers retain the same arrival clock, without replaying at Lock.
+    function Landing(x: number, y: number, piece_x: number, strength: number) {
+        arrival := cue_delay
+        Cue(4, x, y, 1, 0, strength, 0.64, 0.1)
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            return
+        }
+        cue_delay = arrival + 0.045
+        Cue(12, x, y, 1, 0, strength * 0.6, 1, 0.12)
+        low := min(min(cue_point0.y, cue_point1.y), min(cue_point2.y, cue_point3.y))
+        front := (cue_point0.z + cue_point1.z + cue_point2.z + cue_point3.z) * 0.25
+        Glow(vec3(piece_x, y + low - 10.7, front + 2), 0.26 + strength * 0.4, 0, arrival)
     }
 
     // The immutable row mask survives board collapse. Each row starts at its
@@ -262,48 +281,49 @@ behavior Environment {
         cue_delay = 0
         cue_depth = 0
         if record.ReactionEvent.result == 0 {
-            Cue(7, x, y, direction, 0, 0.06, 0.16, 2)
+            Cue(7, x, y, direction, 0, 0.035, 0.4, 2)
             return
         }
         match (kind) {
             case 1 {
-                Cue(1, x, y, direction, 0, 0.04, 0.18, 0)
-                Push(0.12, cast<number>(direction))
+                Cue(1, x, y, direction, 0, 0.035, 0.52, 0)
+                Push(0.08, cast<number>(direction))
             }
             case 2 {
-                Cue(2, x, y, direction, 0, 0.16, 0.28, 0.25)
-                Push(0.22, cast<number>(direction) * 1.5)
+                Cue(2, x, y, direction, 0, 0.12, 0.76, 0.25)
+                Push(0.15, cast<number>(direction) * 1.2)
             }
             case 3 {
-                Cue(3, x, y, 1, 0, 0.06, 0.18, 0)
-                Push(0.1, 0)
+                Cue(3, x, y, 1, 0, 0.035, 0.48, 0)
+                Push(0.06, 0)
             }
             case 4 {
-                Cue(3, x, y, 1, amount, 0.04, 0.18, 0)
-                Push(0.07, 0)
+                Cue(3, x, y, 1, amount, 0.025, 0.48, 0)
+                Push(0.04, 0)
             }
             case 5 {
-                Cue(4, x, y, 1, 0, 0.06, 0.18, 0)
+                Cue(3, x, y, 1, 0, 0.025, 0.38, 0)
             }
             case 6 {
+                drop_serials[board.BoardState.index] = record.ReactionEvent.serial
                 quiet := world.Session.reduced_motion || world.Session.effects == 0
                 if !quiet && amount > 0 {
-                    Cue(8, x, y, 1, amount, 0.5, 0.26, 0)
-                    cue_delay = 0.095
+                    Cue(8, x, y, 1, amount, 0.32, 0.42, 0)
+                    cue_delay = 0.16
                 }
-                Cue(4, x, y - amount * 24, 1, 0, 0.45, 0.34, 0.1)
-                low := min(min(cue_point0.y, cue_point1.y), min(cue_point2.y, cue_point3.y))
-                front := (cue_point0.z + cue_point1.z + cue_point2.z + cue_point3.z) * 0.25
-                Glow(vec3(piece_x, y + low - amount * 24 - 10.7, front + 2), 0.75, 0, cue_delay)
-                Push(0.68, 0.22)
+                Landing(x, y - amount * 24, piece_x, 0.45)
+                Push(0.34, 0.12)
             }
             case 7 {
-                Cue(6, x, y, -1, 0, 0.13, 0.24, 0.4)
-                Push(0.2, -1)
+                Cue(6, x, y, -1, 0, 0.1, 0.72, 0.4)
+                Push(0.12, -0.7)
             }
             case 8 {
-                Cue(4, x, y, 1, 0, 0.14, 0.24, 0.1)
-                Push(0.14, 0)
+                if get(drop_serials, board.BoardState.index) == record.ReactionEvent.serial - 1 {
+                    return
+                }
+                Landing(x, y, piece_x, 0.16)
+                Push(0.1, 0)
             }
             case 9 {
                 center := 0
@@ -369,6 +389,9 @@ behavior Environment {
                 sequences[i] = 0
                 cursors[i] = source.ReactionQueue.first
                 runs[i] = source.ReactionQueue.run
+                if i < 2 {
+                    drop_serials[i] = -1
+                }
             }
             serial := get(sequences, i)
             newest := source.ReactionQueue.serial

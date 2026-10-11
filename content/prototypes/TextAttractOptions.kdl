@@ -1,0 +1,4 @@
+name "TextAttractOptions"
+components {
+    MeshAsset source="content/meshes/text/attract_options.mesh"
+}

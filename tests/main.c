@@ -409,6 +409,19 @@ static bool number_meshes(double y, int side, const char *expected)
     return true;
 }
 
+static bool no_decorative_hud()
+{
+    static const char *labels[] = { "stillwater", "journey", "endless",
+                                    "sprint",     "duet",    "chapter" };
+    for (int i = 0; i < (int)(sizeof labels / sizeof *labels); i++) {
+        char mesh[128];
+        snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", labels[i]);
+        REQUIRE(!visible_mesh(mesh));
+    }
+    REQUIRE(number_meshes(264, 0, ""));
+    return true;
+}
+
 static bool modal_depth()
 {
     yyjson_val *entities = snapshot_entities();
@@ -435,7 +448,7 @@ static bool modal_depth()
     REQUIRE(half_depth > 0);
     int screen = yyjson_get_int(field("World", "Session", "screen"));
     bool connection = screen == 0;
-    int foreground = 0, background = 0, titles = 0;
+    int foreground = 0, background = 0;
     yyjson_arr_foreach(entities, i, count, entity)
     {
         const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
@@ -476,39 +489,29 @@ static bool modal_depth()
                 fprintf(stderr, "%s reaches in front of the modal panel\n", mesh);
             }
             REQUIRE(z + glyph_half < center - half_depth);
-            if (!strcmp(mesh, "content/meshes/text/stillwater.mesh")) {
-                titles++;
-            } else {
-                bool setting = y > 266.999 && y < 267.001 &&
-                               (!strncmp(mesh, "content/meshes/text/setting_", sizeof "content/meshes/text/setting_" - 1) ||
-                                !strncmp(
-                                    mesh,
-                                    "content/meshes/text/digit_",
-                                    sizeof "content/meshes/text/digit_" - 1
-                                ));
-                bool save_failed = !strcmp(mesh, "content/meshes/text/saving_failed.mesh") &&
-                                   yyjson_get_bool(field("World", "Session", "save_failed"));
-                REQUIRE(setting || save_failed);
-                double panel_y = yyjson_get_num(
-                    yyjson_obj_get(entity_field(panel, "Transform3D", "position"), "y")
-                );
-                double panel_half_height = yyjson_get_num(
-                                               entity_field(panel, "Geometry3D", "height")
-                                           ) *
-                                           yyjson_get_num(yyjson_obj_get(
-                                               entity_field(panel, "Transform3D", "scale"),
-                                               "y"
-                                           )) *
-                                           .5;
-                REQUIRE(
-                    y - yyjson_get_num(yyjson_obj_get(scale, "y")) * .5 > panel_y + panel_half_height
-                );
-            }
+            bool setting = y > 266.999 && y < 267.001 &&
+                           (!strncmp(mesh, "content/meshes/text/setting_", sizeof "content/meshes/text/setting_" - 1) ||
+                            !strncmp(mesh, "content/meshes/text/digit_", sizeof "content/meshes/text/digit_" - 1));
+            bool save_failed = !strcmp(mesh, "content/meshes/text/saving_failed.mesh") &&
+                               yyjson_get_bool(field("World", "Session", "save_failed"));
+            REQUIRE(setting || save_failed);
+            double panel_y = yyjson_get_num(
+                yyjson_obj_get(entity_field(panel, "Transform3D", "position"), "y")
+            );
+            double panel_half_height = yyjson_get_num(
+                                           entity_field(panel, "Geometry3D", "height")
+                                       ) *
+                                       yyjson_get_num(
+                                           yyjson_obj_get(entity_field(panel, "Transform3D", "scale"), "y")
+                                       ) *
+                                       .5;
+            REQUIRE(y - yyjson_get_num(yyjson_obj_get(scale, "y")) * .5 > panel_y + panel_half_height);
             background++;
         }
     }
     REQUIRE(foreground >= 2);
-    REQUIRE(connection ? background == 0 : titles == 1);
+    REQUIRE(!connection || background == 0);
+    REQUIRE(no_decorative_hud());
     return true;
 }
 
@@ -564,6 +567,7 @@ static bool stats_backings(int mode)
 
 static bool active_hud()
 {
+    REQUIRE(no_decorative_hud());
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     static const char *essential[] = { "score", "lines", "hold", "next", "pause_hint" };
     for (int i = 0; i < (int)(sizeof essential / sizeof *essential); i++) {
@@ -767,13 +771,13 @@ TEST_CASE(music_choice_precedes_play)
 
 TEST_CASE(music_connection_controls)
 {
-    yyjson_mut_doc *doc = request("MusicOnboardingChecks", 100);
+    yyjson_mut_doc *doc = request("MusicOnboardingChecks", 310);
     key(doc, 0, 0);
     tap(doc, 3, KEY_SPACE);
     tap(doc, 40, KEY_SPACE);
-    tap(doc, 66, KEY_ENTER);
-    tap(doc, 85, KEY_P);
-    tap(doc, 90, KEY_M);
+    tap(doc, 130, KEY_ENTER);
+    tap(doc, 295, KEY_P);
+    tap(doc, 300, KEY_M);
     REQUIRE(snapshot(doc));
     REQUIRE(report(24));
     return true;
@@ -787,8 +791,8 @@ TEST_CASE(music_choices_use_world_space_pointer)
         int source;
         bool starts;
     } choices[] = {
-        { 0, 32, 0, true },
-        { 0, -25, 1, false },
+        { -440, 96, 0, true },
+        { -440, 39, 1, false },
         { 600, 24, 0, false },
     };
     for (int i = 0; i < (int)(sizeof choices / sizeof *choices); i++) {
@@ -804,16 +808,67 @@ TEST_CASE(music_choices_use_world_space_pointer)
             yyjson_get_bool(field("World", "Session", "audio_ready")) ==
             choices[i].starts
         );
-        REQUIRE(
-            yyjson_get_int(field("World", "Session", "screen")) ==
-            (choices[i].starts ? 1 : 0)
-        );
-        REQUIRE(
-            yyjson_get_int(field("World", "Session", "run")) ==
-            (choices[i].starts ? 1 : 0)
-        );
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
+        REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 0);
         REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
+        REQUIRE(
+            yyjson_get_bool(field("World", "Session", "entering")) == choices[i].starts
+        );
     }
+    return true;
+}
+
+TEST_CASE(attract_placement_rules)
+{
+    yyjson_mut_doc *doc = request("AttractRulesChecks", 2);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(13));
+    return true;
+}
+
+TEST_CASE(attract_play_handoff)
+{
+    yyjson_mut_doc *doc = request("AttractChecks", 313);
+    key(doc, 0, 0);
+    tap(doc, 100, KEY_3);
+    tap(doc, 140, KEY_ENTER);
+    tap(doc, 265, KEY_SPACE);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(31));
+    return true;
+}
+
+TEST_CASE(attract_reduced_motion)
+{
+    yyjson_mut_doc *doc = request("Stillwater", 44);
+    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
+    key(doc, 0, 0);
+    click_world(doc, 6, -360, -114);
+    tap(doc, 12, KEY_ENTER);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_bool(field("World", "Session", "reduced_motion")));
+    REQUIRE(!yyjson_get_bool(field("World", "Session", "attract")));
+    REQUIRE(!yyjson_get_bool(field("World", "Session", "entering")));
+    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 1);
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
+    REQUIRE(yyjson_get_num(field("World", "Session", "hud_alpha")) == 1);
+    REQUIRE(
+        yyjson_get_num(yyjson_obj_get(field("Camera", "Transform3D", "position"), "x")) == 90
+    );
+    REQUIRE(!visible_mesh("content/meshes/text/music_score.mesh"));
+    return true;
+}
+
+TEST_CASE(attract_audio_failure_recovery)
+{
+    yyjson_mut_doc *doc = request("AttractRecoveryChecks", 183);
+    key(doc, 0, 0);
+    tap(doc, 5, KEY_ENTER);
+    tap(doc, 20, KEY_ENTER);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(10));
     return true;
 }
 
@@ -829,12 +884,12 @@ TEST_CASE(score_choice_and_mode_keys)
     yyjson_val *cue = yyjson_arr_get(snapshot_entities(), 0);
     REQUIRE(yyjson_get_int(entity_field(cue, "ParticleField3D", "count")) == 0);
 
-    doc = request("Stillwater", 18);
+    doc = request("Stillwater", 180);
     key(doc, 0, 0);
     tap(doc, 1, KEY_ENTER);
-    tap(doc, 3, KEY_SPACE);
-    tap(doc, 6, KEY_P);
-    tap(doc, 9, KEY_ENTER);
+    tap(doc, 163, KEY_SPACE);
+    tap(doc, 166, KEY_P);
+    tap(doc, 169, KEY_ENTER);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
@@ -852,12 +907,12 @@ TEST_CASE(score_choice_and_mode_keys)
     REQUIRE(yyjson_get_num(field("Vortex", "ParticleField3D", "time")) > 0);
     REQUIRE(yyjson_get_int(field("World", "ReactionQueue", "dropped")) == 0);
     REQUIRE(yyjson_get_int(field("Board1", "ReactionQueue", "dropped")) == 0);
-    doc = request("Stillwater", 18);
+    doc = request("Stillwater", 180);
     key(doc, 0, 0);
     tap(doc, 1, KEY_ENTER);
-    tap(doc, 3, KEY_2);
-    tap(doc, 6, KEY_3);
-    tap(doc, 9, KEY_4);
+    tap(doc, 163, KEY_2);
+    tap(doc, 166, KEY_3);
+    tap(doc, 169, KEY_4);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
@@ -868,12 +923,12 @@ TEST_CASE(score_choice_and_mode_keys)
     REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == entities);
     static const char *quiet_settings[] = { "effects", "reduced_motion" };
     for (int i = 0; i < 2; ++i) {
-        doc = request("Stillwater", 18);
+        doc = request("Stillwater", 180);
         yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
         yyjson_mut_obj_add_str(doc, saved, quiet_settings[i], i == 0 ? "0" : "1");
         key(doc, 0, 0);
         tap(doc, 1, KEY_ENTER);
-        tap(doc, 3, KEY_SPACE);
+        tap(doc, 163, KEY_SPACE);
         REQUIRE(snapshot(doc));
         result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
         REQUIRE(yyjson_get_int(yyjson_obj_get(result, "particle_count")) == 0);
@@ -1152,16 +1207,17 @@ TEST_CASE(setting_value_labels)
 
 TEST_CASE(immediate_session_labels)
 {
-    yyjson_mut_doc *doc = request("HudChecks", 18);
-    key(doc, 0, 0);
-    tap(doc, 16, KEY_2);
-    REQUIRE(snapshot(doc));
-    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 1);
-    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 2);
-    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
-    REQUIRE(visible_mesh("content/meshes/text/endless.mesh"));
-    REQUIRE(!visible_mesh("content/meshes/text/journey.mesh"));
-    REQUIRE(active_hud());
+    static const int keys[] = { KEY_1, KEY_2, KEY_3, KEY_4 };
+    for (int mode = 0; mode < 4; mode++) {
+        yyjson_mut_doc *doc = request("HudChecks", 18);
+        key(doc, 0, 0);
+        tap(doc, 16, keys[mode]);
+        REQUIRE(snapshot(doc));
+        REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == mode);
+        REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 2);
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+        REQUIRE(active_hud());
+    }
     return true;
 }
 
@@ -1292,7 +1348,7 @@ TEST_CASE(evolving_stage_direction)
 
 TEST_CASE(layered_world_space_reactions)
 {
-    yyjson_mut_doc *doc = request("VfxChecks", 182);
+    yyjson_mut_doc *doc = request("VfxChecks", 250);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
     REQUIRE(report(141));
@@ -1316,14 +1372,15 @@ int main(int argc, char **argv)
     bool consumer = !strcmp(selection, "--consumer");
     bool hud = !strcmp(selection, "--hud");
     bool onboarding = !strcmp(selection, "--onboarding");
+    bool attract = !strcmp(selection, "--attract");
     bool previews = !strcmp(selection, "--previews");
     bool motion = !strcmp(selection, "--motion");
     bool stage = !strcmp(selection, "--stage");
     bool vfx = !strcmp(selection, "--vfx");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
-        !(all || reactions || consumer || hud || onboarding || previews ||
-          motion || stage || vfx)) {
-        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--previews|--motion|--stage|--vfx /path/to/chibi_ctl /path/to/game\n", argv[0]);
+        !(all || reactions || consumer || hud || onboarding || attract ||
+          previews || motion || stage || vfx)) {
+        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--attract|--previews|--motion|--stage|--vfx /path/to/chibi_ctl /path/to/game\n", argv[0]);
         return 2;
     }
     assert(realpath(controller_path, controller) && realpath(project_path, project));
@@ -1339,6 +1396,12 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(ordered_clear_reactions);
         RUN_TEST_CASE(topout_and_rescue);
     }
+    if (all || attract) {
+        RUN_TEST_CASE(attract_placement_rules);
+        RUN_TEST_CASE(attract_play_handoff);
+        RUN_TEST_CASE(attract_reduced_motion);
+        RUN_TEST_CASE(attract_audio_failure_recovery);
+    }
     if (all || onboarding) {
         RUN_TEST_CASE(music_choice_precedes_play);
         RUN_TEST_CASE(music_connection_controls);
@@ -1351,13 +1414,13 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(lock_reset_limit);
         RUN_TEST_CASE(journey_settings_and_reopen);
         RUN_TEST_CASE(sprint_duet_and_disconnect);
-        RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
         RUN_TEST_CASE(score_choice_and_mode_keys);
     }
     if (all || hud || previews) {
         RUN_TEST_CASE(sidebar_previews_follow_play_state);
     }
     if (all || hud) {
+        RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
         RUN_TEST_CASE(sprint_time_display);
         RUN_TEST_CASE(audio_source_status_labels);
         RUN_TEST_CASE(setting_value_labels);

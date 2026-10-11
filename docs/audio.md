@@ -30,11 +30,11 @@ The game uses the SDK's two-second crossfade when changing arrangements. Incomin
 
 ## Music reaction and capture
 
-Each launch offers two in-world actions: **Enter Play** starts the bundled score immediately; **M Connect audio** opens the browser's sharing chooser directly. Click either label or use its key. There are no provider launch buttons or account credentials in the game.
+Each launch offers two in-world actions beside a live demonstration: **Enter Play** starts the selected mode; **M Connect audio** opens the browser's sharing chooser directly. Click either label or use its key. Play keeps a connected external source or chooses the bundled score when no external source is ready. There are no provider launch buttons or account credentials in the game.
 
 Play music in a separate browser tab, press M, select that tab in the sharing picker and enable its audio option. A desktop Chromium browser is the practical starting point for tab audio. Window or system audio is also usable when the browser and operating system offer it. Source selection always needs a user gesture and permission; the game cannot select a tab on your behalf. [Screen Capture API](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
 
-A connected stream starts play even during a quiet passage. The HUD distinguishes connection from measured sound: **Audio connected** or **Connected · quiet**. An unavailable, cancelled or ended capture retains **Play** and **Connect audio** for immediate fallback or retry. Pressing Enter explicitly restores the bundled score; capture failure does not silently change the source.
+A connected stream remains on the opening screen until you press Play, including during a quiet passage. The HUD distinguishes connection from measured sound: **Audio connected** or **Connected · quiet**. An unavailable, cancelled or ended capture retains **Play** and **Connect audio** for fallback or retry. Pressing Enter when no stream is ready explicitly chooses the bundled score; capture failure does not silently change the source. Reconnecting during an existing run preserves the board and returns to its previous play or pause state after explicit Play.
 
 During play, pause or a completed run, M reconnects while preserving the board, elapsed time and return screen. A paused run remains paused after connection. The source measures actual samples; level, frequency bands and transients drive the scene and cosmetic piece motion. Logical falling, input and lock timing stay predictable. External music stays audible in its own player; the game does not play a duplicate, save or upload the capture. Browser sharing requires a video track, but only audio is consumed.
 

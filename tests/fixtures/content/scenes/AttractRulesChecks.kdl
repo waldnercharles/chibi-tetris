@@ -1,0 +1,12 @@
+version 1
+name "AttractRulesChecks"
+(array)entities {
+    - {
+        name "Report"
+        prototype "TestReport"
+        components {
+            (object)TestReport
+        }
+        (array)behaviors "AttractRulesChecks"
+    }
+}

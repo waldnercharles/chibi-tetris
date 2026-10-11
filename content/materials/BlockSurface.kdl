@@ -31,7 +31,7 @@ description "Near-opaque colored coat over an opaque BlockCore. Stage and measur
                     Value {
                         type "struct"
                         type_name "ShaderVec3"
-                        default x=0.24 y=0.18 z=0.16
+                        default x=0.54 y=0.06 z=0.025
                     }
                 }
             }

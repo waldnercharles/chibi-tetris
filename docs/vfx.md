@@ -7,11 +7,29 @@ pool holds 96 fields and eight local lights. No grain creates an entity or runs
 a behavior, and a visible field or light is never moved to a newer event.
 
 Ordinary input starts on the four captured occupied cell fronts. Their depth
-includes the block finish, chapter depth and music lift at the action. Movement
-uses sixteen grains, turns forty-eight, soft fall twenty, hold thirty-two and
-rejection twelve. These remain brief local cues. A traveled hard drop uses 112
-descending grains, followed after 95 ms by 56 landing grains and a local light.
-The compact packet covers at most eighteen units of its path at a time.
+includes the block finish, chapter depth and music lift at the action. The
+effects stay local, with a restrained initial color and longer dim tails.
+Grains have small variations in proportion and tumble, and receive some scene
+lighting. A turn follows an arc around the captured piece center.
+
+| Action or layer | Instances | Field life | Placement and timing |
+| --- | ---: | ---: | --- |
+| Movement | 32 | 520 ms | Leaves the trailing edges and slows through drag. |
+| Rotation | 72 | 760 ms | Curves around the occupied shape, then settles. |
+| Soft fall | 24 | 480 ms | Starts beneath the captured cells; release uses 380 ms. |
+| Hold | 48 | 720 ms | Draws slightly inward and forward through depth. |
+| Rejection | 12 | 400 ms | Stays beside the blocked edge. |
+| Hard-drop packet | 96 | 420 ms | Reaches the landing in 160 ms; its compact wake contracts by 320 ms. |
+| Contact flecks | 64 | 640 ms | Starts at arrival, on exposed lower cell edges. |
+| Settling dust | 96 | 1,000 ms | Starts 45 ms after contact and drifts gently through depth. |
+
+A hard drop uses the packet and both landing layers. Its immediately
+following lock record does not replay them. A natural lock uses the two landing
+layers without a packet. Internal lower edges are masked, so stacked cells do
+not emit contact grains through the middle of their shape. The packet's wake
+spans at most twelve units along its path. Its light waits for the full 160 ms
+arrival and has a peak setting of 0.44; a natural lock uses 0.324. Their shared
+light envelope stays below those settings.
 
 ## A cleared row
 
@@ -46,7 +64,7 @@ light pulse is separate from the longer fragment lifetime.
 
 ## Timing and motion
 
-Except for the fracture front, birth time uses an independent stable hash `q`
+For clear layers except the fracture front, birth time uses an independent stable hash `q`
 in `[0, 1)`. For field life `L`, the emission window is `E = 0.26L`:
 
 ```
@@ -89,9 +107,24 @@ prescribed flowing trajectory, not a fluid solver. Chunk tumble is constant
 angular motion. The GPU does not persist particle state or simulate collisions,
 rigid-body contacts or particle-to-particle forces.
 
-Ordinary contact drag also uses `F(a, 7)`. Its small landing flecks retain their
-ballistic vertical formula `vy * a - 150a²`. The hard-drop packet follows
-`-24 * rows * smoothstep(0, 0.11, t - d)`.
+Ordinary cues use `E = 0.20L` and `D = L * (0.62 + 0.14h)`. Their slower attack
+and release are:
+
+```
+A(a) = smoothstep(0, min(0.050, 0.22D), a)
+       * (1 - smoothstep(0.18D, D, a))
+```
+
+Alpha uses this envelope and the mode-change retirement fade; size uses
+`A * (2 - A)` to retain readable coverage through the softer tail. Contact
+fragments are 30% larger than the ordinary grains; settling dust remains finer.
+The latest grain reaches zero before 96% of its field life. Ordinary translation
+uses `F(a, 4.2)`. Contact and settling gravity use `G(a, 4.2)`, with downward
+acceleration of 50 and 18 units/s² respectively. Settling dust adds bounded
+sine differences that start at zero. Rotation uses an angular displacement of
+`-direction * (0.35 + 0.25h) * (1 - exp(-4.2a))`. These are continuous authored
+paths, without particle collision simulation. The hard-drop packet follows
+`-24 * rows * smoothstep(0, 0.16, t - d)`.
 
 ## Bounds and validation
 
@@ -102,7 +135,9 @@ keeps the existing fields unchanged. Event queue consumption continues, and
 `cue_overwrites` remains zero. The field and light entity pools do not grow on clear. The renderer may allocate or resize an instance buffer when a field first activates or its count changes.
 
 `VfxChecks` exercises the production consumer: local action origins, hard-drop
-arrival and lighting, full-pool saturation, four-row budgets and independent
+arrival and lighting, separate contact and settling lifetimes, suppression of
+the following lock's duplicate effect, extended ordinary tails, full-pool
+saturation, four-row budgets and independent
 layer lifetimes, original row masks after compaction, captured front depth,
 Solo and Duet placement, reduced effects and continuous mode-change retirement.
 The C/pico_unit dispatcher runs the fixture under the production supervisor.

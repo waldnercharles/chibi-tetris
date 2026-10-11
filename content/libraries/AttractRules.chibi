@@ -1,0 +1,54 @@
+// Score one straight-drop placement without changing the live board.
+library AttractRules {
+    function Evaluate(grid: int[], kind: int, facing: int, column: int)
+    -> (valid: bool, landing: int, quality: number) {
+        if !Rules.Fits(grid, kind, facing, column, 1) {
+            return (false, 1, -1000000)
+        }
+        landing = Rules.Landing(grid, kind, facing, column, 1)
+        placed: int[] = []
+        for block in 0..3 {
+            cell := Pieces.Cell(kind, facing, block)
+            placed = array_add(placed, (landing + cell.y) * 10 + column + cell.x)
+        }
+
+        heights: int[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        lines: int = 0
+        occupied: int = 0
+        y: int = 21
+        while y >= 0 {
+            columns: int[] = []
+            for x in 0..9 {
+                index := y * 10 + x
+                if get(grid, index) != 0 || contains(placed, index) {
+                    columns = array_add(columns, x)
+                }
+            }
+            if length(columns) == 10 {
+                lines += 1
+            }
+            if length(columns) < 10 {
+                occupied += length(columns)
+                for x in columns {
+                    heights = set_array_elem(heights, x, 22 - y - lines)
+                }
+            }
+            y -= 1
+        }
+
+        total: int = 0
+        tallest: int = 0
+        roughness: int = 0
+        for x in 0..9 {
+            height := get(heights, x)
+            total += height
+            tallest = max(tallest, height)
+            if x > 0 {
+                roughness += abs(height - get(heights, x - 1))
+            }
+        }
+        holes := total - occupied
+        quality = cast<number>(lines) * 4 - cast<number>(total) * 0.45 - cast<number>(holes) * 3 - cast<number>(roughness) * 0.3 - cast<number>(tallest) * 0.4
+        return (true, landing, quality)
+    }
+}
