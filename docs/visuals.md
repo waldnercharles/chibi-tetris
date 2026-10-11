@@ -1,25 +1,41 @@
 # Stillwater in 3D
 
-The scene uses Chibi's perspective 3D renderer. The upright well, beveled blocks, ghost outlines, hold, queue and text are mesh geometry. A dark backplate, inset grid and illuminated rails frame the board. Directional lighting, shadows, ambient occlusion and bloom give the surfaces depth. Slow camera drift adds parallax while the rule grid stays fixed.
+The upright well, beveled blocks, ghost outlines, hold, queue and text are mesh geometry. A dark backplate, inset grid and illuminated rails keep the board readable. Directional lighting, shadows, ambient occlusion, local event lights and bloom give the scene depth. Slow camera drift adds parallax without moving the logical grid. Play begins immediately.
 
-![Stillwater Journey](screenshots/journey.png)
+## Particle space
 
-## Environment
+The background is a deep violet void with two long spiral arms and a separate distant star field. There is no underwater scene. `CosmicParticles.kdl` authors the position, size and emission of each octahedron from its index, seed, the scene clock and audio controls. Each field is one instanced GPU draw. Particle count does not add entities, behavior activations or per-frame CPU particle updates.
 
-Ocean crests develop into interwoven currents, polar curtains and stellar orbits as the Journey advances. Palette and shape transitions interpolate between chapters. Four jellyfish with modeled bells and articulated tendrils inhabit the ocean chapters.
+The initial full setting contains 131,072 vortex particles and 16,384 stars. Reduced density contains 16,384 plus 2,048. Effects off leaves 512 stationary stars. The engine supports larger counts; the shipped count is selected from actual browser frame-time measurements, recorded in [validation](validation.md).
 
-`Environment.chibi` owns fixed pools of depth motes, ribbon segments, comet trails and native particle emitters. `OceanLife.chibi` owns the jellyfish. Particles have finite lifetimes and the native pool is bounded. Restarting or changing modes reuses the same visual entities.
+Bass expands the arms; midrange changes their body; treble brings out fine glints. Audio onsets produce short pulses, with a latch and cooldown to avoid retriggering the same transient. The two fields share a clock that stops when paused or when motion is reduced. Chapter changes alter the palette gradually. The center remains dark so the field surrounds the game instead of washing out its grid.
 
-Measured audio changes light, breadth and motion. Bass opens the currents and pulses the jellyfish bells; treble brightens fine detail; transients create short pulses. Successful movement, rotation and hold add small responses. Locks, hard drops and line clears produce stronger responses at the board, including brief local lights that illuminate nearby blocks. The environment reads the board's event counters, so blocked input does not create a successful-action effect.
+## Action feedback
 
-The board sits in front of the distant scenery, with most movement around its edges. [Audio capture](audio.md#music-reaction-and-capture) explains how to use external music.
+A fixed ring records each action and its world-space position before a piece spawns or rows collapse. A fixed pool renders short-lived 3D particle cues:
 
-## Controls and accessibility
+| Action | Reaction |
+| --- | --- |
+| Move | A short directional dash |
+| Rotate | A crescent following the rotation direction |
+| Soft drop | Small descending streaks, plus press and release cues |
+| Hard drop | A corridor from the original position to the landing, followed by a halo |
+| Hold | A curved exchange streak |
+| Blocked action | Stationary amber brackets |
+| Lock | A restrained landing pulse |
+| Clear | Each original row releases an outward strip of sparks |
+| Combo | Additional arcs, capped at four |
+| Top-out or rescue | A distinct colored burst and local light |
+| Pause, restart, mode, chapter, settings or audio selection | A small confirmation or perimeter pulse |
 
-V cycles effect density. The lowest setting stops new particles and keeps a sparse, static environment. F toggles reduced motion, which freezes procedural travel and camera drift, suppresses audio modulation and stops new particle births. Existing particles finish within seven seconds and old comet trails within half a second. Pausing holds the board, camera and authored travel and stops new emission; music continues.
+Logical piece placement and controls remain immediate. Cosmetic releases last about 80–300 milliseconds. Strong reactions add local light; ordinary moves avoid changing the whole screen's brightness. Queue overflow has an explicit diagnostic rather than silently replaying or dropping a whole batch.
 
-`Hud.chibi` draws scores, preview labels, chapter progress, pause and result notices inside the world. Sprint shows elapsed and best times in minutes, seconds and tenths. Journey's pause panel shows the 7 / 8 chapter controls. Text uses original extruded stroke forms generated by `tools/glyphs.c` with the SDK mesh writer. Each static label is one mesh, and numbers reuse digit entities. A short control reminder stays visible, with additional settings controls shown while paused or after a result. Play begins immediately.
+V cycles density. F toggles reduced motion: background travel, camera drift and audio modulation stop, while brief stationary input confirmations remain. G toggles the ghost. The 3D pause panel shows the current audio state and changes to settings immediately. Numbers reuse digit entities, and all static labels are extruded meshes generated by `tools/glyphs.c`.
 
-## Provenance
+## References and provenance
 
-The geometry, paths, palettes, particles and text forms are original. The scene uses no background images or RML overlays. Sound provenance is in [audio](audio.md), and executed checks and captures are in [validation](validation.md).
+[Tetris Effect: Connected's official media gallery](https://tetriseffect.game/connected/media/) and its [spiral-stage screenshot](https://www.videogameschronicle.com/files/2020/11/Connected_Singleplayer_01.jpg) informed the dark center, dense distant grain, luminous arcs and depth around the board. The geometry, particle trajectories, shaders, palettes and text here are original; no reference artwork is shipped.
+
+[Butterchurn](https://butterchurnviz.com/) and [projectM](https://projectm-visualizer.org/docs/user/) informed the separation of broad musical motion from fine transients. The [WebGPU HDR particle sample](https://webgpu.github.io/webgpu-samples/?sample=particles) provided a reference for GPU-resident particle work and bright points against a dark field. Stillwater uses authored analytic trajectories with real 3D meshes rather than copying that demo's simulation or artwork.
+
+[Audio capture](audio.md#music-reaction-and-capture) explains how to react to music already playing. Sound provenance is in [audio](audio.md); executed checks, captures and limitations are in [validation](validation.md).

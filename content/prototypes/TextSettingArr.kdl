@@ -1,0 +1,4 @@
+name "TextSettingArr"
+components {
+    MeshAsset source="content/meshes/text/setting_arr.mesh"
+}

@@ -1,0 +1,4 @@
+name "TextSettingEffectsFull"
+components {
+    MeshAsset source="content/meshes/text/setting_effects_full.mesh"
+}

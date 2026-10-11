@@ -1,0 +1,57 @@
+// Event kinds: 1 move, 2 rotate, 3 soft start, 4 soft step, 5 soft stop,
+// 6 hard drop, 7 hold, 8 lock, 9 clear, 10 combo, 11 top out, 12 rescue,
+// 13 pause, 14 resume, 15 restart, 16 mode, 17 chapter, 18 setting,
+// 19 complete, 20 audio source, 21 audio status. Result: 0 rejected, 1 accepted.
+// Board x/y are world-space action origins and direction is signed input.
+// Move amount is one, rotate amount is SRS kick index, hold amount is the old
+// held kind (zero takes the next bag piece), lock amount is spin classification.
+// Hard/soft drop amount is traveled rows; clear amount is cleared rows; combo
+// amount is streak length; rescue amount is six rows. Detail is the piece kind
+// except clear/combo's pre-collapse row mask. Complete result is win/loss.
+// Session x/y are previous/new values, amount is new integral value (volume %).
+// Setting details: 1 effects, 2 motion, 3 ghost, 4 master, 5 DAS, 6 ARR.
+// Pause detail distinguishes manual (0) from disconnected (1); chapter detail
+// distinguishes manual selection (0) from earned progress (1).
+// A board tick emits at most 21 events: ten horizontal attempts, hold, soft
+// transition, rotation, hard drop, lock, clear, combo, top out, a preceding rescue, a competing rotation and soft stop.
+// Opposing horizontal presses emit two attempts instead of ten repeats. One 32-slot
+// queue per board retains the whole tick; consumers account for missed ticks.
+library ReactionRules {
+    function Flag(value: bool) -> (flag: int) {
+        if value {
+            return 1
+        }
+        return 0
+    }
+
+    function Initialize(target: entity, run: int) {
+        target.ReactionQueue.run = run
+        target.ReactionQueue.serial = 0
+        target.ReactionQueue.write = target.ReactionQueue.first
+        target.ReactionQueue.dropped = 0
+    }
+
+    function Read(target: entity, serial: int) -> (slot: entity) {
+        slot = target.ReactionQueue.first
+        count := (serial - 1) % 32
+        while count > 0 {
+            slot = slot.ReactionEvent.next
+            count -= 1
+        }
+        return slot
+    }
+
+    function Emit(target: entity, kind: int, result: int, x: number, y: number, direction: int, amount: int, detail: int) {
+        slot := target.ReactionQueue.write
+        slot.ReactionEvent.serial = target.ReactionQueue.serial + 1
+        slot.ReactionEvent.kind = kind
+        slot.ReactionEvent.result = result
+        slot.ReactionEvent.x = x
+        slot.ReactionEvent.y = y
+        slot.ReactionEvent.direction = direction
+        slot.ReactionEvent.amount = amount
+        slot.ReactionEvent.detail = detail
+        target.ReactionQueue.write = slot.ReactionEvent.next
+        target.ReactionQueue.serial += 1
+    }
+}

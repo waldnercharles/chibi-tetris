@@ -1,0 +1,35 @@
+version 3
+name "CosmicSky"
+domain "material"
+id_counter 20000
+description "Near-black violet space. Broad peripheral color stays beneath the 3D particle field and leaves the board center dark."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 100
+                type "Shader Surface Output"
+                inputs Roughness=1.0 Unlit=#true "Alpha Mode"=1
+            }
+            - id=200 type="Shader WorldPosition"
+            - {
+                id 300
+                type "Behavior Expression"
+                reference_name "mix(vec3(0.00012, 0.00015, 0.00055), mix(vec3(0.0005, 0.0016, 0.0037), vec3(0.0031, 0.0005, 0.0068), smoothstep(-1700, 1800, Position.x)), smoothstep(500, 2400, length(Position.xy * vec2(0.72, 1))))"
+                inputs {
+                    Position id=301 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=302 type="struct" type_name="ShaderVec3"
+                }
+            }
+        }
+        (array)edges {
+            - from="200.Value" to="300.Position"
+            - from="300.Result" to="100.Base Color"
+        }
+    }
+    - id=10000 kind="function" math_expression="mix(vec3(0.00012, 0.00015, 0.00055), mix(vec3(0.0005, 0.0016, 0.0037), vec3(0.0031, 0.0005, 0.0068), smoothstep(-1700, 1800, Position.x)), smoothstep(500, 2400, length(Position.xy * vec2(0.72, 1))))" expression_mode=1 entry_id=11000
+}

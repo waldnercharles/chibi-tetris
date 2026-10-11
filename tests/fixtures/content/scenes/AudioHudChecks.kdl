@@ -1,0 +1,22 @@
+version 1
+name "AudioHudChecks"
+presentation "3d"
+(array)entities {
+    - name="World" prototype="AudioHudWorld"
+    - name="Camera" prototype="Camera"
+    - name="Hud" prototype="Hud"
+    - {
+        name "Board1"
+        prototype "TestBoard"
+        components {
+            GlobalBinding name="Board1"
+        }
+    }
+    - {
+        name "Board2"
+        prototype "TestBoard"
+        components {
+            GlobalBinding name="Board2"
+        }
+    }
+}

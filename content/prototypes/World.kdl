@@ -1,4 +1,5 @@
 name "World"
+(array)includes "ReactionQueue"
 components {
     DirectionalLight {
         angular_diameter 1.5

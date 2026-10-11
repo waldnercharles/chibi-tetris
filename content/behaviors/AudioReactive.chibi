@@ -2,35 +2,77 @@
 behavior AudioReactive {
     notice_time := 0
     notice_status: int = 0
+    signal_time := 0
+    quiet_time := 0
 
     on Begin {
         set_audio_source(0)
     }
 
     on Tick(dt) {
+        previous_status := self.Session.audio_status
         if input.AudioSource.pressed {
+            previous_source := self.Session.audio_source
             self.Session.audio_source = 1 - self.Session.audio_source
             set_audio_source(self.Session.audio_source)
+            ReactionRules.Emit(self, 20, 1, previous_source, self.Session.audio_source, self.Session.audio_source - previous_source, self.Session.audio_source, 0)
             volume := self.Session.music
             if self.Session.audio_source == 1 {
                 volume = 0
             }
             set_music_volume(volume)
             notice_time = 0
+            signal_time = 0
+            quiet_time = 0
         }
         audio := get_audio_analysis()
-        if self.Session.audio_source == 1 && audio.Status >= 3 {
+        current_source := audio.Source == self.Session.audio_source
+        if current_source && self.Session.audio_source == 1 && audio.Status >= 3 {
             notice_status = audio.Status
             notice_time = 6
             self.Session.audio_source = 0
             set_audio_source(0)
             set_music_volume(self.Session.music)
+            ReactionRules.Emit(self, 20, 1, 1, 0, -1, 0, 0)
+            current_source = false
         }
-        self.Session.audio_status = audio.Status
+        self.Session.audio_status = 0
+        if self.Session.audio_source == 1 {
+            self.Session.audio_status = 1
+        }
+        if current_source && self.Session.audio_source == 1 {
+            self.Session.audio_status = audio.Status
+        }
         if notice_time > 0 {
             self.Session.audio_status = notice_status
             notice_time = max(0, notice_time - dt)
         }
+        if previous_status != self.Session.audio_status {
+            ReactionRules.Emit(self, 21, 1, previous_status, self.Session.audio_status, 0, self.Session.audio_status, 0)
+        }
+        if !current_source {
+            self.Session.audio_signal = false
+            self.Session.audio_quiet = false
+            self.VisualState.energy = 0
+            self.VisualState.bass = 0
+            self.VisualState.mid = 0
+            self.VisualState.treble = 0
+            self.VisualState.beat = 0
+            return
+        }
+        if self.Session.audio_source == 1 && audio.Status == 2 {
+            quiet_time = min(2, quiet_time + dt)
+            signal_time = max(0, signal_time - dt)
+            if audio.Active && audio.Level > 0.001 {
+                quiet_time = 0
+                signal_time = 0.5
+            }
+        } else {
+            quiet_time = 0
+            signal_time = 0
+        }
+        self.Session.audio_signal = signal_time > 0
+        self.Session.audio_quiet = quiet_time >= 2
         self.VisualState.energy = clamp(audio.Level * 6, 0, 1)
         self.VisualState.bass = clamp(audio.Bass * 9, 0, 1)
         self.VisualState.mid = clamp(audio.Mid * 8, 0, 1)

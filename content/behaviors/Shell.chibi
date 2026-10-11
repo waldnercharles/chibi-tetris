@@ -18,6 +18,7 @@ behavior Shell {
     action writer = commit_save()
 
     on Begin {
+        ReactionRules.Initialize(self, self.Session.run)
         board1 = get_global_variable("Board1")
         board2 = get_global_variable("Board2")
         unlocked = cast<int>(clamp(read_saved_number("chapter", 0).Number, 0, 5))
@@ -85,6 +86,7 @@ behavior Shell {
     }
 
     function Start(mode: int) {
+        old_mode := self.Session.mode
         self.Session.mode = mode
         self.Session.stage = 0
         if mode == 0 {
@@ -96,11 +98,14 @@ behavior Shell {
             self.Session.seed = 73129 + cast<int>(clock * 1000) % 1000000
         }
         RestartRun()
+        ReactionRules.Emit(self, 16, 1, old_mode, mode, 0, mode, mode)
     }
 
     function RestartRun() {
         self.Session.stage = startingChapter
         self.Session.run += 1
+        self.ReactionQueue.run = self.Session.run
+        ReactionRules.Emit(self, 15, 1, self.Session.run - 1, self.Session.run, 0, self.Session.mode, 0)
         self.Session.elapsed = 0
         self.Session.rescue1 = 0
         self.Session.rescue2 = 0
@@ -128,6 +133,7 @@ behavior Shell {
     }
 
     function ResumePlay() {
+        ReactionRules.Emit(self, 14, 1, self.Session.screen, 1, 0, 1, 0)
         self.Session.screen = 1
         self.Session.disconnected = false
         pad1 = controller_connected(0)
@@ -136,18 +142,23 @@ behavior Shell {
 
     function ChangeChapter(direction: int) {
         if self.Session.mode != 0 || self.Session.screen == 1 {
+            ReactionRules.Emit(self, 17, 0, self.Session.stage, self.Session.stage, direction, self.Session.stage, 0)
             return
         }
         selected := cast<int>(clamp(self.Session.stage + direction, 0, unlocked))
         if selected == self.Session.stage {
+            ReactionRules.Emit(self, 17, 0, selected, selected, direction, selected, 0)
             return
         }
+        previous := self.Session.stage
         chapter = selected
         Start(0)
         self.Session.screen = 2
+        ReactionRules.Emit(self, 17, 1, previous, selected, direction, selected, 0)
     }
 
     function Finish(success: bool) {
+        ReactionRules.Emit(self, 19, ReactionRules.Flag(success), self.Session.stage, self.Session.stage, 0, self.Session.mode, 0)
         self.Session.won = success
         self.Session.screen = 3
         score := board1.BoardState.score
@@ -221,6 +232,7 @@ behavior Shell {
             if lines - stageStart >= goal {
                 stageStart += goal
                 self.Session.stage += 1
+                ReactionRules.Emit(self, 17, 1, self.Session.stage - 1, self.Session.stage, 1, self.Session.stage, 1)
                 if self.Session.mode == 0 && self.Session.stage > unlocked {
                     unlocked = self.Session.stage
                     set_saved_number("chapter", unlocked)
@@ -233,6 +245,7 @@ behavior Shell {
         if self.Session.mode == 1 {
             newStage := cast<int>(min(5, lines / 20))
             if newStage != self.Session.stage {
+                ReactionRules.Emit(self, 17, 1, self.Session.stage, newStage, 1, newStage, 1)
                 self.Session.stage = newStage
                 Music()
             }
@@ -242,23 +255,35 @@ behavior Shell {
     function Preferences() {
         changed := false
         if input.Effects.pressed {
+            previous := self.Session.effects
             self.Session.effects = (self.Session.effects + 1) % 3
+            ReactionRules.Emit(self, 18, 1, previous, self.Session.effects, 1, self.Session.effects, 1)
             changed = true
         }
         if input.Motion.pressed {
+            previous := ReactionRules.Flag(self.Session.reduced_motion)
             self.Session.reduced_motion = !self.Session.reduced_motion
+            value := ReactionRules.Flag(self.Session.reduced_motion)
+            ReactionRules.Emit(self, 18, 1, previous, value, 0, value, 2)
             changed = true
         }
         if input.Ghost.pressed {
+            previous := ReactionRules.Flag(self.Session.ghost)
             self.Session.ghost = !self.Session.ghost
+            value := ReactionRules.Flag(self.Session.ghost)
+            ReactionRules.Emit(self, 18, 1, previous, value, 0, value, 3)
             changed = true
         }
         if input.VolumeDown.pressed {
+            previous := self.Session.master
             self.Session.master = max(0, self.Session.master - 0.1)
+            ReactionRules.Emit(self, 18, ReactionRules.Flag(previous != self.Session.master), previous, self.Session.master, -1, cast<int>(round(self.Session.master * 100)), 4)
             changed = true
         }
         if input.VolumeUp.pressed {
+            previous := self.Session.master
             self.Session.master = min(1, self.Session.master + 0.1)
+            ReactionRules.Emit(self, 18, ReactionRules.Flag(previous != self.Session.master), previous, self.Session.master, 1, cast<int>(round(self.Session.master * 100)), 4)
             changed = true
         }
         if changed {
@@ -290,14 +315,22 @@ behavior Shell {
             return
         }
         if self.Session.screen == 1 {
+            if input.PreviousChapter.pressed {
+                ChangeChapter(-1)
+            }
+            if input.NextChapter.pressed {
+                ChangeChapter(1)
+            }
             if (pad1 && !controller_connected(0)) || (self.Session.mode == 3 && pad2 && !controller_connected(1)) {
                 self.Session.disconnected = true
+                ReactionRules.Emit(self, 13, 1, 1, 2, 0, 2, 1)
                 self.Session.screen = 2
                 return
             }
             pad1 = controller_connected(0)
             pad2 = controller_connected(1)
             if input.Pause.pressed || input.Pause2.pressed {
+                ReactionRules.Emit(self, 13, 1, 1, 2, 0, 2, 0)
                 self.Session.screen = 2
                 return
             }

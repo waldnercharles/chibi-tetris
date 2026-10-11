@@ -1,0 +1,23 @@
+version 1
+name "ClearReactionChecks"
+(array)entities {
+    - {
+        name "World"
+        prototype "TestWorld"
+        components {
+            Session mode=1 effects=0
+        }
+    }
+    - {
+        name "Board1"
+        prototype "Board"
+        components {
+            GlobalBinding name="Board1"
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        (array)behaviors "ClearReactionChecks"
+    }
+}

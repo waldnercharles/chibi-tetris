@@ -1,0 +1,5 @@
+name "ReactionLight"
+components {
+    PointLight color=0x45baffff radius=200.0
+    (object)Transform
+}

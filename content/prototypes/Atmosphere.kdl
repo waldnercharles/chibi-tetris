@@ -1,9 +1,9 @@
 name "Atmosphere"
 components {
-    Geometry3D depth=1400.0 height=4700.0 primitive=1 width=7600.0
-    Shader material="DeepWater"
+    Geometry3D depth=120.0 height=7800.0 width=13200.0
+    Shader material="CosmicSky"
     Transform3D {
-        position z=-2600.0
+        position z=-4300.0
         scale x=1.0 y=1.0 z=1.0
     }
 }

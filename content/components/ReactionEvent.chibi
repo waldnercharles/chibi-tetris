@@ -1,0 +1,12 @@
+// Immutable until the queue wraps. Payload is captured at the action site.
+component ReactionEvent {
+    next: entity
+    serial: int
+    kind: int
+    result: int
+    x: number
+    y: number
+    direction: int
+    amount: int
+    detail: int
+}

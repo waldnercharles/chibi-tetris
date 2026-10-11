@@ -1,0 +1,10 @@
+name "VortexField"
+components {
+    Geometry3D depth=5.2 height=5.2 primitive=5 width=5.2
+    GlobalBinding name="Vortex"
+    ParticleField3D additive=#true count=131072 seed=37
+    Shader material="CosmicParticles.Vortex"
+    Transform3D {
+        scale x=1.0 y=1.0 z=1.0
+    }
+}

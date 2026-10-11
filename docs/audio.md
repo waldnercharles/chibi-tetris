@@ -32,9 +32,15 @@ The game uses the SDK's two-second crossfade when changing arrangements. Incomin
 
 The scene reads the actual audio samples. With the bundled score selected, analysis measures the game's mixed output, including effects. Overall level, bass, treble and detected transients control the 3D environment. Pausing the board keeps the music playing.
 
-Press M to listen to external music. This mutes the bundled score while retaining game effects. Press M again to return to the score. Each launch starts with the score selected. Stillwater captures audio from the selected source; it does not use the Spotify API or require a music-service account.
+Press M to use your music. This mutes the bundled score while retaining game effects. Press M again to return to the score. Each launch starts with the score selected. Keep music playing in its own player and adjust its volume there. Stillwater's volume keys control its score and effects, not the external player.
 
-In a browser, M opens the browser's sharing chooser. Select a tab, window or screen that offers audio sharing and enable its audio option. Availability depends on the browser and selected source. If capture is unavailable, cancelled, denied or ended, the game restores the score and briefly shows `M RETRY AUDIO`. A ready source remains selected during silence.
+In a browser, start music in another tab, then return to Stillwater and press M. In the sharing chooser, select the music tab and enable its audio option. A desktop Chromium browser is the practical starting point for tab audio. A window or entire screen can also work when the chooser offers audio for that source. The browser and operating system determine the available sources. Requesting system audio does not make an unsupported source available. If the chooser does not open immediately, click the game once to supply the browser's required user gesture. [Chrome's sharing controls](https://developer.chrome.com/docs/web-platform/screen-sharing-controls) and the [Screen Capture specification](https://w3c.github.io/mediacapture-screen-share/) describe these limits.
+
+The music remains audible in its own player. Stillwater measures the shared samples without playing a second copy. The browser requires a video track for this kind of sharing, but the game only consumes the audio. It does not save or upload the capture. Stop sharing in the browser or press M to disconnect.
+
+`AUDIO CONNECTED` means the source opened. `AUDIO REACTIVE` means the game has received a non-silent signal. After two seconds without a signal, `NO MUSIC HEARD` asks you to play music or check routing; it keeps the source selected through silence and track changes. Unsupported capture, denied or cancelled sharing, and ended sharing have separate labels. Each restores the score and briefly offers `M RETRY AUDIO`. Pause to see the browser and desktop routing reminders in the 3D HUD.
+
+The capture route can analyze a music service's web player, a local file playing in a browser, or a desktop player whose output reaches a supported system or loopback source. YouTube, Tidal and Spotify are source players, not account integrations in Stillwater. Whether their audio can be shared depends on the browser, the chosen source and any protected-playback restrictions. A playing source and a working capture must both be verified; signing into a service alone does not connect it to the game.
 
 Native capture uses a loopback recording device. Set `CHIBI_AUDIO_INPUT` to its exact device name before launching. Without that setting, the engine selects the first recognized loopback device: `Background Music`, or a name containing `BlackHole`, `Soundflower`, `Stereo Mix`, `CABLE Output` or `Monitor of`. It does not choose the default microphone automatically.
 
@@ -44,9 +50,13 @@ For example, with Background Music installed on macOS:
 CHIBI_AUDIO_INPUT="Background Music" dist/Stillwater.app/Contents/MacOS/Stillwater
 ```
 
-Route the external music player's audio through that virtual device, then press M in Stillwater. Selecting a device alone does not route audio into it. Other loopback devices need their corresponding system or player routing. An unavailable device restores the score.
+Route the external music player's audio through that virtual device, then press M in Stillwater. Selecting a device alone does not route audio into it. Other loopback devices need their corresponding system or player routing. Configure monitoring or a multi-output route if the virtual device otherwise makes your speakers silent; Stillwater does not monitor captured audio. On Linux, PulseAudio monitor inputs also require `SDL_AUDIO_INCLUDE_MONITORS=1` before launch. An unavailable device restores the score.
 
-The on-screen labels distinguish the score, the browser chooser, active capture and a failed capture attempt. Build and platform verification are recorded in [validation](validation.md).
+Stillwater does not implement Spotify sign-in or the Web Playback SDK. Spotify's [Developer Policy](https://developer.spotify.com/policy) excludes games and synchronization of sound recordings with visual media. Its [Web Playback SDK](https://developer.spotify.com/documentation/web-playback-sdk/reference) repeats the synchronization restriction and requires Premium for playback. Spotify also removed new-app access to [Audio Features and Audio Analysis](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api), so those endpoints are not a beat-data source for this game. This is an engineering choice based on the published platform rules, not a claim that every use of user-selected audio capture is permitted by every music service.
+
+Spotify's newer [Soloist client](https://developer.spotify.com/documentation/soloist) provides playback and local controls on Linux hardware. It requires each user to obtain an API key and install a periodically renewed native client. Its [WebSocket interface](https://developer.spotify.com/documentation/soloist/features) has no browser-facing security controls and is not a PCM input for this browser game. It is not part of Stillwater.
+
+These sources were checked on October 11, 2026. Build and platform verification, including unverified external routing, are recorded in [validation](validation.md).
 
 ## Feedback
 

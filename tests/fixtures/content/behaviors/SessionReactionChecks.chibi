@@ -1,0 +1,108 @@
+behavior SessionReactionChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+    seen: int = 0
+    run: int = 0
+    pauses: int = 0
+    resumes: int = 0
+    restarts: int = 0
+    modes: int = 0
+    settings: int = 0
+    rejected_chapters: int = 0
+    chapters: int = 0
+    completions: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+    }
+
+    on Tick {
+        serial := world.ReactionQueue.serial
+        Check(serial >= seen, "session queue serial never resets on restart")
+        if run != world.Session.run {
+            Check(world.ReactionQueue.run == world.Session.run, "session queue tracks its new run without losing entries")
+            run = world.Session.run
+        }
+        cursor := seen + 1
+        while cursor <= serial {
+            slot := ReactionRules.Read(world, cursor)
+            Check(slot.ReactionEvent.serial == cursor, "session records survive until consumed")
+            match (slot.ReactionEvent.kind) {
+                case 13 {
+                    pauses += 1
+                    Check(slot.ReactionEvent.x == 1 && slot.ReactionEvent.y == 2, "pause records both screen states")
+                }
+                case 14 {
+                    resumes += 1
+                    Check(slot.ReactionEvent.x == 2 && slot.ReactionEvent.y == 1, "resume records both screen states")
+                }
+                case 15 {
+                    restarts += 1
+                    Check(slot.ReactionEvent.y == slot.ReactionEvent.x + 1, "restart records old and new runs")
+                }
+                case 16 {
+                    modes += 1
+                }
+                case 17 {
+                    if slot.ReactionEvent.result == 0 {
+                        rejected_chapters += 1
+                    } else {
+                        chapters += 1
+                    }
+                }
+                case 18 {
+                    settings += 1
+                    Check(slot.ReactionEvent.result == 1, "changed setting is accepted")
+                    if slot.ReactionEvent.detail == 4 {
+                        Check(abs(slot.ReactionEvent.x - 0.8) < 0.001 && abs(slot.ReactionEvent.y - 0.9) < 0.001 && slot.ReactionEvent.amount == 90, "volume records precise values and display percent")
+                    }
+                }
+                case 19 {
+                    completions += 1
+                    Check(slot.ReactionEvent.result == 1, "completed goal records a winning result")
+                }
+            }
+            cursor += 1
+        }
+        seen = serial
+        match (frame) {
+            case 5 {
+                Check(pauses == 1 && settings == 4, "all simultaneous paused settings publish immediately")
+            }
+            case 17 {
+                Check(resumes == 1 && rejected_chapters == 1, "resume and locked chapter have separate reactions")
+            }
+            case 31 {
+                Check(pauses == 3 && restarts == 5 && modes == 3, "restart and mode actions remain distinguishable")
+                Check(rejected_chapters == 2, "chapter command outside journey publishes rejection")
+            }
+            case 42 {
+                board.BoardState.lines = 20
+            }
+            case 46 {
+                Check(chapters == 1 && world.Session.stage == 1, "earned chapter transition publishes reaction")
+                world.Session.stage = 5
+                board.BoardState.lines = 40
+            }
+            case 50 {
+                Check(completions == 1 && world.Session.won, "winning session publishes completion once")
+                Check(world.ReactionQueue.dropped == 0, "session fits within fixed queue capacity")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

@@ -1,0 +1,4 @@
+name "TextSettingEffectsOff"
+components {
+    MeshAsset source="content/meshes/text/setting_effects_off.mesh"
+}

@@ -5,4 +5,6 @@ component VisualState {
     mid: number
     treble: number
     beat: number
+    // Cosmetic pool saturation; event queue loss is tracked separately.
+    cue_overwrites: int
 }

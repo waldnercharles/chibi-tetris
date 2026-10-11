@@ -1,8 +1,0 @@
-name "EnvRibbon"
-components {
-    Geometry3D depth=6.0 height=2.4 width=72.0
-    Material emission_color=0x79d8eaff emission_intensity=0.7 emission_multiplier=1.0 scene=0x37658c88
-    (object)RenderState
-    (object)Transform
-    VisualTransform scale=1.0
-}

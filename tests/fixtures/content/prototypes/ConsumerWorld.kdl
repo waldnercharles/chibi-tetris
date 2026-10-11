@@ -1,0 +1,7 @@
+name "ConsumerWorld"
+(array)includes "ReactionQueue"
+components {
+    GlobalBinding name="World"
+    Session effects=2 mode=3 run=1 screen=1
+    (object)VisualState
+}

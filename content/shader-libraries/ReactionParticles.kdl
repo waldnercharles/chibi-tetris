@@ -1,0 +1,305 @@
+version 3
+name "ReactionParticles"
+domain "shader-library"
+id_counter 150000
+description "Short-lived 3D event geometry. Pattern selects sparks, dashes, rotation crescents, drop corridors, landing halos, row releases, hold arcs or stationary collision brackets. Cubic release never changes logical piece placement."
+(array)graphs {
+    - kind="event" name="Functions"
+    - {
+        id 10
+        kind "function"
+        name "Cue"
+        entry_id 11
+        return_id 12
+        (array)nodes {
+            - {
+                id 11
+                type "Function Entry"
+                (array)outputs {
+                    - id=100 name="Index" type="float" kind="data"
+                    - id=101 name="Count" type="float" kind="data"
+                    - id=102 name="Seed" type="float" kind="data"
+                    - id=103 name="Pattern" type="float" kind="data"
+                    - id=104 name="Direction" type="float" kind="data"
+                    - id=105 name="Travel" type="float" kind="data"
+                    - id=106 name="Strength" type="float" kind="data"
+                    - id=107 name="Life" type="float" kind="data" default=0.35
+                    - id=108 name="Quiet" type="float" kind="data"
+                    - id=109 name="Hue" type="float" kind="data"
+                }
+            }
+            - {
+                id 12
+                type "Return"
+                (array)inputs {
+                    - id=200 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=201 name="Size" type="float" kind="data"
+                    - id=202 name="Color" type="struct" type_name="ShaderVec4" kind="data"
+                }
+            }
+            - id=13 type="Shader Time"
+            - {
+                id 1000
+                type "Behavior Expression"
+                reference_name "fract(sin(vec3(index * 127.1 + seed, index * 269.5 + seed * 2, index * 311.7 + seed * 3)) * 43758.5453)"
+                inputs {
+                    index id=1001 type="float"
+                    seed id=1002 type="float"
+                }
+                outputs {
+                    Result id=1090 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 1100
+                type "Behavior Expression"
+                reference_name "clamp(age / max(life, 0.01), 0, 1)"
+                inputs {
+                    age id=1101 type="float"
+                    life id=1102 type="float"
+                }
+                outputs {
+                    Result id=1190 type="float"
+                }
+            }
+            - {
+                id 1200
+                type "Behavior Expression"
+                reference_name "(1 - (1 - phase) * (1 - phase) * (1 - phase)) * (1 - quiet)"
+                inputs {
+                    phase id=1201 type="float"
+                    quiet id=1202 type="float"
+                }
+                outputs {
+                    Result id=1290 type="float"
+                }
+            }
+            - {
+                id 1300
+                type "Behavior Expression"
+                reference_name "index / max(count - 1, 1)"
+                inputs {
+                    index id=1301 type="float"
+                    count id=1302 type="float"
+                }
+                outputs {
+                    Result id=1390 type="float"
+                }
+            }
+            - {
+                id 1400
+                type "Behavior Expression"
+                reference_name "vec3(cos(random.x * pi * 2), sin(random.x * pi * 2), random.z - 0.5) * (6 + release * (24 + random.y * 70))"
+                inputs {
+                    random id=1401 type="struct" type_name="ShaderVec3"
+                    release id=1402 type="float"
+                }
+                outputs {
+                    Result id=1490 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 1500
+                type "Behavior Expression"
+                reference_name "vec3(direction * (6 + fraction * 24 + release * 18), (random.y - 0.5) * 8, (random.z - 0.5) * 8)"
+                inputs {
+                    direction id=1501 type="float"
+                    fraction id=1502 type="float"
+                    release id=1503 type="float"
+                    random id=1504 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=1590 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 1600
+                type "Behavior Expression"
+                reference_name "vec3(cos((fraction * 1.8 + release * 0.42) * -direction), sin((fraction * 1.8 + release * 0.42) * -direction), (random.z - 0.5) * 0.18) * (25 + random.y * 8)"
+                inputs {
+                    fraction id=1601 type="float"
+                    release id=1602 type="float"
+                    direction id=1603 type="float"
+                    random id=1604 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=1690 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 1700
+                type "Behavior Expression"
+                reference_name "vec3((step(0.5, random.x) * 2 - 1) * (23 + random.z * 5), -fraction * travel * 24, (random.y - 0.5) * 9)"
+                inputs {
+                    random id=1701 type="struct" type_name="ShaderVec3"
+                    fraction id=1702 type="float"
+                    travel id=1703 type="float"
+                }
+                outputs {
+                    Result id=1790 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 1800
+                type "Behavior Expression"
+                reference_name "vec3(cos(fraction * pi * 2), sin(fraction * pi * 2) * 0.42, sin(fraction * pi * 2) * 0.18) * (28 + release * 72)"
+                inputs {
+                    fraction id=1801 type="float"
+                    release id=1802 type="float"
+                }
+                outputs {
+                    Result id=1890 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 1900
+                type "Behavior Expression"
+                reference_name "vec3((fraction - 0.5) * 240 + (step(0.5, fraction) * 2 - 1) * release * 36, (random.y - 0.5) * 10, (random.z - 0.5) * 22)"
+                inputs {
+                    fraction id=1901 type="float"
+                    release id=1902 type="float"
+                    random id=1903 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=1990 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2000
+                type "Behavior Expression"
+                reference_name "vec3(direction * fraction * 145, sin(fraction * pi) * 62, sin(fraction * pi * 2) * 16)"
+                inputs {
+                    fraction id=2001 type="float"
+                    direction id=2002 type="float"
+                }
+                outputs {
+                    Result id=2090 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2100
+                type "Behavior Expression"
+                reference_name "vec3((step(0.5, random.x) * 2 - 1) * 32, (fraction - 0.5) * 44, (random.z - 0.5) * 3)"
+                inputs {
+                    random id=2101 type="struct" type_name="ShaderVec3"
+                    fraction id=2102 type="float"
+                }
+                outputs {
+                    Result id=2190 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2200
+                type "Behavior Expression"
+                reference_name "p0 * (1 - step(0.5, abs(pattern - 0))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p5 * (1 - step(0.5, abs(pattern - 5))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7)))"
+                inputs {
+                    pattern id=2201 type="float"
+                    p0 id=2202 type="struct" type_name="ShaderVec3"
+                    p1 id=2203 type="struct" type_name="ShaderVec3"
+                    p2 id=2204 type="struct" type_name="ShaderVec3"
+                    p3 id=2205 type="struct" type_name="ShaderVec3"
+                    p4 id=2206 type="struct" type_name="ShaderVec3"
+                    p5 id=2207 type="struct" type_name="ShaderVec3"
+                    p6 id=2208 type="struct" type_name="ShaderVec3"
+                    p7 id=2209 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=2290 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 2300
+                type "Behavior Expression"
+                reference_name "(1.15 + random.z * 1.25) * (1 - phase * 0.65) * (1 + strength * 0.4)"
+                inputs {
+                    random id=2301 type="struct" type_name="ShaderVec3"
+                    phase id=2302 type="float"
+                    strength id=2303 type="float"
+                }
+                outputs {
+                    Result id=2390 type="float"
+                }
+            }
+            - {
+                id 2400
+                type "Behavior Expression"
+                reference_name "vec4(mix(mix(vec3(0.12, 1.2, 2.0), vec3(1.3, 0.18, 1.8), clamp(hue, 0, 1)), vec3(2.2, 0.55, 0.045), clamp(hue - 1, 0, 1)) * (0.8 + strength), (1 - phase) * (1 - phase) * (1 - quiet * 0.5))"
+                inputs {
+                    hue id=2401 type="float"
+                    strength id=2402 type="float"
+                    phase id=2403 type="float"
+                    quiet id=2404 type="float"
+                }
+                outputs {
+                    Result id=2490 type="struct" type_name="ShaderVec4"
+                }
+            }
+        }
+        (array)edges {
+            - from="11.Index" to="1000.index"
+            - from="11.Index" to="1300.index"
+            - from="11.Count" to="1300.count"
+            - from="11.Seed" to="1000.seed"
+            - from="11.Pattern" to="2200.pattern"
+            - from="11.Direction" to="1500.direction"
+            - from="11.Direction" to="1600.direction"
+            - from="11.Direction" to="2000.direction"
+            - from="11.Travel" to="1700.travel"
+            - from="11.Strength" to="2300.strength"
+            - from="11.Strength" to="2400.strength"
+            - from="11.Life" to="1100.life"
+            - from="11.Quiet" to="1200.quiet"
+            - from="11.Quiet" to="2400.quiet"
+            - from="11.Hue" to="2400.hue"
+            - from="13.Value" to="1100.age"
+            - from="1000.Result" to="1400.random"
+            - from="1000.Result" to="1500.random"
+            - from="1000.Result" to="1600.random"
+            - from="1000.Result" to="1700.random"
+            - from="1000.Result" to="1900.random"
+            - from="1000.Result" to="2100.random"
+            - from="1000.Result" to="2300.random"
+            - from="1100.Result" to="1200.phase"
+            - from="1100.Result" to="2300.phase"
+            - from="1100.Result" to="2400.phase"
+            - from="1200.Result" to="1400.release"
+            - from="1200.Result" to="1500.release"
+            - from="1200.Result" to="1600.release"
+            - from="1200.Result" to="1800.release"
+            - from="1200.Result" to="1900.release"
+            - from="1300.Result" to="1500.fraction"
+            - from="1300.Result" to="1600.fraction"
+            - from="1300.Result" to="1700.fraction"
+            - from="1300.Result" to="1800.fraction"
+            - from="1300.Result" to="1900.fraction"
+            - from="1300.Result" to="2000.fraction"
+            - from="1300.Result" to="2100.fraction"
+            - from="1400.Result" to="2200.p0"
+            - from="1500.Result" to="2200.p1"
+            - from="1600.Result" to="2200.p2"
+            - from="1700.Result" to="2200.p3"
+            - from="1800.Result" to="2200.p4"
+            - from="1900.Result" to="2200.p5"
+            - from="2000.Result" to="2200.p6"
+            - from="2100.Result" to="2200.p7"
+            - from="2200.Result" to="12.Position"
+            - from="2300.Result" to="12.Size"
+            - from="2400.Result" to="12.Color"
+        }
+    }
+    - id=20000 kind="function" math_expression="fract(sin(vec3(index * 127.1 + seed, index * 269.5 + seed * 2, index * 311.7 + seed * 3)) * 43758.5453)" expression_mode=1 entry_id=50000
+    - id=20100 kind="function" math_expression="clamp(age / max(life, 0.01), 0, 1)" expression_mode=1 entry_id=53000
+    - id=20200 kind="function" math_expression="(1 - (1 - phase) * (1 - phase) * (1 - phase)) * (1 - quiet)" expression_mode=1 entry_id=56000
+    - id=20300 kind="function" math_expression="index / max(count - 1, 1)" expression_mode=1 entry_id=59000
+    - id=20400 kind="function" math_expression="vec3(cos(random.x * pi * 2), sin(random.x * pi * 2), random.z - 0.5) * (6 + release * (24 + random.y * 70))" expression_mode=1 entry_id=62000
+    - id=20500 kind="function" math_expression="vec3(direction * (6 + fraction * 24 + release * 18), (random.y - 0.5) * 8, (random.z - 0.5) * 8)" expression_mode=1 entry_id=65000
+    - id=20600 kind="function" math_expression="vec3(cos((fraction * 1.8 + release * 0.42) * -direction), sin((fraction * 1.8 + release * 0.42) * -direction), (random.z - 0.5) * 0.18) * (25 + random.y * 8)" expression_mode=1 entry_id=68000
+    - id=20700 kind="function" math_expression="vec3((step(0.5, random.x) * 2 - 1) * (23 + random.z * 5), -fraction * travel * 24, (random.y - 0.5) * 9)" expression_mode=1 entry_id=71000
+    - id=20800 kind="function" math_expression="vec3(cos(fraction * pi * 2), sin(fraction * pi * 2) * 0.42, sin(fraction * pi * 2) * 0.18) * (28 + release * 72)" expression_mode=1 entry_id=74000
+    - id=20900 kind="function" math_expression="vec3((fraction - 0.5) * 240 + (step(0.5, fraction) * 2 - 1) * release * 36, (random.y - 0.5) * 10, (random.z - 0.5) * 22)" expression_mode=1 entry_id=77000
+    - id=21000 kind="function" math_expression="vec3(direction * fraction * 145, sin(fraction * pi) * 62, sin(fraction * pi * 2) * 16)" expression_mode=1 entry_id=80000
+    - id=21100 kind="function" math_expression="vec3((step(0.5, random.x) * 2 - 1) * 32, (fraction - 0.5) * 44, (random.z - 0.5) * 3)" expression_mode=1 entry_id=83000
+    - id=21200 kind="function" math_expression="p0 * (1 - step(0.5, abs(pattern - 0))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p5 * (1 - step(0.5, abs(pattern - 5))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7)))" expression_mode=1 entry_id=86000
+    - id=21300 kind="function" math_expression="(1.15 + random.z * 1.25) * (1 - phase * 0.65) * (1 + strength * 0.4)" expression_mode=1 entry_id=89000
+    - id=21400 kind="function" math_expression="vec4(mix(mix(vec3(0.12, 1.2, 2.0), vec3(1.3, 0.18, 1.8), clamp(hue, 0, 1)), vec3(2.2, 0.55, 0.045), clamp(hue - 1, 0, 1)) * (0.8 + strength), (1 - phase) * (1 - phase) * (1 - quiet * 0.5))" expression_mode=1 entry_id=92000
+}

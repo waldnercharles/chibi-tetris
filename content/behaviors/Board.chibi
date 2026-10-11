@@ -19,6 +19,8 @@ behavior Board {
     lock_clock := 0
     lock_started := false
     lock_resets: int = 0
+    repeat_blocked := false
+    soft_held := false
     repeat_direction: int = 0
     repeat_clock := 0
     next_repeat := 0
@@ -66,6 +68,11 @@ behavior Board {
         if self.BoardState.topout {
             return
         }
+        Emit(11, 1, 0, 0, current)
+        if soft_held {
+            Emit(5, 1, 0, 0, current)
+            soft_held = false
+        }
         self.BoardState.topout = true
         piece_dirty = true
         play_sound("topout", 0.45)
@@ -90,6 +97,7 @@ behavior Board {
 
     function Reset() {
         seen_run = world.Session.run
+        ReactionRules.Initialize(self, seen_run)
         grid = Rules.Empty()
         queue = []
         clear_rows = []
@@ -100,6 +108,8 @@ behavior Board {
         seed += 1
         held = 0
         hold_used = false
+        repeat_blocked = false
+        soft_held = false
         repeat_direction = 0
         repeat_clock = 0
         flash = 0
@@ -128,6 +138,7 @@ behavior Board {
     }
 
     function Rescue() {
+        Emit(12, 1, 0, 6, current)
         Rules.Rescue(grid)
         self.BoardState.topout = false
         self.BoardState.combo = -1
@@ -148,15 +159,21 @@ behavior Board {
         lock_resets += 1
     }
 
-    function Shift(direction: int) -> (moved: bool) {
+    function Shift(direction: int, explicit: bool) -> (moved: bool) {
         if !Rules.Fits(grid, current, rotation, column + direction, row) {
+            if explicit || !repeat_blocked {
+                Emit(1, 0, direction, 0, current)
+            }
+            repeat_blocked = true
             return false
         }
         grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
         column += direction
+        repeat_blocked = false
         rotated = false
         ResetLock(grounded)
         piece_dirty = true
+        Emit(1, 1, direction, 1, current)
         self.BoardState.move_serial += 1
         Impact()
         return true
@@ -165,6 +182,7 @@ behavior Board {
     function Rotate(direction: int) {
         result := Rules.Rotate(grid, current, rotation, column, row, direction)
         if !result.success {
+            Emit(2, 0, direction, 0, current)
             return
         }
         grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
@@ -175,6 +193,7 @@ behavior Board {
         rotated = true
         ResetLock(grounded)
         piece_dirty = true
+        Emit(2, 1, direction, result.kick, current)
         self.BoardState.rotate_serial += 1
         Impact()
         play_sound("rotate", 0.2)
@@ -182,8 +201,10 @@ behavior Board {
 
     function Hold() {
         if hold_used {
+            Emit(7, 0, 0, 0, current)
             return
         }
+        Emit(7, 1, 0, held, current)
         replacement := held
         held = current
         if replacement == 0 {
@@ -203,8 +224,17 @@ behavior Board {
         any_visible := Rules.Place(grid, current, rotation, column, row)
         clear_rows = Rules.FullRows(grid)
         count := length(clear_rows)
+        Emit(8, 1, 0, spin, current)
         Rules.Award(self, count, spin)
         if count > 0 {
+            mask: int = 0
+            for (cleared in clear_rows) {
+                mask = mask | 1 << cleared
+            }
+            Emit(9, 1, 0, count, mask)
+            if self.BoardState.combo > 0 {
+                Emit(10, 1, 0, self.BoardState.combo, mask)
+            }
             Rules.Collapse(grid, clear_rows)
             flash = 0.14
             if world.Session.reduced_motion || world.Session.effects == 0 {
@@ -240,6 +270,7 @@ behavior Board {
     function HardDrop() {
         landing := Rules.Landing(grid, current, rotation, column, row)
         distance := landing - row
+        Emit(6, 1, 0, distance, current)
         self.BoardState.score += distance * 2
         if distance > 0 {
             rotated = false
@@ -269,16 +300,21 @@ behavior Board {
                 direction = 1
             }
         }
+        if left_pressed && right_pressed {
+            Emit(1, 0, -1, 0, current)
+        }
         if direction == 0 {
+            repeat_blocked = false
             repeat_direction = 0
             repeat_clock = 0
             return
         }
         if direction != repeat_direction || left_pressed || right_pressed {
+            repeat_blocked = false
             repeat_direction = direction
             repeat_clock = 0
             next_repeat = max(0, world.Session.das)
-            if Shift(direction) {
+            if Shift(direction, true) {
                 play_sound("move", 0.15)
             }
             return
@@ -293,7 +329,7 @@ behavior Board {
             if arr > 0 && repeat_clock < next_repeat {
                 break
             }
-            if !Shift(direction) {
+            if !Shift(direction, false) {
                 next_repeat = repeat_clock + arr
                 break
             }
@@ -310,6 +346,7 @@ behavior Board {
         if soft {
             interval = min(0.02, interval / 20)
         }
+        start_row := row
         fall_clock += seconds
         for (step in 0..21) {
             if fall_clock < interval {
@@ -326,6 +363,10 @@ behavior Board {
             if soft {
                 self.BoardState.score += 1
             }
+        }
+        if soft && row > start_row {
+            Impact()
+            ReactionRules.Emit(self, 4, 1, self.BoardState.impact_x, 228 - (start_row - 1) * 24, 1, row - start_row, current)
         }
         grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
         if grounded {
@@ -360,6 +401,15 @@ behavior Board {
             ccw = input.P2CCW.pressed
             hold = input.P2Hold.pressed
         }
+        if soft != soft_held {
+            soft_held = soft
+            if soft {
+                accepted := ReactionRules.Flag(Rules.Fits(grid, current, rotation, column, row + 1))
+                Emit(3, accepted, 1, 0, current)
+            } else {
+                Emit(5, 1, 0, 0, current)
+            }
+        }
         if hold {
             Hold()
         }
@@ -370,14 +420,23 @@ behavior Board {
         if cw {
             Rotate(1)
         }
-        if ccw && !cw {
-            Rotate(-1)
+        if ccw {
+            if cw {
+                Emit(2, 0, -1, 0, current)
+            } else {
+                Rotate(-1)
+            }
         }
         if drop {
             HardDrop()
             return
         }
         Fall(seconds, soft)
+    }
+
+    function Emit(kind: int, result: int, direction: int, amount: int, detail: int) {
+        Impact()
+        ReactionRules.Emit(self, kind, result, self.BoardState.impact_x, self.BoardState.impact_y, direction, amount, detail)
     }
 
     // Gameplay rows grow downward. The well stands in the world's XY plane.
@@ -565,6 +624,11 @@ behavior Board {
             Controls(min(dt, 0.1))
         }
         if world.Session.screen != 1 {
+            if soft_held {
+                Emit(5, 1, 0, 0, current)
+                soft_held = false
+            }
+            repeat_blocked = false
             repeat_direction = 0
             repeat_clock = 0
         }

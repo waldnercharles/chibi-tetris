@@ -1,0 +1,4 @@
+name "TextSettingEffectsLow"
+components {
+    MeshAsset source="content/meshes/text/setting_effects_low.mesh"
+}

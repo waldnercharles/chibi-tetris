@@ -1,0 +1,230 @@
+name "ReactionQueue"
+components {
+    ReactionQueue first="Reaction0" ready=#true write="Reaction0"
+}
+(array)children {
+    - {
+        name "Reaction0"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction1"
+        }
+    }
+    - {
+        name "Reaction1"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction2"
+        }
+    }
+    - {
+        name "Reaction2"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction3"
+        }
+    }
+    - {
+        name "Reaction3"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction4"
+        }
+    }
+    - {
+        name "Reaction4"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction5"
+        }
+    }
+    - {
+        name "Reaction5"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction6"
+        }
+    }
+    - {
+        name "Reaction6"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction7"
+        }
+    }
+    - {
+        name "Reaction7"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction8"
+        }
+    }
+    - {
+        name "Reaction8"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction9"
+        }
+    }
+    - {
+        name "Reaction9"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction10"
+        }
+    }
+    - {
+        name "Reaction10"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction11"
+        }
+    }
+    - {
+        name "Reaction11"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction12"
+        }
+    }
+    - {
+        name "Reaction12"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction13"
+        }
+    }
+    - {
+        name "Reaction13"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction14"
+        }
+    }
+    - {
+        name "Reaction14"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction15"
+        }
+    }
+    - {
+        name "Reaction15"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction16"
+        }
+    }
+    - {
+        name "Reaction16"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction17"
+        }
+    }
+    - {
+        name "Reaction17"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction18"
+        }
+    }
+    - {
+        name "Reaction18"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction19"
+        }
+    }
+    - {
+        name "Reaction19"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction20"
+        }
+    }
+    - {
+        name "Reaction20"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction21"
+        }
+    }
+    - {
+        name "Reaction21"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction22"
+        }
+    }
+    - {
+        name "Reaction22"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction23"
+        }
+    }
+    - {
+        name "Reaction23"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction24"
+        }
+    }
+    - {
+        name "Reaction24"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction25"
+        }
+    }
+    - {
+        name "Reaction25"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction26"
+        }
+    }
+    - {
+        name "Reaction26"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction27"
+        }
+    }
+    - {
+        name "Reaction27"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction28"
+        }
+    }
+    - {
+        name "Reaction28"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction29"
+        }
+    }
+    - {
+        name "Reaction29"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction30"
+        }
+    }
+    - {
+        name "Reaction30"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction31"
+        }
+    }
+    - {
+        name "Reaction31"
+        prototype "ReactionSlot"
+        components {
+            ReactionEvent next="Reaction0"
+        }
+    }
+}

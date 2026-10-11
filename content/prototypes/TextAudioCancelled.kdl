@@ -1,0 +1,4 @@
+name "TextAudioCancelled"
+components {
+    MeshAsset source="content/meshes/text/audio_cancelled.mesh"
+}

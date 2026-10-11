@@ -1,0 +1,4 @@
+name "TextSettingGhostOff"
+components {
+    MeshAsset source="content/meshes/text/setting_ghost_off.mesh"
+}

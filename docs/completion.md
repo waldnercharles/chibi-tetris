@@ -17,7 +17,7 @@ Source-level fixtures make additional assertions inside the authored runtime. Co
 
 ## Presentation and audio
 
-The well, blocks, ghost, previews and text use 3D geometry. Fixed pools of currents, motes, comet trails, particles and jellyfish change with the chapter. Board event counters drive action feedback. The lowest effects setting and reduced-motion option suppress new particles and authored motion, while the game remains playable.
+The well, blocks, ghost, previews and text use 3D geometry. GPU particle fields form a deep spiral and star field that change with the chapter. Snapshot queues preserve the position and result of player actions, driving distinct pooled 3D cues. The lowest effects setting and reduced-motion option stop background motion and retain brief stationary confirmations.
 
 M switches between analysis of the real game output and external audio capture. Native capture needs a routed loopback device; browser capture needs the user's audio-sharing selection. Capture failure restores the bundled score. The three original music arrangements and twelve generated effects retain their documented provenance, level measurements and loop checks in [audio](audio.md).
 

@@ -2,7 +2,33 @@
 
 This record covers the 3D Stillwater revision and the matching engine and packages in [toolchain.json](../toolchain.json). Publication verifies the live release separately from local exports.
 
-## Runtime performance correction
+## Cosmic particle revision
+
+The underwater scenery is replaced by two instanced 3D mesh fields. The full setting starts with 131,072 vortex particles and 16,384 stars; action feedback uses 96 reusable fields and eight lights. The scene has 842 entities. Particle positions are computed on the GPU from authored shader-library functions. The CPU updates field controls, not individual particles.
+
+The game dispatcher now passes 17 C/pico_unit cases and 909 assertions under one 60-second production deadline (21.046 seconds). New cases cover accepted and rejected inputs, original clear-row positions, simultaneous Duet records, restarts, overflow accounting, quiet visual controls, and immediate audio/settings HUD updates. The producer and consumer regressions each failed against their previous implementation. These checks exercise the real authored behaviors; they do not establish visual quality or frame rate.
+
+The matching engine's admitted checks passed on the reviewed tree, committed as `f198458a0`:
+
+| Check | Result |
+| --- | --- |
+| `make test-native` | 265 cases, 177,624 assertions; 9.932 seconds. |
+| `make test-language-all` | 178 cases, 10,510 assertions; 0.957 seconds. |
+| `make test-tools` | 91 cases, 22,508 assertions; 22.746 seconds. |
+
+Each group had its own production 60-second deadline. Configuration and build time were separate. C sources passed clang-format 22, feature fixtures passed canonical formatting, and diff checks were clean. Full and quarantined GPU/Studio suites remain unexecuted.
+
+The shared renderer was independently reviewed for resource lifetimes, prepared shader publication, library edits and renames, and SDK packaging. A separate `NativeRainField` fixture uses falling 3D octahedra and an opaque occluder without game mechanics. Its hidden Metal render verified per-instance geometry, authored parameter overrides and depth. Generated particle shaders also passed the production GLSL-to-WGSL and Metal compiler paths with the particle index both used and unused.
+
+The final game preview simulated 60 CPU frames, then rendered two warmup frames and one saved 640 × 360 frame in a hidden Cocoa window. It showed 148,096 mesh particles including active drop cues. Project validation and this capture completed together in 4.134 seconds under a 30-second deadline; validation reported 105 assets and no errors or warnings. The saved output frame cost 8.122 ms; this is a capture observation, not sustained native FPS. The [current Journey image](screenshots/cosmic-journey.png) includes the new dark score backing.
+
+The local WebGPU export rendered at 2560 × 1440 (1280 × 720 CSS pixels). After 120 warmup frames, a 2.5-second sample with 73,728 background particles measured 58.8 FPS, 16.7 ms median and 24.4 ms 95th percentile. Doubling to the shipped 147,456 particles measured 58.8 FPS, 16.7 ms median and 17.7 ms 95th percentile. These short samples do not establish a prolonged-play guarantee.
+
+Later in the same browser session, animation callbacks settled at 30 FPS. Effects off, suspending audio, and pausing the game's main loop did not change that ceiling: an independent browser animation callback still measured 30.05 FPS with the game stopped. The game loop uses one callback per browser frame. A separate 75-frame measurement of game work averaged 4.999 ms, with a 4.5 ms median and 8.0 ms 95th percentile; this includes CPU work and submission, not asynchronous GPU completion. Diagnostic hooks were removed and the page reloaded before further play checks. The browser/display limit is recorded rather than attributed to the game or hidden behind the initial faster sample.
+
+Browser play verified direct launch, movement, rotation, hold, hard drop, pause, and independent Duet drops (different board scores and placements). M reached the real audio request and displayed `CHOOSE AUDIO`; source selection could not be completed through the in-app browser. The request was cancelled by returning to the score. No external music capture or listening result is claimed. Product console output contained only the engine's existing font information messages; a temporary profiling-hook error was confined to the diagnostic probe and cleared by reload.
+
+## Earlier runtime performance correction
 
 The published `eb4f89e` game with engine `143ceb926` reproduced the reported slowdown: 2.37 FPS, a 425.2 ms median frame and a 433.8 ms 95th percentile in Chromium 154 with a 2560 × 1440 WebGPU canvas. Reducing the canvas to 640 × 360 only reached 2.48 FPS. A CPU profile attributed approximately 73% of sampled time to the script payload collector's address lookup.
 
@@ -16,7 +42,7 @@ The combined local browser build measured 55.3 FPS, 16.7 ms median and 25.2 ms 9
 
 The clean `3afbef743` engine was repackaged into the SDK and web player pinned in `toolchain.json`. The refreshed macOS export completed four hidden frames and three fixed simulation steps in 1.642 seconds under a 30-second deadline. This checks packaged startup, not sustained native rendering performance.
 
-## Automated checks
+## Earlier automated checks
 
 Tests use the engine's production supervisor with one 60-second deadline per admitted command. Configuration and compilation are separate.
 

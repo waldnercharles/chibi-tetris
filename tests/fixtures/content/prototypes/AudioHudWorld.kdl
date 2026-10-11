@@ -1,0 +1,7 @@
+name "AudioHudWorld"
+components {
+    GlobalBinding name="World"
+    (object)Session
+}
+(array)includes "ReactionQueue"
+(array)behaviors "AudioHudChecks"

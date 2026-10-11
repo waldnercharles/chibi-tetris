@@ -1,0 +1,4 @@
+name "TextAudioShareHint"
+components {
+    MeshAsset source="content/meshes/text/audio_share_hint.mesh"
+}

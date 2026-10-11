@@ -4,19 +4,38 @@ behavior Hud {
     board1: entity
     board2: entity
     labels: entity[] = []
+    backings: entity[] = []
+    timer_backing: entity
     panel: entity
     ready := false
     refresh := 0
+    audio_source: int = -1
+    audio_status: int = -1
+    audio_signal := false
+    audio_quiet := false
+    screen: int = -1
+    world_serial: int = -1
+    setting_serial: int = 0
+    setting_kind: int = 0
+    setting_value: int = 0
+    setting_time := 0
     modes := ["journey", "endless", "sprint", "duet"]
 
     on Begin {
         world = get_global_variable("World")
         board1 = get_global_variable("Board1")
         board2 = get_global_variable("Board2")
-        for i in 0..87 {
+        for i in 0..96 {
             label := await spawn(HudText)
             labels = array_add(labels, label)
         }
+        for i in 0..1 {
+            backing := await spawn(HudBacking)
+            backings = array_add(backings, backing)
+        }
+        timer_backing = await spawn(HudBacking)
+        timer_backing.Geometry3D.height = 140
+        timer_backing.Transform3D.position = vec3(-205, -149, 42)
         panel = await spawn(HudPanel)
         ready = true
         Draw()
@@ -67,6 +86,9 @@ behavior Hud {
         if world.Session.mode == 3 {
             center = -254 + index * 508
         }
+        backing := get(backings, index)
+        backing.Transform3D.position = vec3(center - 205, 2, 42)
+        backing.RenderState.hidden = false
         offset := index * 4
         Label(3 + offset, "hold", center - 205, 235, 12)
         Label(4 + offset, "next", center + 190, 235, 12)
@@ -99,9 +121,13 @@ behavior Hud {
     }
 
     function Draw() {
-        for i in 0..87 {
+        for i in 0..96 {
             Hide(i)
         }
+        for backing in backings {
+            backing.RenderState.hidden = true
+        }
+        timer_backing.RenderState.hidden = world.Session.mode != 2
         Label(0, "stillwater", 0, 296, 24)
         Label(1, get(modes, world.Session.mode), -40, 264, 11)
         Label(2, "chapter", 34, 264, 9)
@@ -131,18 +157,53 @@ behavior Hud {
             Label(14, "settings_controls", 0, -310, 10)
         }
         audio := "music"
+        status := "audio_score"
+        hint := ""
         if world.Session.audio_source == 1 {
             audio = "listening"
+            status = "audio_connected"
+            if world.Session.audio_signal {
+                status = "audio_reactive"
+            }
+            if world.Session.audio_quiet {
+                status = "audio_quiet"
+                hint = "audio_quiet_hint"
+            }
             if world.Session.audio_status == 1 {
                 audio = "audio_waiting"
+                status = "audio_share_hint"
+                hint = "audio_gesture_hint"
             }
         }
-        if world.Session.audio_status >= 3 {
-            audio = "audio_unavailable"
+        match (world.Session.audio_status) {
+            case 3 {
+                status = "audio_no_source"
+            }
+            case 4 {
+                status = "audio_cancelled"
+            }
+            case 5 {
+                status = "audio_ended"
+            }
         }
-        Label(15, audio, 375, 287, 10)
+        if world.Session.audio_source == 0 && world.Session.audio_status >= 3 {
+            audio = "audio_unavailable"
+            hint = "audio_restored"
+        }
+        Label(15, audio, 375, 287, 9)
+        Label(88, status, 375, 268, 7)
+        if hint != "" {
+            Label(89, hint, 375, 251, 6.5)
+        }
+        if world.Session.screen != 1 {
+            Label(90, "audio_browser_help", 375, 223, 6.5)
+            Label(91, "audio_desktop_help", 375, 207, 6.5)
+        }
         if world.Session.save_failed {
             Label(16, "saving_failed", -375, 287, 10)
+        }
+        if setting_time > 0 {
+            DrawSetting()
         }
         panel.RenderState.hidden = world.Session.screen == 1
         if world.Session.screen != 1 && world.Session.mode == 0 {
@@ -164,6 +225,81 @@ behavior Hud {
             ModalLabel(11, title, 0, 22, 22)
             ModalLabel(12, "press_enter", 0, -16, 12)
         }
+        audio_source = world.Session.audio_source
+        audio_status = world.Session.audio_status
+        audio_signal = world.Session.audio_signal
+        audio_quiet = world.Session.audio_quiet
+        screen = world.Session.screen
+        world_serial = world.ReactionQueue.serial
+    }
+
+    function DrawSetting() {
+        label := ""
+        match (setting_kind) {
+            case 1 {
+                label = get(["setting_effects_off", "setting_effects_low", "setting_effects_full"], cast<int>(clamp(setting_value, 0, 2)))
+            }
+            case 2 {
+                label = "setting_motion_off"
+                if setting_value != 0 {
+                    label = "setting_motion_on"
+                }
+            }
+            case 3 {
+                label = "setting_ghost_off"
+                if setting_value != 0 {
+                    label = "setting_ghost_on"
+                }
+            }
+            case 4 {
+                label = "setting_volume"
+            }
+            case 5 {
+                label = "setting_das"
+            }
+            case 6 {
+                label = "setting_arr"
+            }
+        }
+        if label == "" {
+            return
+        }
+        if setting_kind < 4 {
+            Label(92, label, -375, 267, 8)
+            return
+        }
+        Label(92, label, -399, 267, 8)
+        Number(93, 3, setting_value, -330, 267, 9)
+        unit := "setting_ms"
+        if setting_kind == 4 {
+            unit = "setting_percent"
+        }
+        Label(96, unit, -302, 267, 7)
+    }
+
+    function ReadSettings(dt: number) -> (updated: bool) {
+        visible := setting_time > 0
+        setting_time = max(0, setting_time - dt)
+        changed := visible && setting_time == 0
+        serial := world.ReactionQueue.serial
+        if serial < setting_serial {
+            setting_serial = 0
+        }
+        if serial == setting_serial {
+            return changed
+        }
+        first := cast<int>(max(setting_serial + 1, serial - 31))
+        for i in first..serial {
+            slot := ReactionRules.Read(world, i)
+            if slot.ReactionEvent.kind == 18 {
+                setting_kind = slot.ReactionEvent.detail
+                setting_value = slot.ReactionEvent.amount
+                setting_time = 2.5
+                changed = true
+            }
+        }
+        setting_serial = serial
+        return changed
     }
 
     on Tick(dt) {
@@ -171,7 +307,9 @@ behavior Hud {
             return
         }
         refresh += dt
-        if refresh < 0.1 {
+        changed := ReadSettings(dt)
+        changed = changed || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
+        if refresh < 0.1 && !changed {
             return
         }
         refresh = 0

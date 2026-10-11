@@ -3,6 +3,9 @@ behavior RescueChecks {
     world: entity
     frame: int = 0
     before_score: int = 0
+    seen: int = 0
+    topouts: int = 0
+    rescues: int = 0
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
         if condition {
@@ -18,14 +21,32 @@ behavior RescueChecks {
         world = get_global_variable("World")
     }
     on Tick {
+        cursor := seen + 1
+        while cursor <= board.ReactionQueue.serial {
+            slot := ReactionRules.Read(board, cursor)
+            Check(slot.ReactionEvent.serial == cursor, "center stack feedback is retained")
+            if slot.ReactionEvent.kind == 11 {
+                topouts += 1
+                prior := ReactionRules.Read(board, cursor - 1)
+                Check(prior.ReactionEvent.kind == 8, "top out follows the final lock")
+            }
+            if slot.ReactionEvent.kind == 12 {
+                rescues += 1
+                Check(slot.ReactionEvent.amount == 6, "rescue records six released rows")
+            }
+            cursor += 1
+        }
+        seen = board.ReactionQueue.serial
         if frame == 53 {
             Check(board.BoardState.topout && board.BoardState.pieces > 0, "center stack tops out")
+            Check(topouts == 1, "top out publishes exactly once")
             before_score = board.BoardState.score
             world.Session.rescue1 += 1
         }
         if frame == 56 {
             Check(!board.BoardState.topout && board.BoardState.row == 1, "rescue restores active spawn")
             Check(board.BoardState.score == before_score && board.BoardState.can_hold, "rescue preserves score and restores hold")
+            Check(rescues == 1, "rescue publishes exactly once")
             self.TestReport.done = true
         }
         frame += 1

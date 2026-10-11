@@ -1,0 +1,159 @@
+// Observe the live Board after real input. Events retain origins independently
+// of the next spawned piece and cannot collapse repeated moves into one pulse.
+behavior ReactionChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+    seen: int = 0
+    max_batch: int = 0
+    rejected_rotations: int = 0
+    rejected: int = 0
+    soft_steps: int = 0
+    soft_starts: int = 0
+    soft_stops: int = 0
+    still_serial: int = 0
+    wall_column: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+    }
+
+    on Tick {
+        serial := board.ReactionQueue.serial
+        if serial < seen {
+            seen = 0
+        }
+        max_batch = max(max_batch, serial - seen)
+        cursor := seen + 1
+        while cursor <= serial {
+            slot := ReactionRules.Read(board, cursor)
+            Check(slot.ReactionEvent.serial == cursor, "ring retains the entire input tick")
+            kind := slot.ReactionEvent.kind
+            if kind == 1 && slot.ReactionEvent.result == 0 {
+                rejected += 1
+            }
+            if kind == 2 && slot.ReactionEvent.result == 0 {
+                rejected_rotations += 1
+            }
+            if kind == 3 {
+                soft_starts += 1
+            }
+            if kind == 4 {
+                soft_steps += slot.ReactionEvent.amount
+                Check(slot.ReactionEvent.amount > 0, "soft steps aggregate only actual traveled rows")
+            }
+            if kind == 5 {
+                soft_stops += 1
+            }
+            cursor += 1
+        }
+        seen = serial
+        match (frame) {
+            case 1 {
+                Check(board.ReactionQueue.ready, "ring exists before board controls")
+                Check(board.ReactionQueue.run == world.Session.run, "queue identifies board run")
+                slot := board.ReactionQueue.first
+                for (i in 0..31) {
+                    Check(slot.ReactionEvent.serial == 0, "prototype resolves every ring child")
+                    slot = slot.ReactionEvent.next
+                }
+                Check(slot == board.ReactionQueue.first, "last slot links back to first")
+            }
+            case 3 {
+                Check(serial == 4, "same tick move rotation drop and lock all survive")
+                move := ReactionRules.Read(board, 1)
+                rotate := ReactionRules.Read(board, 2)
+                drop := ReactionRules.Read(board, 3)
+                lock := ReactionRules.Read(board, 4)
+                Check(move.ReactionEvent.kind == 1 && rotate.ReactionEvent.kind == 2 && drop.ReactionEvent.kind == 6 && lock.ReactionEvent.kind == 8, "same tick reactions retain action order")
+                Check(move.ReactionEvent.direction == -1 && rotate.ReactionEvent.direction == 1, "move and rotation retain their directions")
+                Check(move.ReactionEvent.x == -36 && move.ReactionEvent.y == 228, "move records its own world position")
+                Check(drop.ReactionEvent.y == 228 && drop.ReactionEvent.amount > 0, "drop retains starting height and distance")
+                Check(lock.ReactionEvent.y == drop.ReactionEvent.y - drop.ReactionEvent.amount * 24, "lock retains landing height before next spawn")
+                Check(board.BoardState.row == 1 && lock.ReactionEvent.y != 228, "spawn cannot overwrite the recorded landing")
+            }
+            case 7 {
+                hold := ReactionRules.Read(board, serial)
+                previous := ReactionRules.Read(board, serial - 1)
+                Check(previous.ReactionEvent.kind == 7 && previous.ReactionEvent.result == 1, "first hold is accepted")
+                Check(hold.ReactionEvent.kind == 7 && hold.ReactionEvent.result == 0, "second explicit hold publishes rejection")
+            }
+            case 11 {
+                Check(rejected_rotations == 1, "competing explicit rotation publishes rejection")
+            }
+            case 13 {
+                Check(soft_starts == 1 && soft_stops == 1 && soft_steps > 0, "soft press descent and release all react")
+                world.Session.arr = 0
+                world.Session.das = 0
+            }
+            case 16 {
+                Check(rejected == 1, "held move emits one initial wall rejection")
+                Check(max_batch >= 4 && max_batch <= 21, "bounded repeat preserves several reactions in one tick")
+                still_serial = serial
+                wall_column = board.BoardState.column
+            }
+            case 17 {
+                Check(serial == still_serial, "holding a blocked direction does not flood feedback")
+            }
+            case 19 {
+                Check(rejected == 2 && board.BoardState.column == wall_column, "explicit wall press reacts again")
+                still_serial = serial
+            }
+            case 23 {
+                Check(serial == still_serial, "repeated wall press also settles after one rejection")
+            }
+            case 29 {
+                Check(rejected >= 4, "direction changes and successful moves rearm wall feedback")
+                left := ReactionRules.Read(board, serial - 1)
+                right := ReactionRules.Read(board, serial)
+                Check(left.ReactionEvent.kind == 1 && right.ReactionEvent.kind == 1 && left.ReactionEvent.result == 0 && right.ReactionEvent.result == 0, "opposing explicit presses each retain their rejection")
+                Check(left.ReactionEvent.direction == -1 && right.ReactionEvent.direction == 1, "opposing presses retain both directions")
+            }
+            case 42 {
+                Check(soft_starts == 3 && soft_stops == 2, "grounded soft press and release both react")
+                slot := ReactionRules.Read(board, serial)
+                Check(slot.ReactionEvent.kind == 3 && slot.ReactionEvent.result == 0, "grounded press emits rejection without a fake descent")
+            }
+            case 63 {
+                Check(soft_steps >= 10, "soft held descent reports actual row distance")
+                world.Session.screen = 2
+            }
+            case 65 {
+                Check(soft_stops == 3, "pause releases an active soft drop")
+                world.Session.run += 1
+            }
+            case 67 {
+                Check(serial == 0 && board.ReactionQueue.run == world.Session.run, "restart resets the board queue before new actions")
+                world.Session.screen = 1
+            }
+            case 70 {
+                Check(serial == 1, "first action after restart is retained")
+                move := ReactionRules.Read(board, 1)
+                Check(move.ReactionEvent.kind == 1 && move.ReactionEvent.result == 1, "new run starts with its first move")
+                ReactionRules.Initialize(world, world.Session.run)
+                for (i in 1..40) {
+                    ReactionRules.Emit(world, 18, 1, i - 1, i, 1, i, 4)
+                }
+                Check(world.ReactionQueue.serial == 40, "world serial remains monotonic through ring wrapping")
+                slot := ReactionRules.Read(world, 40)
+                Check(slot.ReactionEvent.serial == 40 && slot.ReactionEvent.amount == 40, "wrapped ring retains newest payload")
+                slot = ReactionRules.Read(world, 9)
+                Check(slot.ReactionEvent.serial == 9, "wrapped ring retains exactly the newest thirty-two events")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

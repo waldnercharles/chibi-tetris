@@ -1,0 +1,30 @@
+version 1
+name "ConsumerChecks"
+presentation "3d"
+(array)entities {
+    - name="World" prototype="ConsumerWorld"
+    - {
+        name "Board1"
+        prototype "TestBoard"
+        components {
+            GlobalBinding name="Board1"
+            BoardState index=0
+        }
+    }
+    - {
+        name "Board2"
+        prototype "TestBoard"
+        components {
+            GlobalBinding name="Board2"
+            BoardState index=1
+        }
+    }
+    - name="Vortex" prototype="VortexField"
+    - name="Stars" prototype="StarField"
+    - name="Environment" prototype="Environment"
+    - {
+        name "Report"
+        prototype "TestReport"
+        (array)behaviors "ConsumerChecks"
+    }
+}

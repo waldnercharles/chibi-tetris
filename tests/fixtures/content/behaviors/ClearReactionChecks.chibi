@@ -1,0 +1,71 @@
+// A fixed six-piece keyboard route clears rows 20 then 21 on consecutive locks.
+// The visible board performs both collapses before the observer reads the queue.
+behavior ClearReactionChecks {
+    board: entity
+    frame: int = 0
+    seen: int = 0
+    clears: int = 0
+    combos: int = 0
+    drops: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        board = get_global_variable("Board1")
+    }
+
+    on Tick {
+        cursor := seen + 1
+        while cursor <= board.ReactionQueue.serial {
+            slot := ReactionRules.Read(board, cursor)
+            Check(slot.ReactionEvent.serial == cursor, "clear sequence retains every event through wrapping")
+            match (slot.ReactionEvent.kind) {
+                case 6 {
+                    drops += 1
+                    Check(slot.ReactionEvent.y == 228, "each hard drop keeps its own spawn origin")
+                }
+                case 8 {
+                    drop := ReactionRules.Read(board, cursor - 1)
+                    Check(drop.ReactionEvent.kind == 6, "hard drop precedes its lock")
+                    Check(slot.ReactionEvent.y == drop.ReactionEvent.y - drop.ReactionEvent.amount * 24, "lock keeps landing location before collapse and spawn")
+                }
+                case 9 {
+                    previous := ReactionRules.Read(board, cursor - 1)
+                    Check(previous.ReactionEvent.kind == 8, "clear follows lock")
+                    Check(slot.ReactionEvent.amount == 1, "single clear count is retained")
+                    expected: int = 1048576
+                    if clears == 1 {
+                        expected = 2097152
+                    }
+                    Check(slot.ReactionEvent.detail == expected, "row mask identifies the pre-collapse row")
+                    Check(slot.ReactionEvent.x == previous.ReactionEvent.x && slot.ReactionEvent.y == previous.ReactionEvent.y, "clear keeps the locking piece origin")
+                    clears += 1
+                }
+                case 10 {
+                    previous := ReactionRules.Read(board, cursor - 1)
+                    Check(previous.ReactionEvent.kind == 9, "combo follows clear")
+                    Check(slot.ReactionEvent.amount == 1 && slot.ReactionEvent.detail == 2097152, "combo keeps its streak and pre-collapse row")
+                    combos += 1
+                }
+            }
+            cursor += 1
+        }
+        seen = board.ReactionQueue.serial
+        if frame == 56 {
+            Check(drops == 6 && clears == 2 && combos == 1, "real input route emits six drops two clears and one combo")
+            Check(board.BoardState.lines == 2 && board.BoardState.combo == 1, "feedback agrees with the resulting live board")
+            Check(board.ReactionQueue.serial > 32 && board.ReactionQueue.dropped == 0, "ordinary play wraps without losing tick events")
+            self.TestReport.done = true
+        }
+        frame += 1
+    }
+}

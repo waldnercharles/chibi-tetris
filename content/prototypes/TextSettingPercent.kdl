@@ -1,0 +1,4 @@
+name "TextSettingPercent"
+components {
+    MeshAsset source="content/meshes/text/setting_percent.mesh"
+}

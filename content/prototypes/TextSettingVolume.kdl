@@ -1,0 +1,4 @@
+name "TextSettingVolume"
+components {
+    MeshAsset source="content/meshes/text/setting_volume.mesh"
+}

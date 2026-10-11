@@ -1,0 +1,10 @@
+name "StarField"
+components {
+    Geometry3D depth=4.6 height=4.6 primitive=5 width=4.6
+    GlobalBinding name="Stars"
+    ParticleField3D additive=#true count=16384 seed=113
+    Shader material="CosmicParticles.Dust"
+    Transform3D {
+        scale x=1.0 y=1.0 z=1.0
+    }
+}

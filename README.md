@@ -1,8 +1,8 @@
 # Stillwater
 
-A falling-block game authored in Chibi. A six-chapter journey moves through 3D ocean currents, jellyfish, auroras and stellar orbits. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
+A falling-block game authored in Chibi. A six-chapter journey unfolds inside a deep 3D particle vortex and a field of distant stars. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
 
-![Stillwater Journey](docs/screenshots/journey.png)
+![Stillwater Journey](docs/screenshots/cosmic-journey.png)
 
 - Journey starts immediately at your highest unlocked chapter. Each of its six chapters takes twelve lines.
 - Endless increases the falling speed as you clear lines.
@@ -92,6 +92,6 @@ make test
 
 The C/pico_unit dispatcher calls the real authored libraries and behaviors through the controller. It covers deterministic rules, both keyboard and controller slots, lock/reset/hold behavior, topout/rescue, Journey and Sprint completion, cooperative progression, disconnect pause, save readback, direct launch and the 3D environment's effect controls. It runs under the engine's single 60-second production supervisor. Configuration and compilation are separate from that deadline.
 
-`content/behaviors/Board.chibi` handles each board, `content/libraries/Pieces.chibi` and `Rules.chibi` own piece geometry and rule calculations, and `Shell.chibi` owns progression and in-game controls. `Environment.chibi` and `OceanLife.chibi` drive fixed pools of 3D scenery. `AudioReactive.chibi` maps measured audio into the scene, and `Hud.chibi` places mesh text. Test-only fixtures stay in `tests/fixtures` and are never exported.
+`content/behaviors/Board.chibi` handles each board, `content/libraries/Pieces.chibi` and `Rules.chibi` own piece geometry and rule calculations, and `Shell.chibi` owns progression and in-game controls. `Environment.chibi` drives two GPU particle fields and fixed pools of short-lived reaction geometry and lights. `CosmicParticles.kdl` and `ReactionParticles.kdl` author their trajectories. `AudioReactive.chibi` maps measured audio into the scene, and `Hud.chibi` places mesh text. Test-only fixtures stay in `tests/fixtures` and are never exported.
 
 Read [validation](docs/validation.md) for executed checks and limits, [rules](docs/rules.md) for scoring, [audio](docs/audio.md) and [visuals](docs/visuals.md) for asset provenance, and [licenses](LICENSES.md) for terms.

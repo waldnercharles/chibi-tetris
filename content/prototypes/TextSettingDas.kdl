@@ -1,0 +1,4 @@
+name "TextSettingDas"
+components {
+    MeshAsset source="content/meshes/text/setting_das.mesh"
+}

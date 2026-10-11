@@ -1,0 +1,4 @@
+name "TextAudioEnded"
+components {
+    MeshAsset source="content/meshes/text/audio_ended.mesh"
+}

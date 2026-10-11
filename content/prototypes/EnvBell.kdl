@@ -1,8 +1,0 @@
-name "EnvBell"
-components {
-    Geometry3D depth=116.0 height=76.0 primitive=1 width=142.0
-    (object)RenderState
-    Shader material="JellyMembrane"
-    (object)Transform
-    VisualTransform scale=1.0
-}

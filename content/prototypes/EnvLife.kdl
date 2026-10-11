@@ -1,3 +1,0 @@
-name "EnvLife"
-(object)components
-(array)behaviors "OceanLife"

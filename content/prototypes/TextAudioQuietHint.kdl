@@ -1,0 +1,4 @@
+name "TextAudioQuietHint"
+components {
+    MeshAsset source="content/meshes/text/audio_quiet_hint.mesh"
+}

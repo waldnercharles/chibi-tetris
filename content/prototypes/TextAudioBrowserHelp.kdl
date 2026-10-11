@@ -1,0 +1,4 @@
+name "TextAudioBrowserHelp"
+components {
+    MeshAsset source="content/meshes/text/audio_browser_help.mesh"
+}

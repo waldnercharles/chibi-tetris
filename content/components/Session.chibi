@@ -9,6 +9,8 @@ component Session {
     chapter_lines: int
     audio_source: int
     audio_status: int
+    audio_signal: bool
+    audio_quiet: bool
     run: int
     seed: int
     stage: int

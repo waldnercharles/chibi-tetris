@@ -1,0 +1,11 @@
+// Each queue owns a fixed ring of 32 nonrendered prototype children.
+// Board serials restart with run. World serials survive run changes.
+component ReactionQueue {
+    run: int
+    serial: int
+    ready: bool
+    first: entity
+    write: entity
+    // Consumer-reported events lost by reading more than 32 events late.
+    dropped: int
+}

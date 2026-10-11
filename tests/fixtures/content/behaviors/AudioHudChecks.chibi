@@ -1,0 +1,11 @@
+// The audio host states are inputs; label selection runs the production HUD.
+behavior AudioHudChecks {
+    on Begin {
+        self.Session.screen = 1
+        self.Session.audio_source = cast<int>(read_saved_number("audio_source", 0).Number)
+        self.Session.audio_status = cast<int>(read_saved_number("audio_status", 0).Number)
+        self.Session.audio_signal = read_saved_number("audio_signal", 0).Number != 0
+        self.Session.audio_quiet = read_saved_number("audio_quiet", 0).Number != 0
+        self.Session.screen = cast<int>(read_saved_number("screen", 1).Number)
+    }
+}
