@@ -1,9 +1,9 @@
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./.nojekyll
 ad4a60745d68a9f1fcdb2b10a86e45ead8390bea21e40c614f3588889ae30141  ./LICENSES.md
-c131485dbc20b7387d46d5c015243882285604729417483a805f6b624ae5f036  ./chibi-player.js
-f6622a25fa1f6245fe03c91028610493d973cccbce453ec9431d1fea774559ac  ./chibi-player.wasm
+592e5df3b9e25c2c99080e851b317e16287be827137ef4f279b39b6b078b76e3  ./chibi-player.js
+4aadae8f0cc8245ffaf593135a9b937600a04f0f85c205945b7c62256285f514  ./chibi-player.wasm
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./data/.chibi-export
-82c56aa93d977f9c6a1e5ce20bc64a4c548d78e8fba598ebc9e62156506ebe13  ./data/engine/engine.json
+af630805d0be0b9c081354bd8316f51e47398a4ebb6a77a608c3b8e8b60ea412  ./data/engine/engine.json
 68a3e676d7e94093b102d5cba0d4e04af812040d6f230c3db67a6664574e43d2  ./data/engine/licenses/box2d/LICENSE
 da5e31a26bf3cfd5ba5c96d6823e480128c81e76c107ef9d3ee5d94789184b90  ./data/engine/licenses/box3d/LICENSE
 d009372b564221f6956013d19f664db49c4b436d3e94293a15daf473eef3d1bf  ./data/engine/licenses/ckdl/COPYING
@@ -96,7 +96,7 @@ d48e1ef09b7550fa9ab01477448f2ffbd2ab4871e4b569523e7671d1ddee9ae3  ./data/engine/
 c29cafe530cfe8ee9edc6571a600520dbfd991ec88759af0fabf17dfeca24300  ./data/engine/shaders/scene3d_occlusion.shd
 e7eb24470b743158e23adabff2c0f4ac68e3efee8594f96d98486def340a16e9  ./data/engine/shaders/scene3d_occlusion_blur.frag
 edb95d7dbc37bc90f2c2253b9593752bfa47a1bbd4890c84e717e03b1e7cfe56  ./data/engine/shaders/scene3d_particles.frag
-5bce9f8d4d21baf2438c8bfb0b63bcae1fc36f68d10ede13e821f7aedb5670f4  ./data/engine/shaders/scene3d_particles.vert
+f8f55229b1ef6d54540503ad3cbaa1830fdd53915fd36905efb2341f2024b5e7  ./data/engine/shaders/scene3d_particles.vert
 ecaf2fab3533affeb50ced76939e0af5f0c40184fa892fffd45010472400f195  ./data/engine/shaders/scene3d_post_adapt.shd
 cddea674a4c159e2054140dbe0b16bccd5f9fb69b49c7ead87c2338b9efc49ea  ./data/engine/shaders/scene3d_post_blur.shd
 51a5b03b916ec7db29f259b4a8fcc12753456a713787f0550ad9d644741fa17b  ./data/engine/shaders/scene3d_post_composite.shd
@@ -118,7 +118,7 @@ f3da2c3042535405efad97fcb8ef7352fec06835453601f4e96721848b5e051b  ./data/engine/
 e0e649ce6e804f9dea46f4f11a425d123466b119b02de61854f1c4f25f7df67f  ./data/engine/shaders/surface_material.shd
 36ccdd8718e501ed00ffb0bdd51e3cfef6cc71ac1e9976d1fcd56379a7a0042c  ./data/engine/shaders/tonemap.shd
 04aa8aae1a788393b8626a110de449dcb720b8e2bdd75c0b7292442709e5ea34  ./data/engine/shaders/unlit.shd
-71d3afcfafcc504ab3cd8327eb89b2c3e5b1906b330af0b1234da5b6756921ba  ./data/game.chibip
-166523afc8707bd7c5951c0a9bd4c2a99e8ac9a0ec559e756bbcc23c3f6eaf47  ./deployment.json
+64e53f9ed7b452cfd77997cc4439760adb6f23cc2aafec707350a49bc853004a  ./data/game.chibip
+c84ce882cf3e99d1aaced203f3dc536e41ff97bc317a5208677e7a1b2a1397d6  ./deployment.json
 0eee4869a9cec07e601f9e97f6e4360aa6353de4fff128534030eabe9544ced8  ./files.json
 e5f2c8717b2c729129ba658f8ac7a93e1f8c873f79f964bb2cb85e8541303f7e  ./index.html
