@@ -6,7 +6,7 @@ WEB_PLAYER ?= $(abspath $(ENGINE))/dist/web-stillwater
 JOBS ?= 4
 RELEASE_FLAGS := -DCMAKE_BUILD_TYPE=Release -DCHIBI_ENABLE_SANITIZERS=OFF -DCHIBI_ENABLE_CCACHE=ON
 
-.PHONY: sdk authoring web-player play native web serve format validate test test-build
+.PHONY: sdk authoring web-player play native web publish verify-published serve format validate test test-build
 
 sdk:
 	$(MAKE) -C "$(ENGINE)" package-sdk SDK_BUILD_DIR=build/sdk-stillwater SDK_PREFIX="$(abspath $(SDK))" SDK_CMAKE_FLAGS='$(RELEASE_FLAGS)' JOBS=$(JOBS)
@@ -25,6 +25,13 @@ native:
 
 web:
 	"$(SDK)/bin/chibi" export "$(CURDIR)" --output "$(CURDIR)/dist/web" --web "$(WEB_PLAYER)" --archive
+
+publish:
+	bash tools/pages.sh publish "$(abspath $(SDK))" "$(abspath $(WEB_PLAYER))"
+
+verify-published:
+	python3 -c 'import runpy, sys; sys.exit(runpy.run_path(sys.argv[1])["run_commands"]([["bash", sys.argv[2], "verify"]]))' \
+		"$(abspath $(ENGINE))/tools/test_policy.py" "$(CURDIR)/tools/pages.sh"
 
 serve:
 	python3 -m http.server 18769 --bind 127.0.0.1 --directory dist/web

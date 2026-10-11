@@ -52,7 +52,7 @@ External music uses browser audio sharing or a native loopback device. Press M, 
 
 This game consumes the Chibi SDK. KDL owns scene composition and `.chibi` owns the game rules and presentation. Blocks, scenery and text use the 3D renderer. There is no game-specific native module or separate browser implementation.
 
-The exact engine commit and package identities are recorded in `toolchain.json`. This development revision uses the local engine branch `cwaldner/stillwater-3d-sdk`; publish that engine commit before reproducing it from the remote clone below. Use its existing checkout through `.chibi/engine`, or pass `ENGINE=/absolute/path/to/that/checkout` to Make. The engine's documented CMake, C compiler, libclang and platform dependencies are required. Browser packaging also requires Emscripten.
+The exact engine commit and package identities are recorded in `toolchain.json`. This development revision uses the engine branch `cwaldner/stillwater-3d-sdk`. Use its existing checkout through `.chibi/engine`, or pass `ENGINE=/absolute/path/to/that/checkout` to Make. The engine's documented CMake, C compiler, libclang and platform dependencies are required. Browser packaging also requires Emscripten.
 
 ```sh
 git clone --no-checkout https://github.com/waldnercharles/chibi.git .chibi/engine
@@ -69,23 +69,18 @@ make web
 
 ## Publish to GitHub Pages
 
-GitHub Pages serves the root of the `gh-pages` branch. Build the browser export with the pinned toolchain, run the focused checks, and inspect browser play before publishing. Keep the SDK dependency notices in the export. Source changes on `main` need a new export and publishing commit to reach the website.
+Every completed game iteration is published to the same public play URL. GitHub Pages automatically deploys the root of `gh-pages` after publication. Run the focused checks and inspect browser play with the pinned toolchain before publishing.
 
-From a clean, committed source checkout, publish an updated export with:
+Commit and push the tested source branch. If the engine pin changed, push its source branch too. Then publish from the clean source checkout (requires Git, GitHub CLI, jq, curl, rsync and shasum):
 
 ```sh
-make web
-git clone --single-branch --branch gh-pages https://github.com/waldnercharles/chibi-tetris.git build/pages-publish
-rsync -a --delete --exclude=.git dist/web/ build/pages-publish/
-touch build/pages-publish/.nojekyll
-cp LICENSES.md build/pages-publish/
-git -C build/pages-publish add --all
-git -C build/pages-publish commit -m "Publish Stillwater from $(git rev-parse --short HEAD)"
-git -C build/pages-publish push origin gh-pages
-rm -rf build/pages-publish
+git push -u origin HEAD
+make publish
 ```
 
-Wait for the repository's Pages deployment to finish, then verify the public play link above. The publishing directory is temporary; remove it before repeating these steps.
+`make publish` checks the remote source revision and pinned SDK/player, exports the game, preserves dependency licenses, writes `deployment.json` and `SHA256SUMS`, and pushes the export. It removes its temporary checkout on exit. Source pushes alone do not update the game.
+
+Wait for the repository's Pages deployment to finish. `make verify-published` uses the engine's 60-second production supervisor to compare the public revision, checksum manifest, game and player assets with the published branch. Then open the public URL and check direct launch, movement/drop and Duet play in a bounded browser session. Publication is complete only after those checks pass.
 
 ## Verify and edit
 
