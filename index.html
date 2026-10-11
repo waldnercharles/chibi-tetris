@@ -1,6 +1,18 @@
 <!doctype html>
 <html lang="en">
 <head>
+<!-- chibi-dev:start -->
+<script>
+if (new URLSearchParams(location.search).has('dev')) {
+  const url = new URL('dev/', location.href);
+  url.search = location.search;
+  url.searchParams.delete('dev');
+  url.hash = location.hash;
+  location.replace(url);
+}
+</script>
+<!-- chibi-dev:end -->
+
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Stillwater</title>
