@@ -45,7 +45,9 @@ publish)
     make web SDK="$sdk" WEB_PLAYER="$player"
     [[ $(git rev-parse HEAD) == "$revision" && -z $(git status --porcelain) ]] || fail 'Source changed during export.'
     git clone --quiet --depth 1 --single-branch --branch gh-pages "$repository" "$temporary/site"
-    rsync -a --delete --exclude=.git dist/web/ "$temporary/site/"
+    # The companion editor workflow refreshes /dev for this source revision.
+    # Keep the current editor available until that publication completes.
+    rsync -a --delete --exclude=.git --exclude=/dev/ dist/web/ "$temporary/site/"
     cp LICENSES.md "$temporary/site/"
     touch "$temporary/site/.nojekyll"
     jq -n --arg revision "$revision" --arg engine "$engine" \
