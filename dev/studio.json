@@ -1,13 +1,16 @@
 {
   "format": 1,
-  "engine": "287ff20417e43ca142d2a43807ce538a8287c098",
+  "engine": "25d8540245cee1f0eb0797c83327658e1991ce08",
   "studio": "0ad2e5a1fea7d38e4aba19d9d04074ba5e0558d5",
-  "archive": "editor-0ad2e5a1fea7d38e4aba19d9d04074ba5e0558d5-287ff20417e43ca142d2a43807ce538a8287c098.tar.gz",
-  "sha256": "00fa9931af9f2a9e18e3b7beb735de650cc03372c86a679f7d66de8b32323042",
+  "archive": "editor-0ad2e5a1fea7d38e4aba19d9d04074ba5e0558d5-25d8540245cee1f0eb0797c83327658e1991ce08.tar.gz",
+  "sha256": "4bc07f241a66f225a28c06e599e412ae0a048bbad9af7a1f5a59abddfae2e7ff",
   "capabilities": {
     "prototype_includes": true,
     "project_audio": true
   },
-  "sdk_build_id": "877703a162b97566a04e6ae338f1de7e7f3a26f46ddf6ef34302947474f76995",
-  "sdk_manifest_sha256": "9d1784627d945b4fc67e235a6dbeb3166c4a7e9b0e1844b7cd3b4d049aac6b0a"
+  "sdk_build_id": "b5afba7547ba3176b1395c967c601de3a5d76c5ae509f7f4f007f8d8f2e865e9",
+  "sdk_manifest_sha256": "7ec83ae33ac39864c3828cfd7699b155607a76b7287fbe5f8c402522bf3fb375",
+  "compatible_engines": [
+    "287ff20417e43ca142d2a43807ce538a8287c098"
+  ]
 }
