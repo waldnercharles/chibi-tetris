@@ -28,6 +28,20 @@ Later in the same browser session, animation callbacks settled at 30 FPS. Effect
 
 Browser play verified direct launch, movement, rotation, hold, hard drop, pause, and independent Duet drops (different board scores and placements). M reached the real audio request and displayed `CHOOSE AUDIO`; source selection could not be completed through the in-app browser. The request was cancelled by returning to the score. No external music capture or listening result is claimed. Product console output contained only the engine's existing font information messages; a temporary profiling-hook error was confined to the diagnostic probe and cleared by reload.
 
+## Responsive camera follow-up
+
+The first public cosmic build exposed cropped HUD text in a tall browser panel. Engine `1f699e26a` now expands an explicit camera's vertical field of view when a narrower viewport needs more height to preserve the authored width. Camera position, stored lens settings and clip planes remain unchanged; rendering and pointer picking share the fitted lens.
+
+The new projection regression failed before the fix. All six admitted `--viewport-resize` cases passed in 1.198 seconds using the native Metal path. They cover portrait and wide viewports, restored aspect, default and custom field of view, projected corner containment, picking rays and a finite near-180-degree projection. Independent review found no remaining issues.
+
+The game dispatcher also passed all 17 cases and 909 assertions in 23.121 seconds with the camera fix.
+
+The final engine aggregates passed on the exact reviewed tree: native 265 cases / 177,624 assertions in 10.978 seconds; language 178 / 10,510 in 0.918 seconds; tools 91 / 22,508 in 22.839 seconds. Each retained its own 60-second production deadline. Formatting and diff checks passed; quarantined suites remain unexecuted.
+
+Before this camera follow-up, the public cosmic build was verified against its deployment manifest and live asset hashes. At its normal 2748 × 2350 canvas (1145 × 979 CSS), it measured 58.8 FPS after warmup, with a 16.7 ms median and 17.7 ms 95th percentile. A later sample after movement, rotation, hold and drop measured 58.81 FPS, 16.7 ms median and 24.8 ms 95th percentile. These are short observed samples, not a sustained-play guarantee.
+
+The repackaged local browser export showed complete Journey and Duet framing at a narrower 1836 × 2350 canvas (765 × 979 CSS). Independent drops produced scores of 30 and 28 with distinct placements; the pause panel remained visible and the console contained no product errors. A warmed 2.5-second Duet sample measured 59.00 FPS, 16.7 ms median and 24.1 ms 95th percentile. Final publication and public browser play are checked again after the clean source commit.
+
 ## Earlier runtime performance correction
 
 The published `eb4f89e` game with engine `143ceb926` reproduced the reported slowdown: 2.37 FPS, a 425.2 ms median frame and a 433.8 ms 95th percentile in Chromium 154 with a 2560 × 1440 WebGPU canvas. Reducing the canvas to 640 × 360 only reached 2.48 FPS. A CPU profile attributed approximately 73% of sampled time to the script payload collector's address lookup.

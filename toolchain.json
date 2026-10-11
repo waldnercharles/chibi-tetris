@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "f198458a024e68c5271449d6023a6138d6b389e3",
-    "source_snapshot_sha256": "55b54b0a04c5384ac75917dfe6ae1a2e6193cf7988f5ea03c7f3b9d3e511f084",
+    "revision": "1f699e26a5b92c26e21c75bd3d467755ba22a851",
+    "source_snapshot_sha256": "a415996612ea3045854ec37c7b4791cf83c268c095b69dcf8c9d6f20258ee54d",
     "project_format": 22,
     "player_prepared_format": 12,
     "local_branch": "cwaldner/stillwater-3d-sdk"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "f6b3cecb03d8974859739b5c608e7f42b99bd68a2cff473def054fdf2a76879b",
-    "manifest_sha256": "037c9415d9f00bc08ef4f56dd57cd09bced80a3daf3a6125c51815da8413f857",
+    "build_id": "170d22aede65bd24b352a1ef99c6b7deedd4d31828a8714003dd1856765a3284",
+    "manifest_sha256": "fa563251e3a4f9871e554ce6e1a44502b56e477f5e44d521b601ef4e72055338",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,10 +22,10 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "f198458a024e68c5271449d6023a6138d6b389e3",
+    "source_revision": "1f699e26a5b92c26e21c75bd3d467755ba22a851",
     "files": {
       "chibi-player.js": "9f3b0cbd2078515544ec06327a9bd448e76a47d39ca042e5d5410b32f58022aa",
-      "chibi-player.wasm": "36d88fa4de7f3b2a75d32b5f73a9003d432d6b9170b969ced27320a8f6018cf8",
+      "chibi-player.wasm": "2f8cccdcb387ce18e038c34c03bb05400ef57cbe2adf1a14ef5c4fce5b5994f5",
       "compiler/chibi-compile.js": "2ac7307c6b736f9b2fc044f3a70810f3139178f6b7020b0fe8cab902fe5494d1",
       "compiler/chibi-compile.wasm": "cd49e062109fc7f2d5c0ac3e52928f79897031d5762802cc52ef99144e34f85c",
       "index.html": "6311f1efd7cf0dfea0fcb96fbef452b64f6c8712f05a1f1d2293e6655eff965e"
