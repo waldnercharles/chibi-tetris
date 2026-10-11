@@ -286,6 +286,44 @@ TEST_CASE(published_editor_requires_project_audio)
     return true;
 }
 
+TEST_CASE(published_editor_declares_reviewed_compatibility)
+{
+    const char *lists[] = {
+        "[\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"]",
+        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+        "[1]",
+        "[\"short\"]",
+        "[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]",
+    };
+    for (int i = 0; i < 5; i++) {
+        publishing_manifest("dddddddddddddddddddddddddddddddddddddddd", false, false);
+        char *base = publishing_read(publishing_editor, "studio.json");
+        char *end = strrchr(base, '}');
+        assert(end);
+        char manifest[1024];
+        snprintf(
+            manifest,
+            sizeof manifest,
+            "%.*s,\"compatible_engines\":%s}\n",
+            (int)(end - base),
+            base,
+            lists[i]
+        );
+        free(base);
+        publishing_write(publishing_editor, "studio.json", manifest);
+        char *before = publishing_read(publishing_site, "dev/studio.json");
+        int result = publishing_assemble(publishing_repository);
+        REQUIRE(i == 4 ? result == 0 : result != 0);
+        char *after = publishing_read(publishing_site, "dev/studio.json");
+        bool preserved = !strcmp(after, i == 4 ? manifest : before);
+        free(before);
+        free(after);
+        REQUIRE(preserved);
+    }
+    publishing_manifest(publishing_pin, false, false);
+    return true;
+}
+
 static int publishing_main(const char *root)
 {
     assert(realpath(root, project));
@@ -345,6 +383,7 @@ static int publishing_main(const char *root)
     RUN_TEST_CASE(published_editor_nested_project);
     RUN_TEST_CASE(published_editor_requires_prototype_includes);
     RUN_TEST_CASE(published_editor_requires_project_audio);
+    RUN_TEST_CASE(published_editor_declares_reviewed_compatibility);
     RUN_TEST_CASE(published_editor_rejects_mismatch_and_dirty_source);
     pu_print_stats();
     if (pu_test_failed()) {
