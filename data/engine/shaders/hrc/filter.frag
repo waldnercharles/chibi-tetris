@@ -1,8 +1,7 @@
 // Adapted from Neon-Swarm shaders/hrc/blur.shd; original source comments retained.
 // 3x3 edge-aware Gaussian blur for gather output, blended with the previous
 // frame's result. Weights: [1 2 1]^2 / 16. Skips taps where transmittance
-// differs from center by more than u_threshold (hard edge detection). The sky
-// share in alpha filters with the light.
+// differs from center by more than u_threshold (hard edge detection).
 
 layout(set = 2, binding = 0) uniform sampler2D u_in_radiance;
 // A holds optical depth; see render_material_textures.
@@ -20,9 +19,9 @@ layout(set = 3, binding = 0) uniform uniform_block
 	int u_history_valid;
 };
 
-vec4 input_radiance(vec2 uv)
+vec3 input_radiance(vec2 uv)
 {
-	return texture(u_in_radiance, uv);
+	return texture(u_in_radiance, uv).rgb;
 }
 
 void main()
@@ -43,9 +42,9 @@ void main()
 	// 1D weights: [1 2 1] / 4
 	const float w1d[3] = float[3](1.0/4.0, 2.0/4.0, 1.0/4.0);
 
-	vec4 sum = vec4(0.0);
+	vec3 sum = vec3(0.0);
 	float wsum = 0.0;
-	vec4 lower = vec4(0.0), upper = vec4(0.0);
+	vec3 lower = vec3(0.0), upper = vec3(0.0);
 	if (history_active) {
 		lower = input_radiance(uv);
 		upper = lower;
@@ -59,7 +58,7 @@ void main()
 			float edge_w = 1.0 - smoothstep(0.0, u_threshold, abs(s - center_s));
 
 			float w = w1d[dx + 1] * w1d[dy + 1] * edge_w;
-			vec4 current = input_radiance(uv_q);
+			vec3 current = input_radiance(uv_q);
 			sum += current * w;
 			wsum += w;
 			if (history_active && edge_w > 0.0) {
@@ -69,10 +68,10 @@ void main()
 		}
 	}
 
-	vec4 out_r = wsum > 0.0 ? sum / wsum : input_radiance(uv);
+	vec3 out_r = wsum > 0.0 ? sum / wsum : input_radiance(uv);
 	if (history_active) {
-		vec4 prev = texture(u_prev_radiance, history_uv);
+		vec3 prev = texture(u_prev_radiance, history_uv).rgb;
 		out_r = mix(clamp(prev, lower, upper), out_r, u_hysteresis);
 	}
-	out_value = out_r;
+	out_value = vec4(out_r, 1.0);
 }
