@@ -17,11 +17,9 @@ tree=$revision
 git -C "$repository" diff --quiet HEAD -- "${prefix}project.kdl" "${prefix}content" "${prefix}toolchain.json" ||
     fail 'Commit the project source and toolchain before assembling its editor.'
 engine=$(git -C "$repository" show "$revision:${prefix}toolchain.json" | jq -er '.engine.revision | select(test("^[0-9a-f]{40}$"))')
-jq -e --arg engine "$engine" '.format == 1 and .engine == $engine and
-    (.studio | type == "string" and test("^[0-9a-f]{40}$")) and
-    (.archive | type == "string" and test("^[A-Za-z0-9_.-]+\\.tar\\.gz$")) and
-    (.sha256 | type == "string" and test("^[0-9a-f]{64}$"))' "$editor/studio.json" >/dev/null ||
-    fail 'The editor manifest must match the committed engine pin.'
+filter=$(cd "$(dirname "$0")" && pwd)/editor-manifest.jq
+jq -e --arg engine "$engine" -f "$filter" "$editor/studio.json" >/dev/null ||
+    fail 'The editor manifest must support the committed engine pin.'
 # Match authored include nodes in this project's committed prototypes, including
 # nested folders. An engine pin alone does not establish Studio loader support.
 includes_status=0

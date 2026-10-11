@@ -84,7 +84,11 @@ make publish
 
 `make publish` checks the remote source revision and pinned SDK/player, exports the game and its `/dev/` editor, preserves dependency licenses, writes `deployment.json` and `SHA256SUMS`, and pushes the export. It removes its temporary checkout on exit. Source pushes alone do not update the game.
 
-The editor must use the game's exact engine revision. Publishing downloads and verifies the matching reusable Studio package. A feature engine without a matching public Studio package uses the game repository's `web-editor-<engine revision>` release, containing `studio.json` and the archive it names. `EDITOR=/path/to/editor` can select a locally built matching package. The manifest records both clean source revisions and the archive checksum. Projects with prototype `includes` also require the editor's `capabilities.prototype_includes` flag. Projects with WAV or OGG sound assets require `capabilities.project_audio`.
+The editor package must explicitly support the game's pinned engine revision. Publishing downloads and verifies the matching reusable Studio package. A feature engine without a matching public Studio package uses the game repository's `web-editor-<engine revision>` release, containing `studio.json` and the archive it names. `EDITOR=/path/to/editor` can select a locally built matching package.
+
+The manifest records the actual clean SDK and Studio source revisions and the archive checksum. By default its `engine` must equal the game pin. A reviewed SDK repair can also declare specific `compatible_engines` revisions after checking that public APIs, serialization and runtime behavior remain compatible, including project format and native functions; a shared format number alone is insufficient. This lets an SDK memory fix serve an existing game release without changing its pin.
+
+Projects with prototype `includes` also require the editor's `capabilities.prototype_includes` flag. Projects with WAV or OGG sound assets require `capabilities.project_audio`.
 
 The **Publish game editor** workflow refreshes `/dev/` after successful Pages deployments, so older source branches that publish only a player still receive an editor for their deployed source revision. It can also be run manually, or locally with `make publish-dev`. It preserves the deployed game and reads its `deployment.json`; it never substitutes source from a different release. Editor workspaces save locally and are isolated by source revision.
 
