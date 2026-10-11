@@ -38,7 +38,7 @@ static int publishing_count(const char *text, const char *needle)
     return count;
 }
 
-static void publishing_manifest(const char *engine, bool prototype_includes)
+static void publishing_manifest(const char *engine, bool prototype_includes, bool project_audio)
 {
     char manifest[512];
     snprintf(
@@ -47,11 +47,13 @@ static void publishing_manifest(const char *engine, bool prototype_includes)
         "{\"format\":1,\"engine\":\"%s\",\"studio\":"
         "\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\","
         "\"archive\":\"editor.tar.gz\",\"sha256\":"
-        "\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"%"
-        "s}"
+        "\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\","
+        "\"capabilities\":{%s%s%s}}"
         "\n",
         engine,
-        prototype_includes ? ",\"capabilities\":{\"prototype_includes\":true}" : ""
+        prototype_includes ? "\"prototype_includes\":true" : "",
+        prototype_includes && project_audio ? "," : "",
+        project_audio ? "\"project_audio\":true" : ""
     );
     publishing_write(publishing_editor, "studio.json", manifest);
 }
@@ -178,9 +180,9 @@ TEST_CASE(published_editor_nested_project)
 TEST_CASE(published_editor_rejects_mismatch_and_dirty_source)
 {
     char *before = publishing_read(publishing_site, "dev/project.json");
-    publishing_manifest("dddddddddddddddddddddddddddddddddddddddd", false);
+    publishing_manifest("dddddddddddddddddddddddddddddddddddddddd", false, false);
     REQUIRE(publishing_assemble(publishing_repository) != 0);
-    publishing_manifest(publishing_pin, false);
+    publishing_manifest(publishing_pin, false, false);
     publishing_write(publishing_repository, "content/Scene.kdl", "uncommitted\n");
     REQUIRE(publishing_assemble(publishing_repository) != 0);
     publishing_write(publishing_repository, "content/Scene.kdl", "name \"Scene\"\n");
@@ -216,7 +218,7 @@ TEST_CASE(published_editor_requires_prototype_includes)
     free(before);
     free(after);
     REQUIRE(preserved);
-    publishing_manifest(publishing_pin, true);
+    publishing_manifest(publishing_pin, true, false);
     REQUIRE(publishing_assemble(nested) == 0);
     char archive[PATH_MAX], output[PATH_MAX];
     path_join(archive, publishing_site, "dev/project.zip");
@@ -231,7 +233,56 @@ TEST_CASE(published_editor_requires_prototype_includes)
     bool unchanged = !strcmp(archived, source);
     free(archived);
     REQUIRE(unchanged);
-    publishing_manifest(publishing_pin, false);
+    publishing_manifest(publishing_pin, false, false);
+    return true;
+}
+
+TEST_CASE(published_editor_requires_project_audio)
+{
+    char nested[PATH_MAX], sounds[PATH_MAX];
+    path_join(nested, publishing_repository, "games/Block Game");
+    path_join(sounds, nested, "content/sounds");
+    REQUIRE(mkdir(sounds, 0755) == 0);
+    publishing_write(sounds, "README.md", "Audio credits\n");
+    publishing_commit();
+    publishing_manifest(publishing_pin, true, false);
+    REQUIRE(publishing_assemble(nested) == 0);
+    const char *files[] = { "drop.WAV", "music.ogg" };
+    for (int i = 0; i < 2; i++) {
+        publishing_write(sounds, files[i], "original audio bytes\n");
+        if (!i) {
+            /* The archive and gate both ignore this untracked sound. */
+            REQUIRE(publishing_assemble(nested) == 0);
+        }
+        publishing_commit();
+        /* Sounds in a nested project do not affect the repository root. */
+        publishing_manifest(publishing_pin, true, false);
+        REQUIRE(publishing_assemble(publishing_repository) == 0);
+        char *before = publishing_read(publishing_site, "dev/project.json");
+        REQUIRE(publishing_assemble(nested) != 0);
+        char *after = publishing_read(publishing_site, "dev/project.json");
+        bool preserved = !strcmp(before, after);
+        free(before);
+        free(after);
+        REQUIRE(preserved);
+        publishing_manifest(publishing_pin, true, true);
+        REQUIRE(publishing_assemble(nested) == 0);
+        char archive[PATH_MAX], output[PATH_MAX], relative[PATH_MAX];
+        path_join(archive, publishing_site, "dev/project.zip");
+        path_join(output, temporary, "archived-audio");
+        path_join(relative, "content/sounds", files[i]);
+        char *extract[] = { "/usr/bin/unzip", "-p", archive, relative, NULL };
+        REQUIRE(run(extract, NULL, output) == 0);
+        char *audio = publishing_read(temporary, "archived-audio");
+        bool unchanged = !strcmp(audio, "original audio bytes\n");
+        free(audio);
+        REQUIRE(unchanged);
+        char path[PATH_MAX];
+        path_join(path, sounds, files[i]);
+        REQUIRE(unlink(path) == 0);
+    }
+    publishing_commit();
+    publishing_manifest(publishing_pin, false, false);
     return true;
 }
 
@@ -278,7 +329,7 @@ static int publishing_main(const char *root)
                        NULL };
     assert(run(remote, NULL, NULL) == 0);
     publishing_commit();
-    publishing_manifest(publishing_pin, false);
+    publishing_manifest(publishing_pin, false, false);
     publishing_write(publishing_editor, "chibi-studio.html", "<html><head></head><body><script>var Module={};</script><script src=chibi-default.js></script></body></html>\n");
     publishing_write(publishing_editor, "threads/chibi-studio.html", "<html><script>var Module = {};</script><script src=\"chibi-isolation.js\"></script></html>\n");
     const char *files[] = { "chibi-studio.js",
@@ -293,6 +344,7 @@ static int publishing_main(const char *root)
     RUN_TEST_CASE(published_editor_root_and_repeat);
     RUN_TEST_CASE(published_editor_nested_project);
     RUN_TEST_CASE(published_editor_requires_prototype_includes);
+    RUN_TEST_CASE(published_editor_requires_project_audio);
     RUN_TEST_CASE(published_editor_rejects_mismatch_and_dirty_source);
     pu_print_stats();
     if (pu_test_failed()) {

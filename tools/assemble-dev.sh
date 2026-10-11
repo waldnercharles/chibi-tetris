@@ -32,6 +32,14 @@ if (( includes_status == 0 )); then
     jq -e '.capabilities.prototype_includes == true' "$editor/studio.json" >/dev/null ||
         fail 'The editor must declare capabilities.prototype_includes for this project.'
 fi
+# Match the SDK's visible WAV/OGG files directly under content/sounds. Use the
+# selected committed tree so sibling projects and untracked sounds are excluded.
+project_audio=$(git -C "$repository" ls-tree -r -z --name-only "$tree" content/sounds |
+    perl -0ne 'print "1" if m{\Acontent/sounds/[^./][^/]*\.(?i:wav|ogg)\0\z};')
+if [[ -n $project_audio ]]; then
+    jq -e '.capabilities.project_audio == true' "$editor/studio.json" >/dev/null ||
+        fail 'The editor must declare capabilities.project_audio for this project.'
+fi
 for file in chibi-studio.html chibi-studio.js chibi-studio.wasm chibi-studio.data chibi-default.js; do
     [[ -f $editor/$file ]] || fail "Missing editor package file: $file"
 done
