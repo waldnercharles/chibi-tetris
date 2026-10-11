@@ -1,0 +1,40 @@
+// The audio host measures PCM. This behavior only maps that snapshot to art.
+behavior AudioReactive {
+    notice_time := 0
+    notice_status: int = 0
+
+    on Begin {
+        set_audio_source(0)
+    }
+
+    on Tick(dt) {
+        if input.AudioSource.pressed {
+            self.Session.audio_source = 1 - self.Session.audio_source
+            set_audio_source(self.Session.audio_source)
+            volume := self.Session.music
+            if self.Session.audio_source == 1 {
+                volume = 0
+            }
+            set_music_volume(volume)
+            notice_time = 0
+        }
+        audio := get_audio_analysis()
+        if self.Session.audio_source == 1 && audio.Status >= 3 {
+            notice_status = audio.Status
+            notice_time = 6
+            self.Session.audio_source = 0
+            set_audio_source(0)
+            set_music_volume(self.Session.music)
+        }
+        self.Session.audio_status = audio.Status
+        if notice_time > 0 {
+            self.Session.audio_status = notice_status
+            notice_time = max(0, notice_time - dt)
+        }
+        self.VisualState.energy = clamp(audio.Level * 6, 0, 1)
+        self.VisualState.bass = clamp(audio.Bass * 9, 0, 1)
+        self.VisualState.mid = clamp(audio.Mid * 8, 0, 1)
+        self.VisualState.treble = clamp(audio.Treble * 15, 0, 1)
+        self.VisualState.beat = audio.Onset
+    }
+}

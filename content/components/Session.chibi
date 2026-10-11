@@ -1,11 +1,19 @@
-// Shared session and user settings. Screen: 0 title, 1 play, 2 pause, 3 results, 4 settings, 5 guide.
+// Shared session and user settings. Screen: 1 play, 2 pause, 3 completed run.
 component Session {
     screen: int
     mode: int
+    won: bool
+    disconnected: bool
+    save_failed: bool
+    goal: int
+    chapter_lines: int
+    audio_source: int
+    audio_status: int
     run: int
     seed: int
     stage: int
     elapsed: number
+    sprint_best: number
     rescue1: int
     rescue2: int
     charge: int

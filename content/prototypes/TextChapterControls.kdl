@@ -1,0 +1,4 @@
+name "TextChapterControls"
+components {
+    MeshAsset source="content/meshes/text/chapter_controls.mesh"
+}

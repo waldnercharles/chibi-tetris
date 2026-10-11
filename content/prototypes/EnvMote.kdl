@@ -1,0 +1,8 @@
+name "EnvMote"
+components {
+    Geometry3D depth=3.0 height=3.0 primitive=5 width=3.0
+    Material emission_color=0x76dfeaff emission_intensity=1.4 emission_multiplier=1.0 scene=0x76dfeaff
+    (object)RenderState
+    (object)Transform
+    VisualTransform scale=1.0
+}

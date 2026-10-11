@@ -1,0 +1,95 @@
+version 3
+name "JellyMembrane"
+domain "material"
+id_counter 200000
+description "A transparent bell membrane with cyan-violet Fresnel light and soft biological mottling. Fade preserves the chapter transition; Glow follows measured music energy."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 100
+                type "Shader Surface Output"
+                inputs {
+                    "Base Color" {
+                        default x=0.001 y=0.004 z=0.009
+                    }
+                    Roughness 0.7
+                    Unlit #true
+                }
+            }
+            - id=200 type="Shader ObjectPosition"
+            - {
+                id 300
+                type "Shader Fresnel"
+                inputs Power=2.2 Base=0.025
+            }
+            - {
+                id 400
+                type "Shader Parameter"
+                reference_name "Fade"
+                outputs Value=1.0
+            }
+            - {
+                id 500
+                type "Shader Parameter"
+                reference_id 1
+                reference_name "Glow"
+                outputs Value=1.0
+            }
+            - id=600 type="Shader Parameter" reference_id=2 reference_name="Hue"
+            - {
+                id 1000
+                type "Behavior Expression"
+                reference_name "smoothstep(0.65, 0.96, noise(position * vec3(0.055, 0.08, 0.055), 1))"
+                inputs {
+                    position id=1100 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=1200 type="float"
+                }
+            }
+            - {
+                id 2000
+                type "Behavior Expression"
+                reference_name "mix(vec3(0.006, 0.65, 0.95), vec3(0.48, 0.016, 0.8), hue) * (0.035 + rim * 1.8 + veins * rim * 0.35) * glow"
+                inputs {
+                    hue id=2100 type="float"
+                    rim id=2200 type="float"
+                    veins id=2300 type="float"
+                    glow id=2400 type="float"
+                }
+                outputs {
+                    Result id=2500 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 3000
+                type "Behavior Expression"
+                reference_name "fade * (0.12 + rim * 0.8)"
+                inputs {
+                    fade id=3100 type="float"
+                    rim id=3200 type="float"
+                }
+                outputs {
+                    Result id=3300 type="float"
+                }
+            }
+        }
+        (array)edges {
+            - from="200.Value" to="1000.position"
+            - from="300.Value" to="2000.rim"
+            - from="300.Value" to="3000.rim"
+            - from="400.Value" to="3000.fade"
+            - from="500.Value" to="2000.glow"
+            - from="600.Value" to="2000.hue"
+            - from="1000.Result" to="2000.veins"
+            - from="2000.Result" to="100.Emission"
+            - from="3000.Result" to="100.Opacity"
+        }
+    }
+    - id=101000 kind="function" math_expression="smoothstep(0.65, 0.96, noise(position * vec3(0.055, 0.08, 0.055), 1))" expression_mode=1 entry_id=151000
+    - id=102000 kind="function" math_expression="mix(vec3(0.006, 0.65, 0.95), vec3(0.48, 0.016, 0.8), hue) * (0.035 + rim * 1.8 + veins * rim * 0.35) * glow" expression_mode=1 entry_id=152000
+    - id=103000 kind="function" math_expression="fade * (0.12 + rim * 0.8)" expression_mode=1 entry_id=153000
+}

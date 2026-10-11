@@ -1,0 +1,4 @@
+name "TextStillwater"
+components {
+    MeshAsset source="content/meshes/text/stillwater.mesh"
+}

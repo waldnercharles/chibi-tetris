@@ -1,0 +1,4 @@
+name "TextAudioUnavailable"
+components {
+    MeshAsset source="content/meshes/text/audio_unavailable.mesh"
+}

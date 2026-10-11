@@ -1,14 +1,18 @@
 version 1
 name "Stillwater"
+presentation "3d"
 (array)entities {
     - name="World" prototype="World"
     - name="Camera" prototype="Camera"
     - name="Environment" prototype="Environment"
+    - name="OceanLife" prototype="EnvLife"
+    - name="Atmosphere" prototype="Atmosphere"
+    - name="Hud" prototype="Hud"
     - {
         name "Board1"
         prototype "Board"
         components {
-            GAME.GameGlobalBinding name="Board1"
+            GlobalBinding name="Board1"
             BoardState index=0
         }
     }
@@ -16,7 +20,7 @@ name "Stillwater"
         name "Board2"
         prototype "Board"
         components {
-            GAME.GameGlobalBinding name="Board2"
+            GlobalBinding name="Board2"
             BoardState index=1
         }
     }

@@ -1,0 +1,8 @@
+// Music analysis shared with the authored environment. Values are normalized.
+component VisualState {
+    energy: number
+    bass: number
+    mid: number
+    treble: number
+    beat: number
+}

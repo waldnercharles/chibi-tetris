@@ -1,0 +1,3 @@
+name "Hud"
+(object)components
+(array)behaviors "Hud"

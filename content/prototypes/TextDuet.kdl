@@ -1,0 +1,4 @@
+name "TextDuet"
+components {
+    MeshAsset source="content/meshes/text/duet.mesh"
+}

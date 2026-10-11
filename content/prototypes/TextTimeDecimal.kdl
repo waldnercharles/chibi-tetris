@@ -1,0 +1,4 @@
+name "TextTimeDecimal"
+components {
+    MeshAsset source="content/meshes/text/time_decimal.mesh"
+}

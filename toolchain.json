@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "6f6bf479a09bb073c29ef7eb5a4d1c9f504adeab",
-    "source_snapshot_sha256": "67f174c3f8adaca7ddc35381ad73f198518059c83aa97664f72dfa564fcab7bb",
-    "review": "https://github.com/waldnercharles/chibi/pull/353",
-    "project_format": 21,
-    "player_prepared_format": 12
+    "revision": "143ceb92661e8104d547ad12119ac6a1fbf5b119",
+    "source_snapshot_sha256": "42bcac625cb5df5266de63be49143c7ae1d0db3f09e125de2530f0ad5f65e622",
+    "project_format": 22,
+    "player_prepared_format": 12,
+    "local_branch": "cwaldner/stillwater-3d-sdk"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "43f2475ed89942e09bd5e94c784118a084999518a7cb090060bdcad9b78e11c7",
-    "manifest_sha256": "efaec82ba6f1d46ea5b6636335840dcb06542b29ceb7be437ba9c5d0713536d2",
+    "build_id": "b71b2562d76d5196661bad0f4c9c1cf3e0eae13f585c57068d56e381d5626a36",
+    "manifest_sha256": "5f0376b034d1838fb089b64b3fd1d92021d8fc6d6efecf9419fd52f2cb696aea",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,12 +22,12 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "6f6bf479a09bb073c29ef7eb5a4d1c9f504adeab",
+    "source_revision": "143ceb92661e8104d547ad12119ac6a1fbf5b119",
     "files": {
-      "chibi-player.js": "cc4a1eeb21af2c55e2ba8a20899b5e8503e6ad7c716b8ffe63433e5f8e7e7d85",
-      "chibi-player.wasm": "5b9b6c68d39ed2b045d04ab21cd4021e74c23bbd775c61c9f0cc7016e41d8683",
+      "chibi-player.js": "061bf5853f8feb989c0bbeeb76f6619e0bafff0417942a14b433d273c204003d",
+      "chibi-player.wasm": "6236af45e42930f412f40fd82528de432fbd4997aa565b31a9c935498acffc9c",
       "compiler/chibi-compile.js": "2ac7307c6b736f9b2fc044f3a70810f3139178f6b7020b0fe8cab902fe5494d1",
-      "compiler/chibi-compile.wasm": "557298f7518bcff44de698134b2b15ad6656d2339da28078389e9c3986cc429e",
+      "compiler/chibi-compile.wasm": "526a28cf02994521f6b1c9f23ff5582b0ee40ebb96c9d0a83bdd09162cc81eb6",
       "index.html": "6311f1efd7cf0dfea0fcb96fbef452b64f6c8712f05a1f1d2293e6655eff965e"
     }
   }

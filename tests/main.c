@@ -18,21 +18,34 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-/* Public GameControl values from the pinned SDK's runtime/components.h. */
+/* Public Control values from the pinned SDK's runtime/components.h. */
 enum
 {
     KEY_SPACE = 4,
+    KEY_ENTER = 9,
+    KEY_BACKSPACE = 10,
     KEY_DOWN = 12,
     KEY_LEFT = 13,
     KEY_RIGHT = 14,
     KEY_A = 15,
     KEY_C = 17,
     KEY_E = 19,
+    KEY_F = 20,
+    KEY_G = 21,
+    KEY_P = 30,
     KEY_Q = 31,
     KEY_R = 32,
+    KEY_V = 36,
     KEY_W = 37,
     KEY_X = 38,
-    KEY_Z = 40
+    KEY_Z = 40,
+    KEY_0 = 41,
+    KEY_1 = 42,
+    KEY_2 = 43,
+    KEY_3 = 44,
+    KEY_4 = 45,
+    KEY_7 = 48,
+    KEY_8 = 49
 };
 
 static char controller[PATH_MAX], project[PATH_MAX], temporary[PATH_MAX];
@@ -128,7 +141,7 @@ static yyjson_mut_doc *request(const char *scene, int frames)
     yyjson_mut_obj_add_str(doc, root, "kind", "scene");
     yyjson_mut_obj_add_str(doc, root, "name", scene);
     yyjson_mut_obj_add_int(doc, root, "frames", frames);
-    yyjson_mut_obj_add_int(doc, root, "entity_limit", 4);
+    yyjson_mut_obj_add_int(doc, root, "entity_limit", 128);
     yyjson_mut_obj_add_arr(doc, root, "input_timeline");
     return doc;
 }
@@ -247,40 +260,176 @@ static bool snapshot(yyjson_mut_doc *doc)
     return true;
 }
 
-static yyjson_val *field(const char *owner, const char *component_name, const char *field_name)
+static yyjson_val *entity_field(yyjson_val *entity, const char *component_name, const char *field_name)
+{
+    yyjson_val *components = yyjson_obj_get(entity, "components");
+    size_t i, count;
+    yyjson_val *component;
+    yyjson_arr_foreach(components, i, count, component)
+    {
+        const char *name = yyjson_get_str(yyjson_obj_get(component, "name"));
+        if (!name || strcmp(name, component_name)) {
+            continue;
+        }
+        yyjson_val *fields = yyjson_obj_get(component, "fields");
+        size_t j, total;
+        yyjson_val *entry;
+        yyjson_arr_foreach(fields, j, total, entry)
+        {
+            name = yyjson_get_str(yyjson_obj_get(entry, "name"));
+            if (name && !strcmp(name, field_name)) {
+                return yyjson_obj_get(entry, "value");
+            }
+        }
+    }
+    return NULL;
+}
+
+static yyjson_val *snapshot_entities()
 {
     yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
-    yyjson_val *entities = yyjson_obj_get(result, "entities");
+    return yyjson_obj_get(result, "entities");
+}
+
+static yyjson_val *field(const char *owner, const char *component_name, const char *field_name)
+{
+    yyjson_val *entities = snapshot_entities();
     size_t i, count;
     yyjson_val *entity;
     yyjson_arr_foreach(entities, i, count, entity)
     {
         const char *name = yyjson_get_str(yyjson_obj_get(entity, "name"));
-        if (!name || strcmp(name, owner)) {
-            continue;
-        }
-        yyjson_val *components = yyjson_obj_get(entity, "components");
-        size_t j, total;
-        yyjson_val *component;
-        yyjson_arr_foreach(components, j, total, component)
-        {
-            name = yyjson_get_str(yyjson_obj_get(component, "name"));
-            if (!name || strcmp(name, component_name)) {
-                continue;
-            }
-            yyjson_val *fields = yyjson_obj_get(component, "fields");
-            size_t k, size;
-            yyjson_val *entry;
-            yyjson_arr_foreach(fields, k, size, entry)
-            {
-                name = yyjson_get_str(yyjson_obj_get(entry, "name"));
-                if (name && !strcmp(name, field_name)) {
-                    return yyjson_obj_get(entry, "value");
-                }
-            }
+        if (name && !strcmp(name, owner)) {
+            return entity_field(entity, component_name, field_name);
         }
     }
     return NULL;
+}
+
+static bool visible_mesh(const char *source)
+{
+    yyjson_val *entities = snapshot_entities();
+    size_t i, count;
+    yyjson_val *entity;
+    yyjson_arr_foreach(entities, i, count, entity)
+    {
+        const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
+        if (mesh && !strcmp(mesh, source) &&
+            !yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool timer_meshes(double y, const char *expected)
+{
+    struct
+    {
+        double x;
+        char glyph;
+    } glyphs[16];
+    int glyph_count = 0;
+    yyjson_val *entities = snapshot_entities();
+    size_t i, count;
+    yyjson_val *entity;
+    yyjson_arr_foreach(entities, i, count, entity)
+    {
+        const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
+        yyjson_val *position = entity_field(entity, "Transform3D", "position");
+        double actual_y = yyjson_get_num(yyjson_obj_get(position, "y"));
+        if (!mesh || actual_y < y - 0.001 || actual_y > y + 0.001 ||
+            yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
+            continue;
+        }
+        char glyph = 0;
+        int digit;
+        if (sscanf(mesh, "content/meshes/text/digit_%d.mesh", &digit) == 1 &&
+            digit >= 0 && digit <= 9) {
+            glyph = (char)('0' + digit);
+        } else if (!strcmp(mesh, "content/meshes/text/time_colon.mesh")) {
+            glyph = ':';
+        } else if (!strcmp(mesh, "content/meshes/text/time_decimal.mesh")) {
+            glyph = '.';
+        }
+        if (!glyph) {
+            continue;
+        }
+        REQUIRE(glyph_count < 16);
+        double x = yyjson_get_num(yyjson_obj_get(position, "x"));
+        int at = glyph_count++;
+        while (at && glyphs[at - 1].x > x) {
+            glyphs[at] = glyphs[at - 1];
+            at--;
+        }
+        glyphs[at].x = x;
+        glyphs[at].glyph = glyph;
+    }
+    char actual[17];
+    for (int j = 0; j < glyph_count; j++) {
+        actual[j] = glyphs[j].glyph;
+    }
+    actual[glyph_count] = 0;
+    if (strcmp(actual, expected)) {
+        fprintf(stderr, "Timer mesh row at %.1f: expected %s, got %s\n", y, expected, actual);
+    }
+    REQUIRE(!strcmp(actual, expected));
+    return true;
+}
+
+static bool modal_depth()
+{
+    yyjson_val *entities = snapshot_entities();
+    yyjson_val *entity, *panel = NULL;
+    size_t i, count;
+    yyjson_arr_foreach(entities, i, count, entity)
+    {
+        if (yyjson_is_num(entity_field(entity, "Geometry3D", "depth")) &&
+            !yyjson_is_str(entity_field(entity, "MeshAsset", "source")) &&
+            !yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
+            REQUIRE(!panel);
+            panel = entity;
+        }
+    }
+    REQUIRE(panel);
+    yyjson_val *position = entity_field(panel, "Transform3D", "position");
+    yyjson_val *scale = entity_field(panel, "Transform3D", "scale");
+    double center = yyjson_get_num(yyjson_obj_get(position, "z"));
+    double half_depth = yyjson_get_num(entity_field(panel, "Geometry3D", "depth")) *
+                        yyjson_get_num(yyjson_obj_get(scale, "z")) * 0.5;
+    REQUIRE(half_depth > 0);
+    int foreground = 0, background = 0;
+    yyjson_arr_foreach(entities, i, count, entity)
+    {
+        const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
+        if (!mesh || yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
+            continue;
+        }
+        bool modal = !strcmp(mesh, "content/meshes/text/paused.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/controller_lost.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/game_over.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/complete.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/press_enter.mesh") ||
+                     !strcmp(mesh, "content/meshes/text/chapter_controls.mesh");
+        position = entity_field(entity, "Transform3D", "position");
+        scale = entity_field(entity, "Transform3D", "scale");
+        double z = yyjson_get_num(yyjson_obj_get(position, "z"));
+        /* Original glyph meshes have a 0.08-unit extrusion in tools/glyphs.c. */
+        double glyph_half = 0.04 * yyjson_get_num(yyjson_obj_get(scale, "z")) *
+                            yyjson_get_num(entity_field(entity, "Geometry3D", "depth"));
+        if (modal) {
+            REQUIRE(z - glyph_half > center + half_depth);
+            foreground++;
+        } else {
+            if (z + glyph_half >= center - half_depth) {
+                fprintf(stderr, "%s reaches in front of the modal panel\n", mesh);
+            }
+            REQUIRE(z + glyph_half < center - half_depth);
+            background++;
+        }
+    }
+    REQUIRE(foreground >= 2 && background >= 10);
+    return true;
 }
 
 static bool report(int minimum_checks)
@@ -329,9 +478,9 @@ static bool board_scenario(bool controllers)
         key(doc, events[i][0], events[i][1]);
     }
     REQUIRE(snapshot(doc));
-    REQUIRE(report(23));
+    REQUIRE(report(30));
     yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
-    REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == 468);
+    REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == 536);
     return true;
 }
 
@@ -371,10 +520,29 @@ TEST_CASE(topout_and_rescue)
 
 TEST_CASE(journey_settings_and_reopen)
 {
-    yyjson_mut_doc *doc = request("ShellChecks", 74);
+    yyjson_mut_doc *doc = request("ShellChecks", 107);
     key(doc, 0, 0);
+    tap(doc, 24, KEY_P);
+    tap(doc, 26, KEY_8);
+    tap(doc, 29, KEY_8);
+    tap(doc, 32, KEY_ENTER);
+    tap(doc, 34, KEY_7);
+    tap(doc, 52, KEY_P);
+    tap(doc, 56, KEY_0);
+    tap(doc, 58, KEY_V);
+    tap(doc, 60, KEY_F);
+    tap(doc, 62, KEY_G);
+    tap(doc, 64, KEY_ENTER);
+    tap(doc, 73, KEY_P);
+    tap(doc, 75, KEY_7);
+    tap(doc, 77, KEY_7);
+    tap(doc, 79, KEY_8);
+    tap(doc, 81, KEY_8);
+    tap(doc, 83, KEY_8);
+    tap(doc, 86, KEY_ENTER);
+    tap(doc, 103, KEY_7);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(14));
+    REQUIRE(report(22));
     yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
     yyjson_val *saved = yyjson_obj_get(result, "saved_state");
     REQUIRE(yyjson_is_obj(saved));
@@ -383,6 +551,10 @@ TEST_CASE(journey_settings_and_reopen)
     REQUIRE(initial);
     yyjson_mut_obj_add_val(doc, yyjson_mut_doc_get_root(doc), "saved_state", initial);
     key(doc, 0, 0);
+    key(doc, 2, KEY_P);
+    key(doc, 3, KEY_7);
+    key(doc, 4, 0);
+    tap(doc, 5, KEY_ENTER);
     REQUIRE(snapshot(doc));
     REQUIRE(report(6));
     return true;
@@ -398,28 +570,64 @@ TEST_CASE(sprint_duet_and_disconnect)
     return true;
 }
 
-static const char *ui_text(const char *selector)
+TEST_CASE(direct_launch_and_mode_keys)
 {
+    /* An asynchronously spawned stream must stay dormant until Environment
+     * configures its position, direction and color. */
+    yyjson_mut_doc *doc = request("EnvStream", 2);
+    yyjson_mut_val *kind = yyjson_mut_obj_get(yyjson_mut_doc_get_root(doc), "kind");
+    REQUIRE(yyjson_mut_set_str(kind, "prototype"));
+    REQUIRE(snapshot(doc));
     yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
-    yyjson_val *ui = yyjson_obj_get(result, "ui");
-    size_t i, count;
-    yyjson_val *element;
-    yyjson_arr_foreach(ui, i, count, element)
-    {
-        const char *name = yyjson_get_str(yyjson_obj_get(element, "element"));
-        if (name && !strcmp(name, selector)) {
-            return yyjson_get_str(yyjson_obj_get(element, "text"));
-        }
+    REQUIRE(yyjson_get_int(yyjson_obj_get(result, "particle_count")) == 0);
+
+    doc = request("Stillwater", 18);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_SPACE);
+    tap(doc, 6, KEY_P);
+    tap(doc, 9, KEY_ENTER);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
+    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 1);
+    REQUIRE(yyjson_get_bool(field("Board1", "BoardState", "ready")));
+    REQUIRE(yyjson_get_int(field("Board1", "BoardState", "pieces")) == 1);
+    result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
+    REQUIRE(yyjson_arr_size(yyjson_obj_get(result, "ui")) == 0);
+    int entities = yyjson_get_int(yyjson_obj_get(result, "live_entities"));
+    int particles = yyjson_get_int(yyjson_obj_get(result, "particle_count"));
+    REQUIRE(particles > 0 && particles <= 2048);
+    doc = request("Stillwater", 18);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_2);
+    tap(doc, 6, KEY_3);
+    tap(doc, 9, KEY_4);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
+    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 4);
+    REQUIRE(yyjson_get_bool(field("Board2", "BoardState", "ready")));
+    result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
+    REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == entities);
+    static const char *quiet_settings[] = { "effects", "reduced_motion" };
+    for (int i = 0; i < 2; ++i) {
+        doc = request("Stillwater", 18);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, quiet_settings[i], i == 0 ? "0" : "1");
+        key(doc, 0, 0);
+        tap(doc, 3, KEY_SPACE);
+        REQUIRE(snapshot(doc));
+        result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
+        REQUIRE(yyjson_get_int(yyjson_obj_get(result, "particle_count")) == 0);
+        REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == entities);
+        REQUIRE(yyjson_get_int(field("Board1", "BoardState", "pieces")) == 1);
     }
-    return NULL;
+    return true;
 }
 
 TEST_CASE(final_clear_wins_over_blocked_spawn)
 {
     static const char *modes[] = { "0", "2", "3" };
-    static const char *titles[] = { "The water is still",
-                                    "Forty lines. One flow.",
-                                    "Together, home" };
     for (int i = 0; i < 3; ++i) {
         yyjson_mut_doc *doc = request("CompletionChecks", 25);
         yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
@@ -428,9 +636,73 @@ TEST_CASE(final_clear_wins_over_blocked_spawn)
         key(doc, 0, 0);
         REQUIRE(snapshot(doc));
         REQUIRE(report(3));
-        const char *title = ui_text("#result-title");
-        REQUIRE(title && !strcmp(title, titles[i]));
+        REQUIRE(yyjson_get_bool(field("World", "Session", "won")));
+        REQUIRE(modal_depth());
     }
+    return true;
+}
+
+TEST_CASE(sprint_time_display)
+{
+    double elapsed = 0;
+    for (int i = 0; i < 2; i++) {
+        yyjson_mut_doc *doc = request("HudChecks", i == 0 ? 48 : 90);
+        yyjson_mut_val *root = yyjson_mut_doc_get_root(doc);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, root, "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "sprint", "123.4");
+        key(doc, 0, 0);
+        tap(doc, 3, KEY_3);
+        tap(doc, 30, KEY_P);
+        tap(doc, 34, KEY_7);
+        tap(doc, 36, KEY_8);
+        REQUIRE(snapshot(doc));
+        REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 2);
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 2);
+        REQUIRE(yyjson_get_num(field("World", "Session", "sprint_best")) == 123.4);
+        double current = yyjson_get_num(field("World", "Session", "elapsed"));
+        REQUIRE(current > 0 && current < 1);
+        if (i == 0) {
+            elapsed = current;
+        } else {
+            REQUIRE(current == elapsed);
+        }
+        REQUIRE(visible_mesh("content/meshes/text/elapsed.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/best.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/no_best.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/chapter_controls.mesh"));
+        char expected[16];
+        snprintf(expected, sizeof expected, "0:00.%d", (int)(current * 10));
+        REQUIRE(timer_meshes(-126, expected));
+        REQUIRE(timer_meshes(-195, "2:03.4"));
+        REQUIRE(modal_depth());
+    }
+    yyjson_mut_doc *doc = request("HudChecks", 18);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_3);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_num(field("World", "Session", "sprint_best")) == 0);
+    REQUIRE(visible_mesh("content/meshes/text/no_best.mesh"));
+    doc = request("HudChecks", 18);
+    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    yyjson_mut_obj_add_str(doc, saved, "chapter", "3");
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_P);
+    tap(doc, 5, KEY_7);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "stage")) == 2);
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 2);
+    REQUIRE(visible_mesh("content/meshes/text/chapter_controls.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/elapsed.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/best.mesh"));
+    REQUIRE(modal_depth());
+    doc = request("HudChecks", 18);
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_4);
+    tap(doc, 8, KEY_P);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 2);
+    REQUIRE(modal_depth());
     return true;
 }
 
@@ -457,6 +729,8 @@ int main(int argc, char **argv)
     RUN_TEST_CASE(journey_settings_and_reopen);
     RUN_TEST_CASE(sprint_duet_and_disconnect);
     RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
+    RUN_TEST_CASE(direct_launch_and_mode_keys);
+    RUN_TEST_CASE(sprint_time_display);
     pu_print_stats();
     yyjson_doc_free(reply);
     if (pu_test_failed()) {

@@ -26,7 +26,27 @@ The score repeats that progression three times with changes in melody density, r
 
 Notes and their releases wrap around the render buffer. The reverb processes five seconds of the preceding cycle before writing the beginning. There is no fade to silence at the loop point. Each Ogg has `LOOPSTART=0` and `LOOPLENGTH=2646000`; an engine that loops the entire decoded file also gets the intended length.
 
-The game uses the SDK's two-second crossfade when changing arrangements and a one-second fade when stopping. Incoming arrangements begin at zero. This transition is not synchronized to the outgoing track's bar or chord position. The loops themselves retain their full 60-second cycle.
+The game uses the SDK's two-second crossfade when changing arrangements. Incoming arrangements begin at zero. This transition is not synchronized to the outgoing track's bar or chord position. The loops themselves retain their full 60-second cycle.
+
+## Music reaction and capture
+
+The scene reads the actual audio samples. With the bundled score selected, analysis measures the game's mixed output, including effects. Overall level, bass, treble and detected transients control the 3D environment. Pausing the board keeps the music playing.
+
+Press M to listen to external music. This mutes the bundled score while retaining game effects. Press M again to return to the score. Each launch starts with the score selected. Stillwater captures audio from the selected source; it does not use the Spotify API or require a music-service account.
+
+In a browser, M opens the browser's sharing chooser. Select a tab, window or screen that offers audio sharing and enable its audio option. Availability depends on the browser and selected source. If capture is unavailable, cancelled, denied or ended, the game restores the score and briefly shows `M RETRY AUDIO`. A ready source remains selected during silence.
+
+Native capture uses a loopback recording device. Set `CHIBI_AUDIO_INPUT` to its exact device name before launching. Without that setting, the engine selects the first recognized loopback device: `Background Music`, or a name containing `BlackHole`, `Soundflower`, `Stereo Mix`, `CABLE Output` or `Monitor of`. It does not choose the default microphone automatically.
+
+For example, with Background Music installed on macOS:
+
+```sh
+CHIBI_AUDIO_INPUT="Background Music" dist/Stillwater.app/Contents/MacOS/Stillwater
+```
+
+Route the external music player's audio through that virtual device, then press M in Stillwater. Selecting a device alone does not route audio into it. Other loopback devices need their corresponding system or player routing. An unavailable device restores the score.
+
+The on-screen labels distinguish the score, the browser chooser, active capture and a failed capture attempt. Build and platform verification are recorded in [validation](validation.md).
 
 ## Feedback
 

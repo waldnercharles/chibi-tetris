@@ -1,0 +1,180 @@
+// Labels and numerals are extruded meshes in the same world as the board.
+behavior Hud {
+    world: entity
+    board1: entity
+    board2: entity
+    labels: entity[] = []
+    panel: entity
+    ready := false
+    refresh := 0
+    modes := ["journey", "endless", "sprint", "duet"]
+
+    on Begin {
+        world = get_global_variable("World")
+        board1 = get_global_variable("Board1")
+        board2 = get_global_variable("Board2")
+        for i in 0..87 {
+            label := await spawn(HudText)
+            labels = array_add(labels, label)
+        }
+        panel = await spawn(HudPanel)
+        ready = true
+        Draw()
+    }
+
+    function Hide(slot: int) {
+        label := get(labels, slot)
+        label.RenderState.hidden = true
+    }
+
+    function Label(slot: int, name: string, x: number, y: number, size: number) {
+        label := get(labels, slot)
+        label.MeshAsset.source = format_text("content/meshes/text/{}.mesh", name)
+        label.Transform3D.position = vec3(x, y, 46)
+        label.Transform3D.scale = vec3(size, size, size)
+        label.RenderState.hidden = false
+    }
+
+    function ModalLabel(slot: int, name: string, x: number, y: number, size: number) {
+        Label(slot, name, x, y, size)
+        label := get(labels, slot)
+        label.Transform3D.position = vec3(x, y, 70)
+    }
+
+    function Number(first: int, count: int, value: int, x: number, y: number, size: number) {
+        value = max(0, value)
+        divisor: int = 1
+        digits: int = 1
+        for i in 1..count - 1 {
+            divisor *= 10
+            if value >= divisor {
+                digits = i + 1
+            }
+        }
+        size = min(size, 140 / (cast<number>(digits) * 0.8))
+        for i in 0..count - 1 {
+            Hide(first + i)
+            if value >= divisor || i == count - 1 {
+                digit := value / divisor % 10
+                Label(first + i, format_text("digit_{}", digit), x + (cast<number>(i - count + digits) - cast<number>(digits - 1) * 0.5) * size * 0.8, y, size)
+            }
+            divisor /= 10
+        }
+    }
+
+    function BoardLabels(index: int, board: entity) {
+        center := 0
+        if world.Session.mode == 3 {
+            center = -254 + index * 508
+        }
+        offset := index * 4
+        Label(3 + offset, "hold", center - 205, 235, 12)
+        Label(4 + offset, "next", center + 190, 235, 12)
+        Label(5 + offset, "score", center - 205, 45, 12)
+        Label(6 + offset, "lines", center - 205, -12, 12)
+        first := 20 + index * 20
+        Number(first, 10, board.BoardState.score, center - 205, 18, 24)
+        Number(first + 10, 10, board.BoardState.lines, center - 205, -40, 20)
+    }
+
+    function Time(first: int, seconds: number, x: number, y: number, size: number) {
+        tenths := cast<int>(floor(max(0, seconds) * 10))
+        minutes := tenths / 600
+        digits: int = 1
+        divisor: int = 10
+        for i in 1..5 {
+            if minutes >= divisor {
+                digits = i + 1
+            }
+            divisor *= 10
+        }
+        size = min(size, 140 / (cast<number>(digits + 5) * 0.8))
+        left := x - cast<number>(digits + 4) * size * 0.4
+        Number(first, 6, minutes, left + cast<number>(digits - 1) * size * 0.4, y, size)
+        Label(first + 6, "time_colon", left + cast<number>(digits) * size * 0.8, y, size)
+        Label(first + 7, format_text("digit_{}", tenths / 100 % 6), left + cast<number>(digits + 1) * size * 0.8, y, size)
+        Label(first + 8, format_text("digit_{}", tenths / 10 % 10), left + cast<number>(digits + 2) * size * 0.8, y, size)
+        Label(first + 9, "time_decimal", left + cast<number>(digits + 3) * size * 0.8, y, size)
+        Label(first + 10, format_text("digit_{}", tenths % 10), left + cast<number>(digits + 4) * size * 0.8, y, size)
+    }
+
+    function Draw() {
+        for i in 0..87 {
+            Hide(i)
+        }
+        Label(0, "stillwater", 0, 296, 24)
+        Label(1, get(modes, world.Session.mode), -40, 264, 11)
+        Label(2, "chapter", 34, 264, 9)
+        Number(60, 1, world.Session.stage + 1, 64, 264, 12)
+        BoardLabels(0, board1)
+        if world.Session.mode == 2 {
+            Label(64, "elapsed", -205, -98, 12)
+            Time(66, world.Session.elapsed, -205, -126, 20)
+            Label(65, "best", -205, -167, 12)
+            if world.Session.sprint_best > 0 {
+                Time(77, world.Session.sprint_best, -205, -195, 18)
+            } else {
+                Label(77, "no_best", -205, -195, 14)
+            }
+        }
+        if world.Session.mode != 3 && world.Session.goal > 0 {
+            Label(17, "remaining", 14, -258, 10)
+            Number(62, 2, max(0, world.Session.goal - world.Session.chapter_lines), -45, -258, 12)
+        }
+        if world.Session.mode == 3 {
+            BoardLabels(1, board2)
+            Label(18, "rescue", 0, -258, 10)
+            Number(61, 1, world.Session.charge, 42, -258, 12)
+        }
+        Label(13, "play_controls", 0, -283, 11)
+        if world.Session.screen != 1 {
+            Label(14, "settings_controls", 0, -310, 10)
+        }
+        audio := "music"
+        if world.Session.audio_source == 1 {
+            audio = "listening"
+            if world.Session.audio_status == 1 {
+                audio = "audio_waiting"
+            }
+        }
+        if world.Session.audio_status >= 3 {
+            audio = "audio_unavailable"
+        }
+        Label(15, audio, 375, 287, 10)
+        if world.Session.save_failed {
+            Label(16, "saving_failed", -375, 287, 10)
+        }
+        panel.RenderState.hidden = world.Session.screen == 1
+        if world.Session.screen != 1 && world.Session.mode == 0 {
+            ModalLabel(19, "chapter_controls", 0, -40, 10)
+        }
+        if world.Session.screen == 2 {
+            title := "paused"
+            if world.Session.disconnected {
+                title = "controller_lost"
+            }
+            ModalLabel(11, title, 0, 22, 22)
+            ModalLabel(12, "press_enter", 0, -16, 12)
+        }
+        if world.Session.screen == 3 {
+            title := "game_over"
+            if world.Session.won {
+                title = "complete"
+            }
+            ModalLabel(11, title, 0, 22, 22)
+            ModalLabel(12, "press_enter", 0, -16, 12)
+        }
+    }
+
+    on Tick(dt) {
+        if !ready {
+            return
+        }
+        refresh += dt
+        if refresh < 0.1 {
+            return
+        }
+        refresh = 0
+        Draw()
+    }
+}

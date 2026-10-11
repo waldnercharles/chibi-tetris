@@ -1,0 +1,10 @@
+name "HudPanel"
+components {
+    Geometry3D depth=3.0 height=104.0 width=290.0
+    Material albedo=0x173042ff scene=0x06121dff
+    RenderState hidden=#true
+    Transform3D {
+        position z=64.0
+        scale x=1.0 y=1.0 z=1.0
+    }
+}

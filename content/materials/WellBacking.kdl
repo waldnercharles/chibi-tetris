@@ -1,0 +1,25 @@
+version 3
+name "WellBacking"
+domain "material"
+id_counter 13
+description "A dark opaque well backing keeps the rule grid readable without a specular wash."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 1
+                type "Shader Surface Output"
+                inputs {
+                    "Base Color" {
+                        default x=0.0004 y=0.0015 z=0.004
+                    }
+                    Roughness 1.0
+                    Unlit #true
+                    "Alpha Mode" 1
+                }
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 # Stillwater
 
-This is an authored Chibi game. Keep all game rules, scene composition, visual choices and tuning in KDL and readable `.chibi`. RML/RCSS owns menu markup and styling. Use the installed SDK, never a standalone browser game stack.
+This is an authored Chibi game. Keep all game rules, scene composition, visual choices and tuning in KDL and readable `.chibi`. Render the game and its text in 3D, and launch directly into play. Use the installed SDK, never a standalone browser game stack.
 
 Read the pinned engine's authoring and test policies. Preserve the hard 60-second deadline for test commands. Permanent checks use C/pico_unit through a single dispatcher; do not create Python or Node test suites. Format edited authored assets with `chibi_ctl --format`, validate the project and verify runtime outcomes. Building is not playability evidence.
 

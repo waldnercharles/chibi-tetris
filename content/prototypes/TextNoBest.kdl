@@ -1,0 +1,4 @@
+name "TextNoBest"
+components {
+    MeshAsset source="content/meshes/text/no_best.mesh"
+}

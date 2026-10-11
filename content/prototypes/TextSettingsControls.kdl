@@ -1,0 +1,4 @@
+name "TextSettingsControls"
+components {
+    MeshAsset source="content/meshes/text/settings_controls.mesh"
+}

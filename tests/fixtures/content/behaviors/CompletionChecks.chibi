@@ -67,9 +67,11 @@ behavior CompletionChecks {
                 }
             }
             case 23 {
-                Check(world.Session.screen == 3, "final clear finishes with blocked next spawn")
+                Check(world.Session.screen == 3 && world.Session.won, "final clear wins with blocked next spawn")
                 if mode == 2 {
                     Check(read_saved_number("sprint", 0).Number > 0, "completed Sprint records its winning time")
+                    Check(world.Session.sprint_best == world.Session.elapsed, "Sprint HUD best updates to the winning time")
+                    Check(world.Session.sprint_best == read_saved_number("sprint", 0).Number, "Sprint HUD and saved best agree")
                 }
                 if mode == 3 {
                     Check(world.Session.rescue1 == 0 && world.Session.rescue2 == 0, "completed Duet needs no rescue")

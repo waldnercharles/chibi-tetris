@@ -1,0 +1,4 @@
+name "TextDigit6"
+components {
+    MeshAsset source="content/meshes/text/digit_6.mesh"
+}

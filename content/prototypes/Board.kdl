@@ -1,8 +1,391 @@
 name "Board"
 components {
     (object)BoardState
-    GAME.GameAppearance border_width=2.0 height=488.0 layer=-3 width=248.0
-    GAME.GameMaterial border_scene=0x243745ff scene=0x020508ff
-    GAME.GameTransform y=8.0
+    Geometry3D depth=8.0 height=488.0 width=248.0
+    RenderState hidden=#true
+    Shader material="WellBacking"
+    Transform3D {
+        position z=-16.0
+    }
 }
 (array)behaviors "Board"
+(array)children {
+    - {
+        name "Column1"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=-96.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column2"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=-72.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column3"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=-48.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column4"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=-24.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column5"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=0.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column6"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=24.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column7"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=48.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column8"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=72.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Column9"
+        prototype "WellLine"
+        components {
+            Geometry3D width=2.4 height=480.0 depth=0.6
+            Transform3D {
+                position x=96.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row1"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-216.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row2"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-192.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row3"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-168.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row4"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-144.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row5"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-120.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row6"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-96.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row7"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-72.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row8"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-48.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row9"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=-24.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row10"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row11"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=24.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row12"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=48.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row13"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=72.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row14"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=96.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row15"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=120.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row16"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=144.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row17"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=168.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row18"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=192.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Row19"
+        prototype "WellLine"
+        components {
+            Geometry3D width=240.0 height=2.4 depth=0.6
+            Transform3D {
+                position x=0.0 y=216.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Left"
+        prototype "WellLine"
+        components {
+            Geometry3D width=1.4 height=486.0 depth=13.0
+            Transform3D {
+                position x=-122.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+        }
+    }
+    - {
+        name "Right"
+        prototype "WellLine"
+        components {
+            Geometry3D width=1.4 height=486.0 depth=13.0
+            Transform3D {
+                position x=122.0 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+        }
+    }
+    - {
+        name "Bottom"
+        prototype "WellLine"
+        components {
+            Geometry3D width=244.0 height=1.4 depth=13.0
+            Transform3D {
+                position x=0.0 y=-243.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+        }
+    }
+    - {
+        name "Top"
+        prototype "WellLine"
+        components {
+            Geometry3D width=244.0 height=1.4 depth=13.0
+            Transform3D {
+                position x=0.0 y=243.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+        }
+    }
+    - {
+        name "OuterLeft"
+        prototype "WellLine"
+        components {
+            Geometry3D width=0.6 height=490.0 depth=0.6
+            Transform3D {
+                position x=-124.5 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "OuterRight"
+        prototype "WellLine"
+        components {
+            Geometry3D width=0.6 height=490.0 depth=0.6
+            Transform3D {
+                position x=124.5 y=0.0 z=5.5
+                scale x=1.0 y=1.0 z=1.0
+            }
+        }
+    }
+}

@@ -1,0 +1,4 @@
+name "TextTimeColon"
+components {
+    MeshAsset source="content/meshes/text/time_colon.mesh"
+}

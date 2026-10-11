@@ -2,18 +2,19 @@ version 1
 name "CompletionChecks"
 (array)entities {
     - name="World" prototype="World"
+    - name="Hud" prototype="Hud"
     - {
         name "Board1"
         prototype "TestBoard"
         components {
-            GAME.GameGlobalBinding name="Board1"
+            GlobalBinding name="Board1"
         }
     }
     - {
         name "Board2"
         prototype "TestBoard"
         components {
-            GAME.GameGlobalBinding name="Board2"
+            GlobalBinding name="Board2"
         }
     }
     - {

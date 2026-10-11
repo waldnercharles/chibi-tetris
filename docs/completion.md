@@ -1,32 +1,31 @@
 # Completion status
 
-Stillwater's authored game, original assets, and local native/browser exports are implemented. Deterministic checks and observed keyboard play pass. Native save reopening and the focused renderer regression also pass. Browser audio initialization and processing were observed; physical controllers and audible mix quality remain unverified. See [validation](validation.md) for the evidence and limits.
+Stillwater's authored game now starts directly in a 3D Journey. The implementation includes four modes, saved progress, mesh text, procedural scenery and responses to measured music and successful player actions. The bounded game check passes ten C/pico_unit cases with 428 assertions against the integrated version 22 SDK. See [validation](validation.md) for the final toolchain, executed checks, captures and remaining limits.
 
 ## Rules and modes
 
-Implemented and covered by the C/pico_unit dispatcher against the actual authored libraries and behaviors:
+The dispatcher exercises the actual authored libraries and behaviors:
 
 - Deterministic seven-piece bags, quarter-turn SRS kicks, hidden spawn rows, collision, ghost placement and row compaction.
-- Hold limits, five-piece previews, soft/hard drop, movement repeat, 500 ms lock delay and the fifteen-reset limit.
+- Hold limits, five-piece previews, soft and hard drop, movement repeat, 500 ms lock delay and the fifteen-reset limit.
 - Ordinary, T-spin and mini scoring, combos, back-to-back awards, level progression, pause, restart and top-out.
-- Six Journey chapters with saved unlocks and selected-chapter restarts, Endless, and the fixed-seed 40-line Sprint.
-- Duet's independent boards, shared chapter progress, reserve capped at eight, four-charge rescue, and failure without a rescue. The final required clear wins even when the following spawn is blocked.
-- Separate keyboard and controller slots, disconnect pause, and explicit reconnection or keyboard fallback. Controller coverage uses synthetic device states; physical controllers have not been tested.
+- Six Journey chapters with saved unlocks and chapter keys while paused or after a result, Endless, and the fixed-seed 40-line Sprint with elapsed and best times.
+- Duet's independent boards, shared chapter progress, reserve capped at eight, four-charge rescue, and failure when both boards are blocked without a rescue. The final required clear wins even when the following spawn is blocked.
+- Separate keyboard and controller slots, disconnect pause, direct mode switching, and save readback in a fresh runtime.
 
-The eight game cases pass with 95 C assertions. Source-level rule fixtures make additional assertions inside the authored runtime.
+Source-level fixtures make additional assertions inside the authored runtime. Controller checks use synthetic device states.
 
-## Presentation and access
+## Presentation and audio
 
-Implemented: three original ocean paintings, three related music arrangements, twelve effects, fixed visual-entity pools, chapter transitions, piece colors, event feedback, and reduced-motion/effects settings. Audio files decode and have measured levels and loop boundaries; browser playback initializes a running stereo audio context. Audible output and runtime mix quality have not received a listening review.
+The well, blocks, ghost, previews and text use 3D geometry. Fixed pools of currents, motes, comet trails, particles and jellyfish change with the chapter. Board event counters drive action feedback. The lowest effects setting and reduced-motion option suppress new particles and authored motion, while the game remains playable.
 
-The main menu, guide, pause, results, chapter selection, audio, movement, effects, reduced-motion and ghost controls are authored in the game. Native keyboard play exercised dropping, holding, pause and settings. Browser keyboard play exercised solo and both Duet boards, drop, hold, pause and settings, including a 960 × 540 viewport.
+M switches between analysis of the real game output and external audio capture. Native capture needs a routed loopback device; browser capture needs the user's audio-sharing selection. Capture failure restores the bundled score. The three original music arrangements and twelve generated effects retain their documented provenance, level measurements and loop checks in [audio](audio.md).
 
-Chapter unlocks, scores, Sprint best and settings use the SDK save service, with a visible save-failure notice. Simulation checks verify committed values in a fresh runtime. A native settings change from Master 80 to 70 reached an isolated disk save selected with `--save`; browser Master 70 survived a page reload. The reopened native app displayed Master 70.
+Progress, best results and preferences use the SDK save service. Save failures appear as mesh text. Pause, results and settings controls remain inside the game scene. The [README](../README.md) lists the controls and build steps.
 
 ## Coverage limits
 
-- The focused GPU regression and final browser inspection pass with the UI blend repair. Screenshots are linked in the validation record.
-- Browser audio processing was observed, but there is no recording or human listening review of the audible mix.
-- Physical controller hardware remains untested. Synthetic two-slot tests cover the authored behavior.
-
-Project validation passes for 38 assets with no errors or warnings. The admitted engine native, language and tooling groups pass. Full and quarantined suites remain disabled, not passed. See the [README](../README.md) for browser access and publishing steps.
+- Final export and rendering evidence belongs to the exact toolchain recorded in [validation](validation.md). Earlier exports do not establish coverage for this revision.
+- Physical controllers remain untested. Synthetic two-slot checks cover the authored behavior.
+- Audio-file measurements do not establish a human listening review, capture routing on every host, or permission behavior in every browser.
+- Full and quarantined suites remain disabled, not passed.

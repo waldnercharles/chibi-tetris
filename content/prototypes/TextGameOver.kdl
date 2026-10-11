@@ -1,0 +1,4 @@
+name "TextGameOver"
+components {
+    MeshAsset source="content/meshes/text/game_over.mesh"
+}

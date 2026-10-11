@@ -1,0 +1,4 @@
+name "TextNext"
+components {
+    MeshAsset source="content/meshes/text/next.mesh"
+}

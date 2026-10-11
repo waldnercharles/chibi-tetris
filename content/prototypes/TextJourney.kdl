@@ -1,0 +1,4 @@
+name "TextJourney"
+components {
+    MeshAsset source="content/meshes/text/journey.mesh"
+}

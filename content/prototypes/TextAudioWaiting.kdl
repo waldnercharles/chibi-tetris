@@ -1,0 +1,4 @@
+name "TextAudioWaiting"
+components {
+    MeshAsset source="content/meshes/text/audio_waiting.mesh"
+}

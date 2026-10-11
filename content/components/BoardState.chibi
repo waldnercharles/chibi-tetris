@@ -19,4 +19,11 @@ component BoardState {
     ghost_row: int
     back_to_back: bool
     spin: int
+    move_serial: int
+    rotate_serial: int
+    hold_serial: int
+    drop_serial: int
+    impact_x: number
+    impact_y: number
+    drop_distance: int
 }

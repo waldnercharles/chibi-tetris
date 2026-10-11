@@ -1,0 +1,4 @@
+name "TextLines"
+components {
+    MeshAsset source="content/meshes/text/lines.mesh"
+}

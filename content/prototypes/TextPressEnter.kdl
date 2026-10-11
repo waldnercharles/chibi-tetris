@@ -1,0 +1,4 @@
+name "TextPressEnter"
+components {
+    MeshAsset source="content/meshes/text/press_enter.mesh"
+}

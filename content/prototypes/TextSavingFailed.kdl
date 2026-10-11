@@ -1,0 +1,4 @@
+name "TextSavingFailed"
+components {
+    MeshAsset source="content/meshes/text/saving_failed.mesh"
+}

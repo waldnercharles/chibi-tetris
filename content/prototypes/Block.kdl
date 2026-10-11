@@ -1,6 +1,10 @@
 name "Block"
 components {
-    GAME.GameAppearance border_width=1.0
-    GAME.GameMaterial border_scene=0xffffff28
-    (object)GAME.GameTransform
+    Geometry3D depth=13.0 height=20.0 width=20.0
+    Material emission_color=0x71dcefff emission_intensity=0.16 emission_multiplier=1.0 scene=0x71dcefff
+    MeshAsset source="content/meshes/Block.mesh"
+    RenderState hidden=#true
+    Transform3D {
+        scale x=1.0 y=1.0 z=1.0
+    }
 }

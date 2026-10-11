@@ -1,0 +1,4 @@
+name "TextControllerLost"
+components {
+    MeshAsset source="content/meshes/text/controller_lost.mesh"
+}

@@ -34,6 +34,7 @@ behavior BoardChecks {
             }
             case 4 {
                 Check(first.BoardState.column == 2 && second.BoardState.column == 3, "P1 left is isolated")
+                Check(first.BoardState.move_serial == 1 && second.BoardState.move_serial == 0, "only a successful move publishes feedback")
             }
             case 7 {
                 Check(first.BoardState.column == 3, "P1 right")
@@ -43,6 +44,7 @@ behavior BoardChecks {
             }
             case 11 {
                 Check(first.BoardState.rotation == 0, "P1 counterclockwise")
+                Check(first.BoardState.rotate_serial == 2, "each successful rotation publishes feedback")
             }
             case 13 {
                 Check(first.BoardState.held == initial && !first.BoardState.can_hold, "first hold stores piece")
@@ -51,10 +53,13 @@ behavior BoardChecks {
             }
             case 15 {
                 Check(first.BoardState.held == held_piece && first.BoardState.current == next_piece, "hold once per lock")
+                Check(first.BoardState.hold_serial == 1, "blocked repeated hold publishes no feedback")
             }
             case 17 {
                 Check(first.BoardState.pieces == 1 && first.BoardState.score > 0, "hard drop locks and scores")
                 Check(first.BoardState.can_hold, "lock re-enables hold")
+                Check(first.BoardState.drop_serial == 1 && first.BoardState.drop_distance > 0, "hard drop publishes its traveled distance")
+                Check(abs(first.BoardState.impact_x + 266) < 0.0001 && first.BoardState.impact_y >= -252 && first.BoardState.impact_y <= 228, "drop impact stays at the locked piece in world space")
             }
             case 19 {
                 Check(first.BoardState.current == initial && !first.BoardState.can_hold, "hold swaps after lock")
@@ -82,6 +87,7 @@ behavior BoardChecks {
             }
             case 61 {
                 Check(first.BoardState.column >= 6, "held movement reaches right wall")
+                Check(first.BoardState.move_serial == first.BoardState.column - 1, "wall-blocked movement produces no extra pulses")
             }
             case 75 {
                 Check(first.BoardState.row > 1 && first.BoardState.score > 30, "soft drop moves and scores")
@@ -99,6 +105,7 @@ behavior BoardChecks {
             case 95 {
                 Check(first.BoardState.pieces == 0 && first.BoardState.score == 0 && first.BoardState.lines == 0, "restart resets counters while paused")
                 Check(first.BoardState.current == initial && first.BoardState.held == 0 && first.BoardState.can_hold, "restart restores seeded queue and hold")
+                Check(first.BoardState.move_serial == 0 && first.BoardState.rotate_serial == 0 && first.BoardState.hold_serial == 0 && first.BoardState.drop_serial == 0, "restart resets feedback serials")
                 self.TestReport.done = true
             }
         }

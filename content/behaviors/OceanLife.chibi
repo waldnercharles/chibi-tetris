@@ -1,0 +1,126 @@
+// Volumetric ocean fauna owns its fixed pools independently of light currents.
+behavior OceanLife {
+    world: entity
+    bells: entity[]
+    tendrils: entity[]
+    ready := false
+    time := 0
+    mood := 0
+    red := 0.008
+    green := 0.37
+    blue := 0.72
+    energy := 0
+    bass := 0
+    treble := 0
+
+    function Color(r: number, g: number, b: number, a: number) -> (value: uint) {
+        rr := cast<uint>(cast<int>(round(clamp(r, 0, 1) * 255)))
+        gg := cast<uint>(cast<int>(round(clamp(g, 0, 1) * 255)))
+        bb := cast<uint>(cast<int>(round(clamp(b, 0, 1) * 255)))
+        aa := cast<uint>(cast<int>(round(clamp(a, 0, 1) * 255)))
+        return rr << 24 | gg << 16 | bb << 8 | aa
+    }
+
+    function Tint(item: entity, alpha: number, glow: number, warm: number) {
+        r := red + (0.42 - red) * warm
+        g := green + (0.016 - green) * warm
+        b := blue + (0.8 - blue) * warm
+        if warm > 0.48 {
+            r = 0.85
+            g = 0.36
+            b = 0.018
+        }
+        item.Material.scene = Color(r * 0.18, g * 0.18, b * 0.18, alpha)
+        item.Material.emission_color = Color(r, g, b, 1)
+        item.Material.emission_intensity = glow
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        for i in 0..3 {
+            bell := await spawn(EnvBell)
+            bells = array_add(bells, bell)
+        }
+        for i in 0..111 {
+            tendril := await spawn(EnvTendril)
+            tendrils = array_add(tendrils, tendril)
+        }
+        mood = clamp(cast<number>(world.Session.stage) / 2, 0, 2)
+        ready = true
+    }
+
+    function DrawJellies(effects: int) {
+        for i in 0..3 {
+            bell := get(bells, i)
+            side := -1
+            if i % 2 == 1 {
+                side = 1
+            }
+            distant := cast<number>(i / 2)
+            phase := time * 0.35 + cast<number>(i) * 1.7
+            x := cast<number>(side) * (430 + distant * 220) + sin(phase * 0.6) * 28
+            y := 145 - cast<number>(i % 2) * 260 + distant * 110 + sin(phase) * 22
+            z := -350 - distant * 410 + cos(phase * 0.5) * 45
+            scale := 1 + distant * 0.18
+            ocean := 1 - clamp(mood - 0.5, 0, 1)
+            bell.Transform = vec2(x, z)
+            bell.Geometry3D.elevation = y
+            bell.VisualTransform.scale = scale * (1 + sin(phase * 1.4) * 0.055 + bass * 0.04)
+            bell.VisualTransform.pitch = sin(phase * 0.8) * 0.12
+            bell.RenderState.hidden = effects == 0 || ocean < 0.01
+            set_material_parameter(bell, "Fade", ocean)
+            set_material_parameter(bell, "Glow", 0.8 + energy * 0.3)
+            set_material_parameter(bell, "Hue", cast<number>(i % 2) * 0.5)
+            for strand in 0..3 {
+                for segment in 0..6 {
+                    tendril := get(tendrils, i * 28 + strand * 7 + segment)
+                    t := cast<number>(segment) / 7
+                    next := t + 1.0 / 7
+                    spread := (cast<number>(strand) - 1.5) * 20
+                    sway := phase + cast<number>(strand) * 0.8
+                    xx := x + spread + sin(sway + t * 4) * t * 26
+                    next_x := x + spread + sin(sway + next * 4) * next * 26
+                    zz := z + cos(cast<number>(strand) * pi / 2) * 20 + cos(sway + t * 3) * t * 26
+                    yy := y - 20 - t * 175 * scale
+                    tendril.Transform = vec2((xx + next_x) / 2, zz)
+                    tendril.Geometry3D.elevation = yy - 12.5 * scale
+                    tendril.Geometry3D.height = 29 * scale
+                    tendril.Geometry3D.width = 5.5 * (1 - t * 0.65) * scale
+                    tendril.Geometry3D.depth = 5.5 * (1 - t * 0.65) * scale
+                    tendril.VisualTransform.pitch = atan2(next_x - xx, 25 * scale)
+                    tendril.RenderState.hidden = bell.RenderState.hidden || effects == 1 && strand % 2 == 1
+                    Tint(tendril, (0.65 - t * 0.35) * ocean, 1.2 + treble * 0.45, cast<number>(strand % 2) * 0.28)
+                }
+            }
+        }
+    }
+
+    on Tick(dt) {
+        if !ready {
+            return
+        }
+        delta := min(dt, 0.05)
+        effects := world.Session.effects
+        moving := !world.Session.reduced_motion && effects > 0
+        if moving && world.Session.screen != 2 {
+            time += delta * (0.7 + energy * 0.25)
+        }
+        target := clamp(cast<number>(world.Session.stage) / 2, 0, 2)
+        mood += clamp(target - mood, -delta * 0.35, delta * 0.35)
+        if !moving {
+            mood = target
+        }
+        blend := min(1, delta * 2)
+        red += (0.008 + clamp(mood - 0.5, 0, 1.5) * 0.25 - red) * blend
+        green += (0.37 - clamp(mood - 1, 0, 1) * 0.22 - green) * blend
+        energy += (clamp(world.VisualState.energy, 0, 1) - energy) * min(1, delta * 8)
+        bass += (clamp(world.VisualState.bass, 0, 1) - bass) * min(1, delta * 9)
+        treble += (clamp(world.VisualState.treble, 0, 1) - treble) * min(1, delta * 7)
+        if !moving {
+            energy = 0
+            bass = 0
+            treble = 0
+        }
+        DrawJellies(effects)
+    }
+}

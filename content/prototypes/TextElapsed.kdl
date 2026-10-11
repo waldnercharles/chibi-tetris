@@ -1,0 +1,4 @@
+name "TextElapsed"
+components {
+    MeshAsset source="content/meshes/text/elapsed.mesh"
+}

@@ -1,0 +1,4 @@
+name "TextBest"
+components {
+    MeshAsset source="content/meshes/text/best.mesh"
+}

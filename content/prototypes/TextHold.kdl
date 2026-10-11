@@ -1,0 +1,4 @@
+name "TextHold"
+components {
+    MeshAsset source="content/meshes/text/hold.mesh"
+}

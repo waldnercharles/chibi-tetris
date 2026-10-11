@@ -1,0 +1,4 @@
+name "TextRescue"
+components {
+    MeshAsset source="content/meshes/text/rescue.mesh"
+}

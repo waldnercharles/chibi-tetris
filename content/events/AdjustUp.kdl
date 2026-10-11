@@ -1,7 +1,0 @@
-version 3
-name "AdjustUp"
-domain "event"
-id_counter 1
-(array)graphs {
-    - kind="event" name="Events"
-}

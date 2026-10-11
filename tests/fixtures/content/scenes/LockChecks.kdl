@@ -12,7 +12,7 @@ name "LockChecks"
         name "Board1"
         prototype "Board"
         components {
-            GAME.GameGlobalBinding name="Board1"
+            GlobalBinding name="Board1"
             BoardState index=0
         }
     }

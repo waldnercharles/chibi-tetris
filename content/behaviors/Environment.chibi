@@ -1,70 +1,255 @@
-// Three original plates, eight ambient glints and two fixed twelve-glint clear pools.
-// All environment drawing stays behind the board; no gameplay state is written.
+// Authored 3D light currents. Transform places X/Z; elevation supplies Y.
+// Fixed entity pools keep chapter changes and input responses allocation-free.
 behavior Environment {
     world: entity
-    board1: entity
-    board2: entity
-    plates: entity[]
-    ambient: entity[]
-    sparks: entity[]
-    ripples: entity[]
-    weights: number[] = [1, 0, 0]
-    ages: number[] = [10, 10]
-    strengths: number[] = [0, 0]
-    serial1: int = 0
-    serial2: int = 0
+    boards: entity[]
+    motes: entity[]
+    ribbons: entity[]
+    comets: entity[]
+    streams: entity[]
+    bursts: entity[]
+    clear_serial: int[] = [0, 0]
+    drop_serial: int[] = [0, 0]
+    rotate_serial: int[] = [0, 0]
+    hold_serial: int[] = [0, 0]
+    move_serial: int[] = [0, 0]
+    pieces: int[] = [0, 0]
     run: int = -1
-    time := 0
+    burst_slot: int = 0
+    streams_started := false
     ready := false
+    time := 0
+    mood := 0
+    homeward := 0
+    reaction := 0
+    red := 0.008
+    green := 0.37
+    blue := 0.72
+    energy := 0
+    bass := 0
+    treble := 0
+    beat := 0
 
-    function Tint(mood: int) -> (color: uint) {
-        match enum (mood) {
-            case 1 {
-                return 2212025600
-            }
-            case 2 {
-                return 3300257280
-            }
-        }
-        return 2966742272
+    function Color(r: number, g: number, b: number, a: number) -> (value: uint) {
+        rr := cast<uint>(cast<int>(round(clamp(r, 0, 1) * 255)))
+        gg := cast<uint>(cast<int>(round(clamp(g, 0, 1) * 255)))
+        bb := cast<uint>(cast<int>(round(clamp(b, 0, 1) * 255)))
+        aa := cast<uint>(cast<int>(round(clamp(a, 0, 1) * 255)))
+        return rr << 24 | gg << 16 | bb << 8 | aa
     }
 
-    function Center(board: int) -> (x: number) {
-        if world.Session.Mode != 3 {
-            return 0
-        }
-        if board == 0 {
-            return -254
-        }
-        return 254
+    function Sample(index: int, salt: number) -> (value: number) {
+        return fract(sin(cast<number>(index) * 127.1 + salt * 311.7) * 43758.5453)
     }
 
-    function Clear(board: int, lines: int) {
-        ages[board] = 0
-        strengths[board] = cast<number>(min(lines, 4)) / 4
+    // Ocean crests become interwoven currents, a polar curtain, then a star orbit.
+    function Path(fraction: number, lane: number) -> (x: number, y: number, z: number) {
+        ocean := clamp(1 - mood, 0, 1)
+        polar := clamp(mood - 1, 0, 1)
+        current := 1 - ocean - polar
+        angle := fraction * pi * 2 + time * 0.12 + lane * 0.7
+        wave := fraction * pi * 3 + time * 0.16 + lane * 0.6
+        x = (fraction - 0.5) * 2200 * ocean
+        x += cos(angle) * (490 + lane * 54) * current
+        x += (fraction - 0.5) * 2050 * polar
+        y = (-170 + lane * 70 + sin(wave) * 105) * ocean
+        y += (sin(angle) * (360 + lane * 22) - 30) * current
+        y += (200 + lane * 48 + sin(wave * 1.6) * 110) * polar
+        z = -430 - lane * 110 + cos(wave * 0.6) * 95
+        z += sin(angle) * 180 * current
+        x += (cos(angle) * (680 + lane * 74) - x) * homeward
+        y += (sin(angle) * (420 + lane * 28) - y) * homeward
+        z += (-570 - lane * 120 + sin(angle * 2) * 220 - z) * homeward
+        return (x, y, z)
+    }
+
+    function Tint(item: entity, alpha: number, glow: number, warm: number) {
+        r := red + (0.42 - red) * warm
+        g := green + (0.016 - green) * warm
+        b := blue + (0.8 - blue) * warm
+        if warm > 0.48 {
+            r = 0.85
+            g = 0.36
+            b = 0.018
+        }
+        item.Material.scene = Color(r * 0.18, g * 0.18, b * 0.18, alpha)
+        item.Material.emission_color = Color(r, g, b, 1)
+        item.Material.emission_intensity = glow
     }
 
     on Begin {
         world = get_global_variable("World")
-        board1 = get_global_variable("Board1")
-        board2 = get_global_variable("Board2")
-        shore := await spawn(EnvShore)
-        current := await spawn(EnvCurrent)
-        aurora := await spawn(EnvAurora)
-        plates = [shore, current, aurora]
-        for i in 0..7 {
-            glint := await spawn(EnvGlint)
-            ambient = array_add(ambient, glint)
+        boards = [get_global_variable("Board1"), get_global_variable("Board2")]
+        for i in 0..143 {
+            mote := await spawn(EnvMote)
+            motes = array_add(motes, mote)
         }
-        for i in 0..23 {
-            glint := await spawn(EnvGlint)
-            sparks = array_add(sparks, glint)
+        for i in 0..71 {
+            ribbon := await spawn(EnvRibbon)
+            ribbons = array_add(ribbons, ribbon)
+        }
+        for i in 0..11 {
+            comet := await spawn(EnvComet)
+            comets = array_add(comets, comet)
+        }
+        for i in 0..7 {
+            stream := await spawn(EnvStream)
+            streams = array_add(streams, stream)
+            burst := await spawn(EnvBurst)
+            bursts = array_add(bursts, burst)
+        }
+        mood = clamp(cast<number>(world.Session.stage) / 2, 0, 2)
+        homeward = clamp(cast<number>(world.Session.stage) - 4, 0, 1)
+        ready = true
+    }
+
+    function Burst(board: entity, count: int, strength: number) {
+        reaction = min(1, reaction + strength)
+        if world.Session.effects == 0 || world.Session.reduced_motion {
+            return
+        }
+        burst := get(bursts, burst_slot)
+        burst_slot = (burst_slot + 1) % 8
+        burst.Transform = vec2(board.BoardState.impact_x, 22)
+        burst.ParticleEmitter.offset = vec3(0, board.BoardState.impact_y, 0)
+        burst.ParticleEmitter.color = Color(red * 0.6 + 0.015, green * 0.8 + 0.08, 1, 1)
+        burst.ParticleEmitter.end_color = Color(red, green, blue, 0)
+        if world.Session.effects == 1 {
+            count = max(3, count / 3)
+        }
+        burst.ParticleEmitter.burst_count = count
+        burst.ParticleEmitter.active = true
+        burst.PointLight.color = Color(red, green, blue, 1)
+        burst.PointLight.elevation = board.BoardState.impact_y
+        burst.PointLight.intensity = min(2.5, strength * 5)
+    }
+
+    function Events(dt: number) {
+        fresh := run != world.Session.run
+        for i in 0..7 {
+            burst := get(bursts, i)
+            burst.ParticleEmitter.active = false
+            burst.PointLight.intensity = max(0, burst.PointLight.intensity - dt * 7)
+            if fresh || world.Session.effects == 0 || world.Session.reduced_motion {
+                burst.PointLight.intensity = 0
+            }
         }
         for i in 0..1 {
-            ripple := await spawn(EnvRipple)
-            ripples = array_add(ripples, ripple)
+            board := get(boards, i)
+            playing := (world.Session.screen == 1 || world.Session.screen == 3) && !fresh
+            if i == 1 && world.Session.mode != 3 {
+                playing = false
+            }
+            if playing {
+                if board.BoardState.clear_serial > get(clear_serial, i) {
+                    Burst(board, 28 + board.BoardState.last_clear * 16, 0.35 + cast<number>(board.BoardState.last_clear) * 0.14)
+                }
+                if board.BoardState.drop_serial > get(drop_serial, i) {
+                    Burst(board, 12 + cast<int>(min(board.BoardState.drop_distance, 20)), 0.24)
+                }
+                if board.BoardState.rotate_serial > get(rotate_serial, i) {
+                    Burst(board, 5, 0.025)
+                }
+                if board.BoardState.hold_serial > get(hold_serial, i) {
+                    Burst(board, 12, 0.08)
+                }
+                if board.BoardState.move_serial > get(move_serial, i) {
+                    Burst(board, 3, 0.01)
+                }
+                if board.BoardState.pieces > get(pieces, i) && board.BoardState.drop_serial == get(drop_serial, i) && board.BoardState.clear_serial == get(clear_serial, i) {
+                    Burst(board, 10, 0.07)
+                }
+            }
+            clear_serial[i] = board.BoardState.clear_serial
+            drop_serial[i] = board.BoardState.drop_serial
+            rotate_serial[i] = board.BoardState.rotate_serial
+            hold_serial[i] = board.BoardState.hold_serial
+            move_serial[i] = board.BoardState.move_serial
+            pieces[i] = board.BoardState.pieces
         }
-        ready = true
+        run = world.Session.run
+    }
+
+    function DrawMotes(effects: int) {
+        for i in 0..143 {
+            mote := get(motes, i)
+            mote.RenderState.hidden = effects < 2 && i >= 72
+            fraction := Sample(i, 1)
+            lane := Sample(i, 2) * 3
+            path := Path(fraction, lane)
+            drift := sin(time * (0.08 + Sample(i, 3) * 0.12) + fraction * 24)
+            mote.Transform = vec2(path.x + drift * 52, path.z - Sample(i, 4) * 560)
+            mote.Geometry3D.elevation = path.y + (Sample(i, 5) - 0.5) * 410
+            size := 1.1 + Sample(i, 6) * 2.6
+            mote.VisualTransform.scale = size * (1 + beat * 0.14)
+            mote.VisualTransform.pitch = time * 0.15 + fraction * pi
+            Tint(mote, 0.68 + Sample(i, 7) * 0.28, 1.55 + treble * 0.85, Sample(i, 8) * 0.6)
+        }
+    }
+
+    function DrawRibbons(effects: int) {
+        for i in 0..71 {
+            ribbon := get(ribbons, i)
+            lane := cast<number>(i / 24)
+            fraction := cast<number>(i % 24) / 23
+            path := Path(fraction, lane)
+            next := Path(fraction + 0.01, lane)
+            ribbon.Transform = vec2(path.x, path.z)
+            ribbon.Geometry3D.elevation = path.y
+            ribbon.VisualTransform.pitch = atan2(next.y - path.y, next.x - path.x)
+            ribbon.Geometry3D.width = sqrt((next.x - path.x) * (next.x - path.x) + (next.y - path.y) * (next.y - path.y)) * 4.8
+            curtain := clamp(mood - 1, 0, 1) * (1 - homeward)
+            ribbon.Geometry3D.height = 6 + curtain * (18 + 34 * sin(fraction * pi))
+            ribbon.Geometry3D.depth = 12 + curtain * 9
+            ribbon.RenderState.hidden = effects == 0 && lane > 0
+            taper := sin(fraction * pi)
+            Tint(ribbon, (0.2 + taper * 0.25) * (1 + energy * 0.12), 0.95 + bass * 0.35 + reaction * 0.4, lane * 0.22)
+        }
+    }
+
+    function DrawComets(moving: bool, effects: int) {
+        for i in 0..11 {
+            comet := get(comets, i)
+            angle := time * (0.1 + cast<number>(i % 3) * 0.017) + cast<number>(i) * pi / 6
+            radius := 420 + cast<number>(i % 4) * 92
+            comet.Transform = vec2(cos(angle) * radius, -240 - cast<number>(i % 3) * 170 + sin(angle) * 80)
+            comet.Geometry3D.elevation = sin(angle) * (radius * 0.7) + cos(angle * 2) * 65
+            comet.Trail.color = Color(red, green, blue, 0.42)
+            comet.Trail.width = 1.2 + bass * 0.7
+            comet.Trail.emission = 0.85 + energy * 0.7
+            if !moving {
+                comet.Trail.width = 0
+            }
+            comet.RenderState.hidden = effects == 0 || effects == 1 && i >= 4
+            Tint(comet, 0.75, 1.3 + beat * 0.4, cast<number>(i % 3) * 0.2)
+        }
+    }
+
+    function DrawStreams(moving: bool, effects: int) {
+        for i in 0..7 {
+            stream := get(streams, i)
+            // Closed easing keeps source velocity finite at each end of an open current.
+            fraction := 0.5 - 0.5 * cos(time * 0.026 + cast<number>(i) * pi / 4)
+            lane := cast<number>(i % 3)
+            path := Path(fraction, lane)
+            next := Path(fraction + 0.025, lane)
+            stream.Transform = vec2(path.x, path.z - 65)
+            stream.ParticleEmitter.offset = vec3(0, path.y, 0)
+            stream.ParticleEmitter.direction = vec3(next.x - path.x, next.y - path.y + 16, next.z - path.z)
+            stream.ParticleEmitter.color = Color(red, green, blue, 0.88)
+            stream.ParticleEmitter.end_color = Color(red * 0.5, green * 0.6, blue, 0)
+            // Leave room under the engine's 2,048-particle cap for input bursts.
+            stream.ParticleEmitter.rate = 30 + energy * 6 + reaction * 6
+            stream.ParticleEmitter.burst_count = 0
+            if !streams_started {
+                stream.ParticleEmitter.burst_count = 64
+            }
+            stream.ParticleEmitter.active = moving
+            if effects == 1 {
+                stream.ParticleEmitter.rate = 12
+            }
+        }
+        streams_started = true
     }
 
     on Tick(dt) {
@@ -72,125 +257,43 @@ behavior Environment {
             return
         }
         delta := min(dt, 0.05)
-        mood: int = floor(world.Session.Stage / 2)
-        mood = clamp(mood, 0, 2)
-        effects := world.Session.Effects
-        moving := !world.Session.ReducedMotion && effects > 0
-        playing := world.Session.Screen == 1
-        if moving && world.Session.Screen != 2 {
-            time += delta
+        effects := world.Session.effects
+        moving := !world.Session.reduced_motion && effects > 0
+        paused := world.Session.screen == 2
+        if moving && !paused {
+            time += delta * (0.7 + energy * 0.25)
         }
-        tint := Tint(mood)
-
-        // A slow dissolve also previews the selected chapter on the title screen.
-        for i in 0..2 {
-            target := 0
-            if i == mood {
-                target = 1
-            }
-            weight := get(weights, i)
-            if moving {
-                weight += clamp(target - weight, -delta / 1.6, delta / 1.6)
-            }
-            if !moving {
-                weight = target
-            }
-            weights[i] = weight
-            plate := get(plates, i)
-            plate.Material.Scene = 4294967040 + cast<uint>(cast<int>(round(weight * 255)))
-            plate.RenderState.Hidden = weight <= 0
-            if moving {
-                plate.Transform = { x: sin(time * 0.09 + cast<number>(i) * 0.4) * 2.5,
-                y: cos(time * 0.07 + cast<number>(i) * 0.3) * 1.5 }
-            }
-            if !moving {
-                plate.Transform = { x: 0, y: 0 }
-            }
+        target := clamp(cast<number>(world.Session.stage) / 2, 0, 2)
+        home := clamp(cast<number>(world.Session.stage) - 4, 0, 1)
+        mood += clamp(target - mood, -delta * 0.35, delta * 0.35)
+        homeward += clamp(home - homeward, -delta * 0.35, delta * 0.35)
+        if !moving {
+            mood = target
+            homeward = home
         }
-
-        // A reset establishes a new serial baseline without inventing a clear.
-        if run != world.Session.Run {
-            run = world.Session.Run
-            serial1 = board1.BoardState.ClearSerial
-            serial2 = board2.BoardState.ClearSerial
-            ages = [10, 10]
+        blend := min(1, delta * 2)
+        red += (0.008 + clamp(mood - 0.5, 0, 1.5) * 0.25 - red) * blend
+        green += (0.37 - clamp(mood - 1, 0, 1) * 0.22 + homeward * 0.15 - green) * blend
+        blue += (0.72 - blue) * blend
+        energy += (clamp(world.VisualState.energy, 0, 1) - energy) * min(1, delta * 8)
+        bass += (clamp(world.VisualState.bass, 0, 1) - bass) * min(1, delta * 9)
+        treble += (clamp(world.VisualState.treble, 0, 1) - treble) * min(1, delta * 7)
+        beat += (clamp(world.VisualState.beat, 0, 1) - beat) * min(1, delta * 12)
+        if !moving {
+            energy = 0
+            bass = 0
+            treble = 0
+            beat = 0
         }
-        if playing && board1.BoardState.ClearSerial > serial1 {
-            Clear(0, board1.BoardState.LastClear)
+        reaction = max(0, reaction - delta * 1.8)
+        Events(delta)
+        self.Environment.bloom_strength = 0.3 + energy * 0.035 + reaction * 0.05
+        if effects == 0 || world.Session.reduced_motion {
+            self.Environment.bloom_strength = 0.22
         }
-        if playing && world.Session.Mode == 3 && board2.BoardState.ClearSerial > serial2 {
-            Clear(1, board2.BoardState.LastClear)
-        }
-        serial1 = board1.BoardState.ClearSerial
-        serial2 = board2.BoardState.ClearSerial
-
-        // The ambient points stay outside both possible board rectangles.
-        for i in 0..7 {
-            glint := get(ambient, i)
-            visible := moving && effects == 2
-            glint.RenderState.Hidden = !visible
-            if visible {
-                side := -1
-                if i % 2 == 1 {
-                    side = 1
-                }
-                cycle := fract(time * 0.012 + cast<number>(i) * 0.137)
-                glint.Transform = { x: side * (465 + i * 14) + sin(time * 0.17 + i) * 9,
-                y: 335 - cycle * 660 }
-                alpha := sin(cycle * pi) * (22 + i % 3 * 6)
-                glint.Material.Scene = tint + cast<uint>(cast<int>(alpha))
-                glint.Appearance.Width = 1.5 + cast<number>(i % 3) * 0.4
-                glint.Appearance.Height = 1.5 + cast<number>(i % 3) * 0.4
-            }
-        }
-
-        for board in 0..1 {
-            age := get(ages, board)
-            if world.Session.Screen != 2 {
-                age += delta
-            }
-            ages[board] = age
-            strength := get(strengths, board)
-            visible := effects > 0 && playing && age < 1.8
-            if board == 1 && world.Session.Mode != 3 {
-                visible = false
-            }
-            center := Center(board)
-            ripple := get(ripples, board)
-            ripple.RenderState.Hidden = !visible
-            if visible {
-                progress := clamp(age / 1.8, 0, 1)
-                fade := (1 - progress) * (1 - progress)
-                ripple.Material.Scene = tint + cast<uint>(cast<int>((42 + strength * 40) * fade))
-                ripple.Appearance.Width = 130 + progress * 120
-                ripple.Transform = { x: center, y: 264 + progress * 10 }
-                if !moving {
-                    ripple.Appearance.Width = 200
-                    ripple.Transform = { x: center, y: 268 }
-                }
-            }
-            for point in 0..11 {
-                glint := get(sparks, board * 12 + point)
-                show := visible && moving
-                if effects == 1 && point >= 6 {
-                    show = false
-                }
-                glint.RenderState.Hidden = !show
-                if show {
-                    side := -1
-                    if point % 2 == 1 {
-                        side = 1
-                    }
-                    progress := clamp(age / 1.8, 0, 1)
-                    spread := 10 + point * 3
-                    glint.Transform = { x: center + side * (132 + progress * spread),
-                    y: 252 - point * 7 - sin(progress * pi * 0.65) * (16 + point * 3) }
-                    alpha := (1 - progress) * (45 + strength * 65)
-                    glint.Material.Scene = tint + cast<uint>(cast<int>(alpha))
-                    glint.Appearance.Width = 1.8 + strength * 1.2
-                    glint.Appearance.Height = 1.8 + strength * 1.2
-                }
-            }
-        }
+        DrawMotes(effects)
+        DrawRibbons(effects)
+        DrawComets(moving && !paused, effects)
+        DrawStreams(moving && !paused, effects)
     }
 }

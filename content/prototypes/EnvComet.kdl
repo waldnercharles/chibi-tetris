@@ -1,0 +1,9 @@
+name "EnvComet"
+components {
+    Geometry3D depth=3.0 height=3.0 primitive=5 width=3.0
+    Material emission_color=0x9cecfaff emission_intensity=2.0 emission_multiplier=1.0 scene=0x9cecfaff
+    (object)RenderState
+    Trail color=0x74d2e2bb emission=1.5 lifetime=0.5 width=1.4
+    (object)Transform
+    VisualTransform scale=1.0
+}

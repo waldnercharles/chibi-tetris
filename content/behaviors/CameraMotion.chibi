@@ -1,0 +1,33 @@
+// Slow parallax around the upright well. Motion never changes the board grid.
+behavior CameraMotion {
+    world: entity
+    time := 0
+
+    on Begin {
+        world = get_global_variable("World")
+    }
+
+    on Tick(dt) {
+        moving := !world.Session.reduced_motion && world.Session.effects > 0
+        if world.Session.screen == 2 {
+            return
+        }
+        x := 90
+        y := 50
+        z := 1080
+        if moving {
+            time += min(dt, 0.05)
+            x += sin(time * 0.13) * 7
+            y += sin(time * 0.09) * 5
+            z -= world.VisualState.bass * 4
+        }
+        yaw := atan2(x, z)
+        pitch := -atan2(y, sqrt(x * x + z * z))
+        sy := sin(yaw * 0.5)
+        cy := cos(yaw * 0.5)
+        sx := sin(pitch * 0.5)
+        cx := cos(pitch * 0.5)
+        self.Transform3D.position = vec3(x, y, z)
+        self.Transform3D.rotation = { x: cy * sx, y: sy * cx, z: -sy * sx, w: cy * cx }
+    }
+}

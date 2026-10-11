@@ -68,26 +68,6 @@ P2Hold {
     controller 1
     (array)buttons "Left Shoulder" "Right Shoulder"
 }
-MenuUp {
-    (array)sources "Arrow Up"
-    controller 0
-    (array)buttons "Dpad Up"
-}
-MenuDown {
-    (array)sources "Arrow Down"
-    controller 0
-    (array)buttons "Dpad Down"
-}
-MenuLeft {
-    (array)sources "Arrow Left"
-    controller 0
-    (array)buttons "Dpad Left"
-}
-MenuRight {
-    (array)sources "Arrow Right"
-    controller 0
-    (array)buttons "Dpad Right"
-}
 Confirm {
     (array)sources "Enter"
     controller 0
@@ -106,4 +86,40 @@ Pause {
 Pause2 {
     controller 1
     (array)buttons "Start"
+}
+JourneyMode {
+    (array)sources "1"
+}
+EndlessMode {
+    (array)sources "2"
+}
+SprintMode {
+    (array)sources "3"
+}
+DuetMode {
+    (array)sources "4"
+}
+PreviousChapter {
+    (array)sources "7"
+}
+NextChapter {
+    (array)sources "8"
+}
+Effects {
+    (array)sources "V"
+}
+Motion {
+    (array)sources "F"
+}
+Ghost {
+    (array)sources "G"
+}
+VolumeDown {
+    (array)sources "9"
+}
+VolumeUp {
+    (array)sources "0"
+}
+AudioSource {
+    (array)sources "M"
 }

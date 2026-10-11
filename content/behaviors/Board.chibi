@@ -36,8 +36,13 @@ behavior Board {
     on Begin {
         world = get_global_variable("World")
         for (i in 0..231) {
-            tile := await spawn(Block)
-            tiles = array_add(tiles, tile)
+            if i >= 204 && i < 208 {
+                ghost := await spawn(BlockRim)
+                tiles = array_add(tiles, ghost)
+            } else {
+                tile := await spawn(Block)
+                tiles = array_add(tiles, tile)
+            }
         }
         self.BoardState.ready = true
     }
@@ -112,6 +117,11 @@ behavior Board {
         self.BoardState.clear_serial = 0
         self.BoardState.back_to_back = false
         self.BoardState.spin = 0
+        self.BoardState.move_serial = 0
+        self.BoardState.rotate_serial = 0
+        self.BoardState.hold_serial = 0
+        self.BoardState.drop_serial = 0
+        self.BoardState.drop_distance = 0
         stack_dirty = true
         preview_dirty = true
         SpawnPiece(Next())
@@ -147,6 +157,8 @@ behavior Board {
         rotated = false
         ResetLock(grounded)
         piece_dirty = true
+        self.BoardState.move_serial += 1
+        Impact()
         return true
     }
 
@@ -163,6 +175,8 @@ behavior Board {
         rotated = true
         ResetLock(grounded)
         piece_dirty = true
+        self.BoardState.rotate_serial += 1
+        Impact()
         play_sound("rotate", 0.2)
     }
 
@@ -178,10 +192,13 @@ behavior Board {
         SpawnPiece(replacement)
         hold_used = true
         preview_dirty = true
+        self.BoardState.hold_serial += 1
+        Impact()
         play_sound("hold", 0.3)
     }
 
     function Lock() {
+        Impact()
         spin := Rules.Spin(grid, current, rotation, column, row, rotated, last_kick)
         any_visible := Rules.Place(grid, current, rotation, column, row)
         clear_rows = Rules.FullRows(grid)
@@ -228,6 +245,9 @@ behavior Board {
             rotated = false
         }
         row = landing
+        self.BoardState.drop_serial += 1
+        self.BoardState.drop_distance = distance
+        Impact()
         play_sound("hard_drop", 0.35)
         Lock()
     }
@@ -360,40 +380,56 @@ behavior Board {
         Fall(seconds, soft)
     }
 
+    // Gameplay rows grow downward. The well stands in the world's XY plane.
+    function Impact() {
+        center := 0
+        if world.Session.mode == 3 {
+            center = -254 + self.BoardState.index * 508
+        }
+        self.BoardState.impact_x = center - 120 + (cast<number>(column) + 1.5) * 24
+        self.BoardState.impact_y = 228 - (row - 1) * 24
+    }
+
     function Hide(slot: int) {
         tile := get(tiles, slot)
-        tile.Appearance.width = 0
-        tile.Appearance.height = 0
+        tile.RenderState.hidden = true
     }
 
     function Tile(slot: int, x: number, y: number, size: number, color: uint, ghost: bool) {
         tile := get(tiles, slot)
-        tile.Transform = vec2(x, y)
-        tile.Appearance.width = size
-        tile.Appearance.height = size
-        tile.Material.scene = color
-        tile.Material.border_scene = 4294967096
-        if color == 33884415 {
-            tile.Material.border_scene = 202842240
-        }
-        tile.Appearance.border_width = 1
-        tile.Appearance.layer = 0
-        if ghost {
-            tile.Material.scene = (color & 4294967040) | 22
-            tile.Material.border_scene = (color & 4294967040) | 160
-            tile.Appearance.border_width = 1.5
-            tile.Appearance.layer = 1
-        }
+        depth := size * 0.68
+        z := 0
+        emission := 0.22
         if slot >= 200 && slot < 204 {
-            tile.Appearance.layer = 2
+            z = 3
+            emission = 0.46
+        }
+        tile.RenderState.hidden = false
+        tile.Transform3D.position = { x: x, y: 8 - y, z: z }
+        tile.Geometry3D = { width: size, height: size, depth: depth }
+        tile.Material.scene = color
+        tile.Material.emission_color = color
+        tile.Material.emission_intensity = emission
+        if ghost {
+            tile.Geometry3D.primitive = 8
+            tile.Geometry3D.depth = 1.2
+            tile.Transform3D.position = { x: x, y: 8 - y, z: -7 }
+            tile.Material.scene = (color & 4294967040) | 112
+            tile.Material.emission_intensity = 0.2
         }
     }
 
     function DrawStack() {
         for (i in 0..199) {
             y := i / 10 + 2
-            color := Pieces.Color(get(grid, i + 20))
-            if flash > 0 && contains(clear_rows, y) {
+            kind := get(grid, i + 20)
+            clearing := flash > 0 && contains(clear_rows, y)
+            if kind == 0 && !clearing {
+                Hide(i)
+                continue
+            }
+            color := Pieces.Color(kind)
+            if clearing {
                 color = 3824283391
             }
             Tile(i, origin + i % 10 * 24 + 12, -232 + (y - 2) * 24 + 12, 22, color, false)
@@ -462,8 +498,8 @@ behavior Board {
                     Hide(i)
                 }
             }
-            self.Appearance.width = 0
-            self.Appearance.height = 0
+            self.RenderState.hidden = true
+            self.Transform3D.scale = vec3(0, 0, 0)
             visible = false
             return
         }
@@ -472,9 +508,9 @@ behavior Board {
             if world.Session.mode == 3 {
                 origin = -374 + self.BoardState.index * 508
             }
-            self.Transform = vec2(origin + 120, 8)
-            self.Appearance.width = 248
-            self.Appearance.height = 488
+            self.Transform3D.position = { x: origin + 120, y: 0, z: -16 }
+            self.RenderState.hidden = false
+            self.Transform3D.scale = vec3(1, 1, 1)
             stack_dirty = true
             piece_dirty = true
             preview_dirty = true

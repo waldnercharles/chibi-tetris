@@ -1,0 +1,8 @@
+name "EnvTendril"
+components {
+    Geometry3D depth=5.0 height=27.0 primitive=2 width=5.0
+    Material emission_color=0x70d9f4ff emission_intensity=1.0 emission_multiplier=1.0 scene=0x70d9f4a8
+    (object)RenderState
+    (object)Transform
+    VisualTransform scale=1.0
+}

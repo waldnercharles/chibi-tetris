@@ -21,8 +21,7 @@ behavior ShellChecks {
     on Tick {
         match (frame) {
             case 1 {
-                Check(world.Session.screen == 0 && world.Session.stage == 0, "new profile opens first chapter")
-                send_event<"Journey">(world)
+                Check(world.Session.screen == 1 && world.Session.stage == 0, "new profile immediately plays first chapter")
             }
             case 3 {
                 Check(world.Session.screen == 1 && world.Session.mode == 0 && world.Session.run == 1, "Journey starts")
@@ -42,20 +41,14 @@ behavior ShellChecks {
             case 22 {
                 Check(world.Session.stage == 0 && world.Session.run == 2, "restart returns to starting chapter")
             }
-            case 24 {
-                send_event<"Home">(world)
-            }
-            case 26 {
-                send_event<"ChapterNext">(world)
-            }
             case 28 {
-                Check(world.Session.stage == 1, "unlocked chapter can be selected")
+                Check(world.Session.stage == 1 && world.Session.screen == 2 && world.Session.run == 3, "chapter key selects an unlocked chapter and stays paused")
             }
-            case 29 {
-                send_event<"Journey">(world)
+            case 31 {
+                Check(world.Session.stage == 1 && world.Session.run == 3, "chapter key cannot select a locked chapter")
             }
-            case 32 {
-                Check(world.Session.stage == 1 && world.Session.screen == 1, "Journey starts selected chapter")
+            case 36 {
+                Check(world.Session.stage == 1 && world.Session.screen == 1 && world.Session.run == 3, "Enter resumes selected chapter and chapter keys do not interrupt play")
             }
             case 44 {
                 board.BoardState.lines = 12
@@ -70,39 +63,36 @@ behavior ShellChecks {
             case 51 {
                 Check(world.Session.stage == 1, "restart remembers selected starting chapter")
             }
-            case 52 {
-                send_event<"Home">(world)
-            }
             case 54 {
-                send_event<"Settings">(world)
-            }
-            case 56 {
-                send_event<"Setting0">(world)
-            }
-            case 58 {
-                send_event<"Setting3">(world)
-            }
-            case 60 {
-                send_event<"Setting4">(world)
-            }
-            case 62 {
-                send_event<"Setting5">(world)
-            }
-            case 64 {
-                send_event<"Setting6">(world)
+                Check(world.Session.screen == 2, "P pauses without opening a menu")
             }
             case 66 {
-                send_event<"Setting7">(world)
-            }
-            case 68 {
-                send_event<"Home">(world)
+                Check(world.Session.screen == 1, "Enter resumes the in-world pause")
             }
             case 72 {
-                Check(world.Session.screen == 0, "settings return to title")
-                Check(abs(world.Session.master - 0.9) < 0.00001 && abs(world.Session.das - 0.16) < 0.00001, "settings update volumes and DAS")
-                Check(abs(world.Session.arr - 0.04) < 0.00001 && world.Session.effects == 0, "settings update ARR and effects")
+                Check(world.Session.screen == 1, "preferences leave the run active")
+                Check(abs(world.Session.master - 0.9) < 0.00001 && abs(world.Session.das - 0.15) < 0.00001, "volume key preserves movement delay")
+                Check(abs(world.Session.arr - 0.035) < 0.00001 && world.Session.effects == 0, "effects key preserves repeat timing")
                 Check(world.Session.reduced_motion && !world.Session.ghost, "settings toggle motion and ghost")
                 Check(read_saved_number("chapter", -1).Number == 2, "second chapter unlock survives restart")
+            }
+            case 76 {
+                Check(world.Session.stage == 0 && world.Session.screen == 2 && world.Session.run == 5, "previous chapter key selects an earlier unlocked chapter")
+            }
+            case 78 {
+                Check(world.Session.stage == 0 && world.Session.run == 5, "previous chapter key stops at first chapter")
+            }
+            case 84 {
+                Check(world.Session.stage == 2 && world.Session.screen == 2 && world.Session.run == 7, "chapter keys browse through all unlocked chapters without resuming")
+            }
+            case 98 {
+                board.BoardState.topout = true
+            }
+            case 101 {
+                Check(world.Session.screen == 3 && !world.Session.won, "topout produces result before chapter selection")
+            }
+            case 105 {
+                Check(world.Session.stage == 1 && world.Session.screen == 2 && world.Session.run == 8, "chapter selection also works from results")
                 self.TestReport.done = true
             }
         }
