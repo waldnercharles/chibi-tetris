@@ -1265,7 +1265,7 @@ TEST_CASE(authored_environment_consumer)
 
 TEST_CASE(controlled_soft_drop_and_piece_motion)
 {
-    yyjson_mut_doc *doc = request("MotionChecks", 174);
+    yyjson_mut_doc *doc = request("MotionChecks", 210);
     key(doc, 0, 0);
     key(doc, 42, KEY_DOWN);
     key(doc, 72, 0);
@@ -1275,8 +1275,9 @@ TEST_CASE(controlled_soft_drop_and_piece_motion)
     for (int frame = 155; frame <= 169; frame += 2) {
         tap(doc, frame, KEY_DOWN);
     }
+    tap(doc, 175, KEY_SPACE);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(43));
+    REQUIRE(report(56));
     return true;
 }
 
@@ -1285,16 +1286,16 @@ TEST_CASE(evolving_stage_direction)
     yyjson_mut_doc *doc = request("StageChecks", 126);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(33));
+    REQUIRE(report(46));
     return true;
 }
 
 TEST_CASE(layered_world_space_reactions)
 {
-    yyjson_mut_doc *doc = request("VfxChecks", 64);
+    yyjson_mut_doc *doc = request("VfxChecks", 182);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(35));
+    REQUIRE(report(141));
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 1);
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
     return true;

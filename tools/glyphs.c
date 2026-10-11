@@ -620,12 +620,41 @@ static void block(const char *name, float bevel)
     assert(same(mesh.min, (CF_V3){ -.5f, -.5f, -.5f }));
     assert(same(mesh.max, (CF_V3){ .5f, .5f, .5f }));
     closed(&mesh, bevel);
+    // Keep the original outer face as the reaction/contact position. A smaller
+    // opaque body writes depth beneath its music-reactive translucent coat.
+    const int outer_vertices = acount(mesh.vertices);
+    const int outer_indices = acount(mesh.indices);
+    for (int i = 0; i < outer_vertices; i++) {
+        render_mesh_surface_vertex vertex = mesh.vertices[i];
+        vertex.position = cf_mul_v3_f(vertex.position, .985f);
+        apush(mesh.vertices, vertex);
+    }
+    for (int i = 0; i < outer_indices; i++) {
+        apush(mesh.indices, mesh.indices[i] + outer_vertices);
+    }
+    render_mesh_group coat = { .first = 0,
+                               .count = outer_indices,
+                               .asset = xstrdup(""),
+                               .name = xstrdup("coat"),
+                               .path = xstrdup("coat"),
+                               .material = xstrdup(""),
+                               .material_scope = xstrdup("") };
+    render_mesh_group core = { .first = outer_indices,
+                               .count = outer_indices,
+                               .asset = xstrdup(""),
+                               .name = xstrdup("core"),
+                               .path = xstrdup("core"),
+                               .material = xstrdup("BlockCore"),
+                               .material_scope = xstrdup("") };
+    apush(mesh.groups, coat);
+    apush(mesh.groups, core);
+    verify(&mesh);
     char path[512];
     int count = snprintf(path, sizeof path, "content/meshes/%s.mesh", name);
     assert(count > 0 && (size_t)count < sizeof path);
     write_mesh(&mesh, path);
     render_mesh_asset_free(&mesh);
-    printf("%-20s 1.000000 x 1.000000 x 1.000000  44 triangles, bevel %.2f\n", name, bevel);
+    printf("%-20s 1.000000 x 1.000000 x 1.000000  88 triangles, opaque core + coat, bevel %.2f\n", name, bevel);
 }
 
 static void directory(const char *path)

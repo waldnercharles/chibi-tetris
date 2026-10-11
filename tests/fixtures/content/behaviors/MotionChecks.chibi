@@ -4,10 +4,13 @@ behavior MotionChecks {
     board: entity
     active: entity
     ghost: entity
+    settled: entity
     frame: int = 0
     initial_row: int = 0
     initial_column: int = 0
     initial_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    initial_emission := 0
+    initial_color: uint = 0
     ghost_position: CF_V3 = { x: 0, y: 0, z: 0 }
     soft_row: int = 0
     tap_row: int = 0
@@ -18,6 +21,11 @@ behavior MotionChecks {
     drop_kind: int = 0
     paused_position: CF_V3 = { x: 0, y: 0, z: 0 }
     paused_scale: CF_V3 = { x: 0, y: 0, z: 0 }
+    settled_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    settled_color: uint = 0
+    settled_emission := 0
+    paused_emission := 0
+    paused_color: uint = 0
 
     on Begin {
         world = get_global_variable("World")
@@ -57,6 +65,16 @@ behavior MotionChecks {
         return board.ReactionQueue.first
     }
 
+    function Settled() -> (tile: entity) {
+        tiles := find_entities_with_component("MeshAsset")
+        for item in tiles {
+            if !item.RenderState.hidden && item.Geometry3D.width == 22 && item.Transform3D.position.z == 0 && item.Transform3D.position.x < 0 {
+                return item
+            }
+        }
+        return self
+    }
+
     function Point(record: entity, index: int) -> (point: CF_V3) {
         match (index) {
             case 0 {
@@ -82,6 +100,8 @@ behavior MotionChecks {
         Check(abs(active.Geometry3D.depth - depth) < 0.001, "stage changes block depth without changing its footprint")
         Check(active.Geometry3D.width == 22 && active.Geometry3D.height == 22, "block footprint remains inside its cell")
         Check(active.Shader.material == "BlockSurface", "stage blocks use a lit material")
+        alpha := cast<number>(active.Material.scene & 255)
+        Check(alpha >= 239 && alpha <= 255, "each stage keeps the colored coat near opaque")
     }
 
     on Tick {
@@ -93,6 +113,8 @@ behavior MotionChecks {
             case 3 {
                 active = Active()
                 initial_position = active.Transform3D.position
+                initial_emission = active.Material.emission_intensity
+                initial_color = active.Material.scene
                 initial_row = board.BoardState.row
                 initial_column = board.BoardState.column
                 tiles := find_entities_with_component("Geometry3D")
@@ -116,10 +138,12 @@ behavior MotionChecks {
                 Check(active.Transform3D.position.x == initial_position.x && active.Transform3D.position.y == initial_position.y, "music preserves occupied cell centers")
                 Check(board.BoardState.row == initial_row && board.BoardState.column == initial_column && board.BoardState.score == 0 && board.BoardState.pieces == 0, "music leaves logical falling and scoring untouched")
                 Check(Same(ghost.Transform3D.position, ghost_position) && Same(ghost.Transform3D.scale, vec3(1, 1, 1)), "landing ghost remains fixed while the piece pulses")
+                Check((ghost.Material.scene & 255) == 112, "landing ghost remains more transparent than the solid piece")
                 world.Session.reduced_motion = true
             }
             case 24 {
                 Check(active.Transform3D.position.z == 3 && Same(active.Transform3D.scale, vec3(1, 1, 1)), "reduced motion restores the stable piece transform")
+                Check(abs(active.Material.emission_intensity - initial_emission) < 0.001 && active.Material.scene == initial_color, "reduced motion restores the stable coat finish and opacity")
             }
             case 40 {
                 soft_row = board.BoardState.row
@@ -186,12 +210,15 @@ behavior MotionChecks {
                 active = Active()
                 paused_position = active.Transform3D.position
                 paused_scale = active.Transform3D.scale
+                paused_emission = active.Material.emission_intensity
+                paused_color = active.Material.scene
                 world.VisualState.energy = 0
                 world.VisualState.bass = 0
                 world.VisualState.beat = 0
             }
             case 140 {
                 Check(Same(active.Transform3D.position, paused_position) && Same(active.Transform3D.scale, paused_scale), "pause freezes the music-driven piece transform")
+                Check(active.Material.emission_intensity == paused_emission && active.Material.scene == paused_color, "pause freezes the coat finish and opacity")
                 world.Session.mode = 0
                 world.Session.stage = 19
                 world.Session.run += 1
@@ -213,6 +240,25 @@ behavior MotionChecks {
             case 172 {
                 Check(board.BoardState.row == tap_row + 8, "eight short Down taps move eight cells instead of stalling gravity")
                 Check(board.BoardState.score == tap_score + 8 && board.BoardState.pieces == 0, "each short Down tap scores exactly one traveled cell without locking")
+                world.Session.reduced_motion = true
+                world.StageState.style = 0
+            }
+            case 188 {
+                settled = Settled()
+                settled_position = settled.Transform3D.position
+                settled_color = settled.Material.scene
+                settled_emission = settled.Material.emission_intensity
+                world.Session.reduced_motion = false
+                world.VisualState.energy = 1
+                world.VisualState.bass = 1
+                world.VisualState.mid = 1
+                world.VisualState.beat = 1
+            }
+            case 207 {
+                Check(settled.Material.emission_intensity > settled_emission + 0.01, "music changes an already settled block without a stage or grid change")
+                Check(cast<number>(settled.Material.scene & 255) > cast<number>(settled_color & 255), "bass changes the settled coat opacity above its solid core")
+                Check((settled.Material.scene & 4294967040) == (settled_color & 4294967040), "music keeps the settled piece hue")
+                Check(Same(settled.Transform3D.position, settled_position) && Same(settled.Transform3D.scale, vec3(1, 1, 1)), "settled material changes leave occupied cells stationary")
                 self.TestReport.done = true
             }
         }

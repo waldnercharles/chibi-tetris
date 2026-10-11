@@ -2,7 +2,7 @@ version 3
 name "BlockSurface"
 domain "material"
 id_counter 7000
-description "Lit block faces retain their piece color. Stage finish controls roughness, metallic reflection and a restrained emission; beat motion is authored on the four active transforms."
+description "Near-opaque colored coat over an opaque BlockCore. Stage and measured music shift roughness, metallic reflection, glow and coat opacity without exposing the background through the body."
 (array)graphs {
     - {
         kind "event"

@@ -1,0 +1,25 @@
+version 3
+name "BlockCore"
+domain "material"
+id_counter 200
+description "Opaque charcoal body beneath the music-reactive coat. It writes depth and keeps the board readable even when the coat is translucent."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 100
+                type "Shader Surface Output"
+                inputs {
+                    "Base Color" {
+                        default x=0.055 y=0.065 z=0.08
+                    }
+                    Roughness 0.52
+                    Metallic 0.12
+                    "Alpha Mode" 1
+                }
+            }
+        }
+    }
+}

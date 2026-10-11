@@ -76,6 +76,37 @@ behavior VfxChecks {
         return found
     }
 
+    function RowInstances(x: number, y: number) -> (count: int) {
+        count = 0
+        fields := find_entities_with_component("ParticleField3D")
+        for field in fields {
+            if field != vortex && field != stars && field.ParticleField3D.count > 0 {
+                p := field.Transform3D.position
+                if abs(p.x - x) < 0.01 && abs(p.y - y) < 0.01 {
+                    count += field.ParticleField3D.count
+                    Check(abs(p.z - 10.5) < 0.01, "every clear layer preserves the captured mean block front")
+                    Check(field.Shader.material == "ReactionParticles.Release", "clear fields bind the dedicated release shader before its parameters")
+                    debris_count: int = 96
+                    if world.Session.effects == 1 {
+                        debris_count = 48
+                    }
+                    if field.ParticleField3D.count == debris_count {
+                        Check(!field.ParticleField3D.additive, "heavy fragments use opaque physical geometry")
+                    }
+                }
+            }
+        }
+        return count
+    }
+
+    function Clear(mask: int, amount: int) {
+        record := first.ReactionQueue.write
+        // A deliberately unrelated piece origin catches reconstruction from
+        // the current piece after compaction instead of the immutable mask.
+        Record(first, 9, 1, 999, 777, amount)
+        record.ReactionEvent.detail = mask
+    }
+
     on Tick {
         match (frame) {
             case 8 {
@@ -94,6 +125,7 @@ behavior VfxChecks {
                 Check(packet != world && landing != world, "packet starts at the captured piece and landing shifts exactly six cells")
                 if turn != world && blocked != world {
                     Check(turn.ParticleField3D.count == 48 && blocked.ParticleField3D.count == 12, "turn and rejection use restrained counts")
+                    Check(turn.Shader.material == "ReactionParticles.Cue" && blocked.Shader.material == "ReactionParticles.Cue", "ordinary input keeps its compact contact shader")
                     Check(turn.Transform3D.position.z == 0, "field origin leaves captured front-face depth in the point payload")
                 }
                 if packet != world && landing != world {
@@ -180,6 +212,71 @@ behavior VfxChecks {
             case 62 {
                 Check(ActiveCues() == 0, "quiet confirmation fades finish without replay")
                 Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "pool diagnostics distinguish skips from destructive reuse")
+                world.Session.reduced_motion = false
+            }
+            case 64 {
+                Clear(1 << 18 | 1 << 19 | 1 << 20 | 1 << 21, 4)
+            }
+            case 66 {
+                Check(ActiveCues() == 16, "four cleared rows own four independent layers each")
+                total: int = 0
+                for row in 18..21 {
+                    count := RowInstances(-254, 276 - row * 24)
+                    Check(count == 2656, "each full-effect row owns 320 fracture grains 96 chunks 2048 embers and 192 energy grains")
+                    total += count
+                }
+                Check(total == 10624, "a four-line clear reserves its larger finite celebration budget")
+                Check(CueAt(999, 777) == world, "clear layers never follow the newly spawned piece origin")
+                lights := find_entities_with_component("PointLight")
+                row_lights: int = 0
+                for candidate in lights {
+                    if abs(candidate.Transform.x + 254) < 0.01 {
+                        row_lights += 1
+                        Check(abs(candidate.Transform.y - 12.5) < 0.01, "clear illumination starts just in front of the captured block face")
+                        Check(candidate.PointLight.elevation <= -156 && candidate.PointLight.elevation >= -228, "clear illumination belongs to the cleared rows")
+                    }
+                }
+                Check(row_lights == 4, "every cleared row owns one bounded local light")
+            }
+            case 84 {
+                Check(ActiveCues() == 12, "fracture fronts disappear while chunks embers and energy continue")
+                Check(RowInstances(-254, -228) == 2336, "fracture retirement keeps the full longer-lived row budget")
+            }
+            case 104 {
+                Check(ActiveCues() == 8, "expanding energy retires before the heavier fragments and microembers")
+                Check(RowInstances(-254, -228) == 2144, "debris and ember layers retain independent lifetimes")
+            }
+            case 128 {
+                Check(ActiveCues() == 4, "microembers keep flowing after the heavy fragments expire")
+                Check(RowInstances(-254, -228) == 2048, "the long tail retains thousands of independently evaluated microembers")
+            }
+            case 156 {
+                Check(ActiveCues() == 0, "all clear layers expire before their fixed fields can be reused")
+                world.Session.effects = 1
+                world.Session.mode = 1
+            }
+            case 158 {
+                Clear(1 << 2 | 1 << 20, 2)
+            }
+            case 160 {
+                Check(ActiveCues() == 8, "nonadjacent clear rows receive independent layers in Solo")
+                Check(RowInstances(0, 228) == 1328 && RowInstances(0, -204) == 1328, "reduced effects halves every clear layer without moving its row")
+                Check(CueAt(0, -228) == world, "the row mask never fills an uncleared neighboring row")
+                world.Session.effects = 0
+            }
+            case 162 {
+                Check(ActiveCues() == 8, "effects-off releases the existing long clear tails continuously")
+            }
+            case 166 {
+                Check(ActiveCues() == 0, "effects-off finishes retirement before field reuse")
+                Clear(1 << 21, 1)
+            }
+            case 168 {
+                Check(ActiveCues() == 1 && RowInstances(0, -228) == 8, "effects-off uses one small stationary clear confirmation")
+            }
+            case 180 {
+                Check(ActiveCues() == 0, "quiet row confirmation reaches its normal release endpoint")
+                Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "the multirow celebration and mode changes never overwrite a live field")
                 self.TestReport.done = true
             }
         }

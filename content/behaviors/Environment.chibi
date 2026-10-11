@@ -41,6 +41,7 @@ behavior Environment {
     cue_point2 := vec3(0, 0, 10.5)
     cue_point3 := vec3(0, 0, 10.5)
     cue_delay := 0
+    cue_depth := 0
 
     on Begin {
         world = get_global_variable("World")
@@ -125,8 +126,8 @@ behavior Environment {
     }
 
     // Patterns: fracture, move edge, tangential turn, soft fall, contact,
-    // row release, hold, blocked edge, descending packets. Each field layers
-    // bright grains, a displaced soft wake and a few ballistic flecks on GPU.
+    // fracture front, hold, blocked edge, descending packets, clear debris,
+    // microembers and expanding energy. These are fixed instanced fields.
     function Cue(pattern: int, x: number, y: number, direction: int, travel: int, strength: number, life: number, hue: number) {
         available := false
         for offset in 0..95 {
@@ -162,7 +163,7 @@ behavior Environment {
                 count = 56
             }
             case 5 {
-                count = 112
+                count = 320
             }
             case 6 {
                 count = 32
@@ -173,6 +174,15 @@ behavior Environment {
             case 8 {
                 count = 112
             }
+            case 9 {
+                count = 96
+            }
+            case 10 {
+                count = 2048
+            }
+            case 11 {
+                count = 192
+            }
         }
         if world.Session.effects == 1 {
             count = max(8, count / 2)
@@ -182,10 +192,15 @@ behavior Environment {
             life = 0.14
             cue_delay = 0
         }
-        field.Transform3D.position = vec3(x, y, 0)
+        field.Transform3D.position = vec3(x, y, cue_depth)
         field.ParticleField3D.count = count
+        field.ParticleField3D.additive = pattern != 9 || quiet
         field.ParticleField3D.seed += 37
         field.ParticleField3D.time = 0
+        field.Shader.material = "ReactionParticles.Cue"
+        if pattern == 5 || pattern >= 9 {
+            field.Shader.material = "ReactionParticles.Release"
+        }
         field.Geometry3D = { primitive: 5, width: 1, height: 1, depth: 0.8 }
         if pattern == 8 && !quiet {
             field.Geometry3D.height = 2.4
@@ -208,6 +223,30 @@ behavior Environment {
         slot = (slot + 1) % 96
     }
 
+    // The immutable row mask survives board collapse. Each row starts at its
+    // captured block front, and owns independent clocks, fragments and light.
+    function ClearRow(center: number, row: int, amount: int, front: number) {
+        row_y := 276 - row * 24
+        cue_point0 = vec3(0, 0, 0)
+        cue_point1 = cue_point0
+        cue_point2 = cue_point0
+        cue_point3 = cue_point0
+        cue_depth = front
+        cue_delay = 0
+        strength := 0.65 + cast<number>(amount) * 0.1
+        Cue(5, center, row_y, 1, 0, strength, 0.24, 0.05)
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            return
+        }
+        cue_delay = 0.035
+        Cue(9, center, row_y, 1, 0, strength, 0.95, 0.25)
+        cue_delay = 0.055
+        Cue(10, center, row_y, 1, 0, strength, 1.4, 0.1)
+        cue_delay = 0.02
+        Cue(11, center, row_y, 1, 0, strength, 0.6, 0.2)
+        Glow(vec3(center, row_y, front + 2), 0.82 + cast<number>(amount) * 0.07, 0, 0.02)
+    }
+
     function BoardEvent(board: entity, record: entity) {
         kind := record.ReactionEvent.kind
         x := record.ReactionEvent.x
@@ -221,6 +260,7 @@ behavior Environment {
         cue_point2 = record.ReactionEvent.point2 - origin
         cue_point3 = record.ReactionEvent.point3 - origin
         cue_delay = 0
+        cue_depth = 0
         if record.ReactionEvent.result == 0 {
             Cue(7, x, y, direction, 0, 0.06, 0.16, 2)
             return
@@ -271,12 +311,12 @@ behavior Environment {
                     center = -254 + board.BoardState.index * 508
                 }
                 mask := record.ReactionEvent.detail
+                front := (record.ReactionEvent.point0.z + record.ReactionEvent.point1.z + record.ReactionEvent.point2.z + record.ReactionEvent.point3.z) * 0.25
                 for row in 0..21 {
                     if (mask >> row & 1) != 0 {
-                        Cue(5, center, 228 - (row - 2) * 24, 1, 0, 0.28 + cast<number>(amount) * 0.06, 0.32, 0.15)
+                        ClearRow(center, row, amount, front)
                     }
                 }
-                Glow(vec3(piece_x, y, 10.5), 0.35 + cast<number>(amount) * 0.08, 0, 0)
                 Push(0.4 + cast<number>(amount) * 0.12, 0.4)
             }
             case 10 {
@@ -303,6 +343,7 @@ behavior Environment {
         cue_point2 = vec3(2, 0, 10.5)
         cue_point3 = vec3(6, 0, 10.5)
         cue_delay = 0
+        cue_depth = 0
         kind := record.ReactionEvent.kind
         if record.ReactionEvent.result == 0 {
             Cue(7, 180, 270, 1, 0, 0.04, 0.16, 2)

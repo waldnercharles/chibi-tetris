@@ -1,8 +1,8 @@
 version 3
 name "ReactionParticles"
 domain "shader-library"
-id_counter 200000
-description "Layered instanced solids at captured block surfaces. Logarithmic burst timing, drag, ballistic contact flecks and compact descending packets share continuous birth and death envelopes."
+id_counter 1000000
+description "Captured 3D contact cues and independent clear releases. Fracture fronts, lit tumbling fragments, flowing microembers and expanding energy use fixed instanced fields with continuous envelopes and analytic drag."
 (array)graphs {
     - kind="event" name="Functions"
     - {
@@ -185,7 +185,7 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - {
                 id 2100
                 type "Behavior Expression"
-                reference_name "motion / (1 + motion * 7)"
+                reference_name "(1 - exp(-7 * motion)) / 7"
                 inputs {
                     motion id=2101 type="float"
                 }
@@ -328,21 +328,6 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
                 }
             }
             - {
-                id 3200
-                type "Behavior Expression"
-                reference_name "vec3((random.x - 0.5) * 236, (random.y - 0.5) * 10, point.z + 0.35) + vec3((random.x - 0.5) * 65 * drag, fleck * (30 * motion - 120 * motion * motion), (random.z - 0.5) * 12 * drag)"
-                inputs {
-                    random id=3201 type="struct" type_name="ShaderVec3"
-                    drag id=3202 type="float"
-                    fleck id=3203 type="float"
-                    motion id=3204 type="float"
-                    point id=3205 type="struct" type_name="ShaderVec3"
-                }
-                outputs {
-                    Result id=3290 type="struct" type_name="ShaderVec3"
-                }
-            }
-            - {
                 id 3300
                 type "Behavior Expression"
                 reference_name "point + edge + (center - point) * drag * 1.2 + vec3(0, 20 * drag, 0)"
@@ -402,7 +387,7 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - {
                 id 3700
                 type "Behavior Expression"
-                reference_name "p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p5 * (1 - step(0.5, abs(pattern - 5))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8)))"
+                reference_name "p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8)))"
                 inputs {
                     pattern id=3701 type="float"
                     p0 id=3702 type="struct" type_name="ShaderVec3"
@@ -410,7 +395,6 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
                     p2 id=3704 type="struct" type_name="ShaderVec3"
                     p3 id=3705 type="struct" type_name="ShaderVec3"
                     p4 id=3706 type="struct" type_name="ShaderVec3"
-                    p5 id=3707 type="struct" type_name="ShaderVec3"
                     p6 id=3708 type="struct" type_name="ShaderVec3"
                     p7 id=3709 type="struct" type_name="ShaderVec3"
                     p8 id=3710 type="struct" type_name="ShaderVec3"
@@ -505,7 +489,6 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - from="1000.Result" to="2900.random"
             - from="1000.Result" to="3000.random"
             - from="1000.Result" to="3100.random"
-            - from="1000.Result" to="3200.random"
             - from="1000.Result" to="3400.random"
             - from="1000.Result" to="3600.random"
             - from="1000.Result" to="3800.random"
@@ -517,7 +500,6 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - from="1200.Result" to="2900.point"
             - from="1200.Result" to="3000.point"
             - from="1200.Result" to="3100.point"
-            - from="1200.Result" to="3200.point"
             - from="1200.Result" to="3300.point"
             - from="1200.Result" to="3400.point"
             - from="1200.Result" to="3600.point"
@@ -538,14 +520,12 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - from="2000.Result" to="2700.motion"
             - from="2000.Result" to="2900.motion"
             - from="2000.Result" to="3100.motion"
-            - from="2000.Result" to="3200.motion"
             - from="2000.Result" to="3400.motion"
             - from="2100.Result" to="2700.drag"
             - from="2100.Result" to="2800.drag"
             - from="2100.Result" to="2900.drag"
             - from="2100.Result" to="3000.drag"
             - from="2100.Result" to="3100.drag"
-            - from="2100.Result" to="3200.drag"
             - from="2100.Result" to="3300.drag"
             - from="2100.Result" to="3400.drag"
             - from="2200.Result" to="2300.edge"
@@ -556,7 +536,6 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - from="2400.Result" to="2900.tangent"
             - from="2500.Result" to="2600.fleck"
             - from="2500.Result" to="3100.fleck"
-            - from="2500.Result" to="3200.fleck"
             - from="2600.Result" to="2900.wake"
             - from="2600.Result" to="3600.wake"
             - from="2600.Result" to="3800.wake"
@@ -566,7 +545,6 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - from="2900.Result" to="3700.p2"
             - from="3000.Result" to="3700.p3"
             - from="3100.Result" to="3700.p4"
-            - from="3200.Result" to="3700.p5"
             - from="3300.Result" to="3700.p6"
             - from="3400.Result" to="3700.p7"
             - from="3500.Result" to="3600.progress"
@@ -577,35 +555,581 @@ description "Layered instanced solids at captured block surfaces. Logarithmic bu
             - from="4000.Result" to="12.Color"
         }
     }
-    - id=10000 kind="function" math_expression="fract(sin(vec3(index * 127.1 + seed, index * 269.5 + seed * 2, index * 311.7 + seed * 3)) * 43758.5453)" expression_mode=1 entry_id=50000
-    - id=10100 kind="function" math_expression="fract(index * 0.25) * 4" expression_mode=1 entry_id=53000
-    - id=10200 kind="function" math_expression="p0 * (1 - step(0.5, cell)) + p1 * (step(0.5, cell) - step(1.5, cell)) + p2 * (step(1.5, cell) - step(2.5, cell)) + p3 * step(2.5, cell)" expression_mode=1 entry_id=56000
-    - id=10300 kind="function" math_expression="(p0 + p1 + p2 + p3) * 0.25" expression_mode=1 entry_id=59000
-    - id=10400 kind="function" math_expression="fract(sin(index * 71.37 + seed * 5) * 19417.345)" expression_mode=1 entry_id=62000
-    - id=10500 kind="function" math_expression="life * 0.26 * (exp(log(65) * quantile) - 1) / 64" expression_mode=1 entry_id=65000
-    - id=10600 kind="function" math_expression="life * (0.56 + random.z * 0.16)" expression_mode=1 entry_id=68000
-    - id=10700 kind="function" math_expression="max(0, age - delay - birth)" expression_mode=1 entry_id=71000
-    - id=10800 kind="function" math_expression="clamp(elapsed / max(duration, 0.001), 0, 1)" expression_mode=1 entry_id=74000
-    - id=10900 kind="function" math_expression="smoothstep(0, min(0.016, duration * 0.16), elapsed) * (1 - smoothstep(duration * 0.28, duration, elapsed)) * fade" expression_mode=1 entry_id=77000
-    - id=11000 kind="function" math_expression="elapsed * (1 - quiet)" expression_mode=1 entry_id=80000
-    - id=11100 kind="function" math_expression="motion / (1 + motion * 7)" expression_mode=1 entry_id=83000
-    - id=11200 kind="function" math_expression="vec3(mix((random.x - 0.5) * 21, (step(0.5, random.z) * 2 - 1) * 10.7, step(0.5, random.y)), mix((step(0.5, random.z) * 2 - 1) * 10.7, (random.x - 0.5) * 21, step(0.5, random.y)), 0.35)" expression_mode=1 entry_id=86000
-    - id=11300 kind="function" math_expression="point - center + vec3(edge.xy * 0.45, 0)" expression_mode=1 entry_id=89000
-    - id=11400 kind="function" math_expression="vec3(-radial.y, radial.x, 0) * -direction / max(length(radial.xy), 1)" expression_mode=1 entry_id=92000
-    - id=11500 kind="function" math_expression="step(0.78, random.y)" expression_mode=1 entry_id=95000
-    - id=11600 kind="function" math_expression="step(0.48, random.y) * (1 - fleck)" expression_mode=1 entry_id=98000
-    - id=11700 kind="function" math_expression="point + edge + vec3((random.x - 0.5) * 100, 25 + random.y * 55, (random.z - 0.5) * 12) * drag - vec3(0, motion * motion * 110, 0)" expression_mode=1 entry_id=101000
-    - id=11800 kind="function" math_expression="point + vec3(-direction * 10.7, (random.y - 0.5) * 19, 0.35) + vec3(-direction * (18 + random.z * 34), (random.y - 0.5) * 12, (random.z - 0.5) * 5) * drag" expression_mode=1 entry_id=104000
-    - id=11900 kind="function" math_expression="point + edge + tangent * ((55 + random.z * 65) * drag - wake * 3) + vec3((random.x - 0.5) * 8 * wake, -motion * motion * 50, (random.z - 0.5) * 4 * wake) * (1 - quiet)" expression_mode=1 entry_id=107000
-    - id=12000 kind="function" math_expression="point + vec3((random.x - 0.5) * 16, -10.7 - 30 * drag, 0.35 + (random.z - 0.5) * drag * 6)" expression_mode=1 entry_id=110000
-    - id=12100 kind="function" math_expression="point + vec3((random.x - 0.5) * 20, -10.7, 0.35) + vec3((random.x - 0.5) * (45 + fleck * 60) * drag, fleck * ((30 + random.z * 45) * motion - 150 * motion * motion), (random.z - 0.5) * (6 + fleck * 12) * drag)" expression_mode=1 entry_id=113000
-    - id=12200 kind="function" math_expression="vec3((random.x - 0.5) * 236, (random.y - 0.5) * 10, point.z + 0.35) + vec3((random.x - 0.5) * 65 * drag, fleck * (30 * motion - 120 * motion * motion), (random.z - 0.5) * 12 * drag)" expression_mode=1 entry_id=116000
-    - id=12300 kind="function" math_expression="point + edge + (center - point) * drag * 1.2 + vec3(0, 20 * drag, 0)" expression_mode=1 entry_id=119000
-    - id=12400 kind="function" math_expression="point + vec3(direction * 10.7, (random.y - 0.5) * 18, 0.35) + vec3(-direction * 16 * drag, -motion * motion * 40, (random.z - 0.5) * drag * 3)" expression_mode=1 entry_id=122000
-    - id=12500 kind="function" math_expression="smoothstep(0, 0.11, max(0, age - delay)) * (1 - quiet)" expression_mode=1 entry_id=125000
-    - id=12600 kind="function" math_expression="point + vec3((random.y - 0.5) * 3, -travel * 24 * progress + min(travel * 24 * progress, 18) * random.z * (0.2 + wake * 0.8), 0.35 + (random.x - 0.5) * 2)" expression_mode=1 entry_id=128000
-    - id=12700 kind="function" math_expression="p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p5 * (1 - step(0.5, abs(pattern - 5))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8)))" expression_mode=1 entry_id=131000
-    - id=12800 kind="function" math_expression="(0.58 + random.z * 0.5 + wake * 1.6) * (0.8 + strength * 0.65) * (1 - phase * 0.3) * envelope" expression_mode=1 entry_id=134000
-    - id=12900 kind="function" math_expression="mix(mix(vec3(0.17, 0.65, 0.88), vec3(0.66, 0.3, 0.9), clamp(hue, 0, 1)), vec3(1.0, 0.34, 0.065), clamp(hue - 1, 0, 1))" expression_mode=1 entry_id=137000
-    - id=13000 kind="function" math_expression="vec4(mix(vec3(1.55, 1.78, 1.95), palette, smoothstep(0, 0.55, phase)) * (0.7 + strength * 0.4), envelope * (0.42 + random.z * 0.18) * (1 - wake * 0.78) * (1 - quiet * 0.35))" expression_mode=1 entry_id=140000
+    - {
+        id 300010
+        kind "function"
+        name "Release"
+        entry_id 300011
+        return_id 300012
+        (array)nodes {
+            - {
+                id 300011
+                type "Function Entry"
+                (array)outputs {
+                    - id=300100 name="Index" type="float" kind="data"
+                    - id=300101 name="Count" type="float" kind="data"
+                    - id=300102 name="Seed" type="float" kind="data"
+                    - id=300103 name="Pattern" type="float" kind="data"
+                    - id=300104 name="Direction" type="float" kind="data"
+                    - id=300105 name="Travel" type="float" kind="data"
+                    - id=300106 name="Strength" type="float" kind="data"
+                    - id=300107 name="Life" type="float" kind="data"
+                    - id=300108 name="Quiet" type="float" kind="data"
+                    - id=300109 name="Hue" type="float" kind="data"
+                    - id=300110 name="Point0" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300111 name="Point1" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300112 name="Point2" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300113 name="Point3" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300114 name="Delay" type="float" kind="data"
+                    - id=300115 name="Fade" type="float" kind="data" default=1.0
+                }
+            }
+            - {
+                id 300012
+                type "Return"
+                (array)inputs {
+                    - id=300200 name="Position" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300201 name="Size" type="float" kind="data"
+                    - id=300202 name="Color" type="struct" type_name="ShaderVec4" kind="data"
+                    - id=300203 name="Scale" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300204 name="Rotation" type="struct" type_name="ShaderVec3" kind="data"
+                    - id=300205 name="Lighting" type="float" kind="data"
+                }
+            }
+            - id=300013 type="Shader Time"
+            - {
+                id 301000
+                type "Behavior Expression"
+                reference_name "fract(sin(vec3(index * 127.1 + seed, index * 269.5 + seed * 2, index * 311.7 + seed * 3)) * 43758.5453)"
+                inputs {
+                    index id=301001 type="float"
+                    seed id=301002 type="float"
+                }
+                outputs {
+                    Result id=301090 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 301400
+                type "Behavior Expression"
+                reference_name "fract(sin(index * 71.37 + seed * 5) * 19417.345)"
+                inputs {
+                    index id=301401 type="float"
+                    seed id=301402 type="float"
+                }
+                outputs {
+                    Result id=301490 type="float"
+                }
+            }
+            - {
+                id 301500
+                type "Behavior Expression"
+                reference_name "mix(life * 0.26 * (exp(log(65) * quantile) - 1) / 64, (abs(source.x) / 118 * 0.04 + quantile * 0.008) * life / 0.24, layers.x)"
+                inputs {
+                    life id=301501 type="float"
+                    quantile id=301502 type="float"
+                    source id=301503 type="struct" type_name="ShaderVec3"
+                    layers id=301504 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Result id=301590 type="float"
+                }
+            }
+            - {
+                id 301600
+                type "Behavior Expression"
+                reference_name "life * (0.56 + random.z * 0.16)"
+                inputs {
+                    life id=301601 type="float"
+                    random id=301602 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=301690 type="float"
+                }
+            }
+            - {
+                id 301700
+                type "Behavior Expression"
+                reference_name "max(0, age - delay - birth)"
+                inputs {
+                    age id=301701 type="float"
+                    delay id=301702 type="float"
+                    birth id=301703 type="float"
+                }
+                outputs {
+                    Result id=301790 type="float"
+                }
+            }
+            - {
+                id 301800
+                type "Behavior Expression"
+                reference_name "clamp(elapsed / max(duration, 0.001), 0, 1)"
+                inputs {
+                    elapsed id=301801 type="float"
+                    duration id=301802 type="float"
+                }
+                outputs {
+                    Result id=301890 type="float"
+                }
+            }
+            - {
+                id 301900
+                type "Behavior Expression"
+                reference_name "smoothstep(0, min(0.016, duration * 0.16), elapsed) * (1 - smoothstep(duration * 0.28, duration, elapsed)) * fade"
+                inputs {
+                    elapsed id=301901 type="float"
+                    duration id=301902 type="float"
+                    fade id=301903 type="float"
+                }
+                outputs {
+                    Result id=301990 type="float"
+                }
+            }
+            - {
+                id 302000
+                type "Behavior Expression"
+                reference_name "elapsed * (1 - quiet)"
+                inputs {
+                    elapsed id=302001 type="float"
+                    quiet id=302002 type="float"
+                }
+                outputs {
+                    Result id=302090 type="float"
+                }
+            }
+            - {
+                id 302500
+                type "Behavior Expression"
+                reference_name "step(0.78, random.y)"
+                inputs {
+                    random id=302501 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=302590 type="float"
+                }
+            }
+            - {
+                id 302600
+                type "Behavior Expression"
+                reference_name "step(0.48, random.y) * (1 - fleck)"
+                inputs {
+                    random id=302601 type="struct" type_name="ShaderVec3"
+                    fleck id=302602 type="float"
+                }
+                outputs {
+                    Result id=302690 type="float"
+                }
+            }
+            - {
+                id 303200
+                type "Behavior Expression"
+                reference_name "source + vec3((random.x - 0.5) * 60, (random.y - 0.5) * 45, 16 + random.z * 24) * drag_time"
+                inputs {
+                    source id=303201 type="struct" type_name="ShaderVec3"
+                    random id=303202 type="struct" type_name="ShaderVec3"
+                    drag_time id=303203 type="float"
+                }
+                outputs {
+                    Result id=303290 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 303700
+                type "Behavior Expression"
+                reference_name "fracture * layers.x + debris * layers.y + embers * layers.z + energy * layers.w"
+                inputs {
+                    fracture id=303701 type="struct" type_name="ShaderVec3"
+                    debris id=303702 type="struct" type_name="ShaderVec3"
+                    embers id=303703 type="struct" type_name="ShaderVec3"
+                    energy id=303704 type="struct" type_name="ShaderVec3"
+                    layers id=303705 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Result id=303790 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 304100
+                type "Behavior Expression"
+                reference_name "vec4(1 - step(0.5, abs(pattern - 5)), 1 - step(0.5, abs(pattern - 9)), 1 - step(0.5, abs(pattern - 10)), 1 - step(0.5, abs(pattern - 11)))"
+                inputs {
+                    pattern id=304101 type="float"
+                }
+                outputs {
+                    Result id=304190 type="struct" type_name="ShaderVec4"
+                }
+            }
+            - {
+                id 304200
+                type "Behavior Expression"
+                reference_name "vec3((fract(index * 0.1) * 10 - 4.5) * 24 + (random.x - 0.5) * 18, (random.y - 0.5) * 18, point.z + 0.65 + (random.z - 0.5) * 0.6)"
+                inputs {
+                    index id=304201 type="float"
+                    random id=304202 type="struct" type_name="ShaderVec3"
+                    point id=304203 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=304290 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 304300
+                type "Behavior Expression"
+                reference_name "4.5 - layers.y * 2.7 - layers.z * 1.4"
+                inputs {
+                    layers id=304301 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Result id=304390 type="float"
+                }
+            }
+            - {
+                id 304400
+                type "Behavior Expression"
+                reference_name "(1 - exp(-drag_rate * motion)) / drag_rate"
+                inputs {
+                    drag_rate id=304401 type="float"
+                    motion id=304402 type="float"
+                }
+                outputs {
+                    Result id=304490 type="float"
+                }
+            }
+            - {
+                id 304500
+                type "Behavior Expression"
+                reference_name "(motion - drag_time) / drag_rate"
+                inputs {
+                    motion id=304501 type="float"
+                    drag_time id=304502 type="float"
+                    drag_rate id=304503 type="float"
+                }
+                outputs {
+                    Result id=304590 type="float"
+                }
+            }
+            - {
+                id 304600
+                type "Behavior Expression"
+                reference_name "(vec3(sin(random.z * 6.283185 + motion * 4.1) - sin(random.z * 6.283185), cos(random.x * 6.283185 + motion * 3.3) - cos(random.x * 6.283185), sin(random.y * 6.283185 + motion * 2.7) - sin(random.y * 6.283185))) * (1 - exp(-3 * motion)) * 9"
+                inputs {
+                    random id=304601 type="struct" type_name="ShaderVec3"
+                    motion id=304602 type="float"
+                }
+                outputs {
+                    Result id=304690 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 304700
+                type "Behavior Expression"
+                reference_name "source + vec3((random.x - 0.5) * 440, 50 + random.y * 100, 20 + random.z * 45) * drag_time - vec3(0, 250 * gravity_time, 0)"
+                inputs {
+                    source id=304701 type="struct" type_name="ShaderVec3"
+                    random id=304702 type="struct" type_name="ShaderVec3"
+                    drag_time id=304703 type="float"
+                    gravity_time id=304704 type="float"
+                }
+                outputs {
+                    Result id=304790 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 304800
+                type "Behavior Expression"
+                reference_name "source + vec3((random.x - 0.5) * 180, 18 + (random.y - 0.5) * 120, 20 + random.z * 70) * drag_time - vec3(0, 18 * gravity_time, 0) + curl"
+                inputs {
+                    source id=304801 type="struct" type_name="ShaderVec3"
+                    random id=304802 type="struct" type_name="ShaderVec3"
+                    drag_time id=304803 type="float"
+                    gravity_time id=304804 type="float"
+                    curl id=304805 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=304890 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 304900
+                type "Behavior Expression"
+                reference_name "index * 6.283185 / max(count, 1) + (random.z - 0.5) * 0.018"
+                inputs {
+                    index id=304901 type="float"
+                    count id=304902 type="float"
+                    random id=304903 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=304990 type="float"
+                }
+            }
+            - {
+                id 305000
+                type "Behavior Expression"
+                reference_name "vec3(cos(angle) * (118 + 350 * drag_time), sin(angle) * (10 + 180 * drag_time), point.z + 0.8 + 60 * drag_time + (random.y - 0.5) * 2)"
+                inputs {
+                    angle id=305001 type="float"
+                    drag_time id=305002 type="float"
+                    point id=305003 type="struct" type_name="ShaderVec3"
+                    random id=305004 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=305090 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 305100
+                type "Behavior Expression"
+                reference_name "(layers.x * (1.25 + random.z * 1.5) + layers.y * (2.2 + random.z * 3.6) + layers.z * (0.45 + random.z * 0.72 + wake * 0.35) + layers.w * (0.55 + random.z * 0.7)) * (1 - phase * 0.24) * envelope"
+                inputs {
+                    layers id=305101 type="struct" type_name="ShaderVec4"
+                    random id=305102 type="struct" type_name="ShaderVec3"
+                    wake id=305103 type="float"
+                    phase id=305104 type="float"
+                    envelope id=305105 type="float"
+                }
+                outputs {
+                    Result id=305190 type="float"
+                }
+            }
+            - {
+                id 305200
+                type "Behavior Expression"
+                reference_name "mix(clear_size, envelope, quiet)"
+                inputs {
+                    clear_size id=305201 type="float"
+                    envelope id=305202 type="float"
+                    quiet id=305203 type="float"
+                }
+                outputs {
+                    Result id=305290 type="float"
+                }
+            }
+            - {
+                id 305300
+                type "Behavior Expression"
+                reference_name "mix(vec3(1.8, 2.25, 2.65), mix(vec3(0.18, 0.82, 1.1), vec3(1.4, 0.42, 0.1), step(0.78, random.y)), smoothstep(0, 0.5, phase)) * (1 + layers.x * 0.5 + layers.w * 0.15)"
+                inputs {
+                    random id=305301 type="struct" type_name="ShaderVec3"
+                    phase id=305302 type="float"
+                    layers id=305303 type="struct" type_name="ShaderVec4"
+                }
+                outputs {
+                    Result id=305390 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 305400
+                type "Behavior Expression"
+                reference_name "vec4(mix(color, mix(vec3(0.12, 0.48, 0.62), vec3(0.55, 0.18, 0.08), random.x), layers.y), envelope * (layers.x * 0.8 + layers.y + layers.z * (0.34 + random.z * 0.26) * (1 - wake * 0.72) + layers.w * 0.58))"
+                inputs {
+                    color id=305401 type="struct" type_name="ShaderVec3"
+                    random id=305402 type="struct" type_name="ShaderVec3"
+                    layers id=305403 type="struct" type_name="ShaderVec4"
+                    envelope id=305404 type="float"
+                    wake id=305405 type="float"
+                }
+                outputs {
+                    Result id=305490 type="struct" type_name="ShaderVec4"
+                }
+            }
+            - {
+                id 305500
+                type "Behavior Expression"
+                reference_name "mix(clear_color, vec4(0.4, 0.8, 1.0, envelope * 0.4), quiet)"
+                inputs {
+                    clear_color id=305501 type="struct" type_name="ShaderVec4"
+                    envelope id=305502 type="float"
+                    quiet id=305503 type="float"
+                }
+                outputs {
+                    Result id=305590 type="struct" type_name="ShaderVec4"
+                }
+            }
+            - {
+                id 305600
+                type "Behavior Expression"
+                reference_name "mix(vec3(1, 1, 1), vec3(2.2, 0.38, 0.6), layers.x * (1 - quiet)) * mix(vec3(1, 1, 1), vec3(1.2 + random.x * 0.8, 0.5 + random.y * 0.55, 0.65 + random.z * 0.55), layers.y * (1 - quiet))"
+                inputs {
+                    random id=305601 type="struct" type_name="ShaderVec3"
+                    layers id=305602 type="struct" type_name="ShaderVec4"
+                    quiet id=305603 type="float"
+                }
+                outputs {
+                    Result id=305690 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 305700
+                type "Behavior Expression"
+                reference_name "vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) * (2.2 + motion * 8) * layers.y * (1 - quiet)"
+                inputs {
+                    random id=305701 type="struct" type_name="ShaderVec3"
+                    motion id=305702 type="float"
+                    layers id=305703 type="struct" type_name="ShaderVec4"
+                    quiet id=305704 type="float"
+                }
+                outputs {
+                    Result id=305790 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 305800
+                type "Behavior Expression"
+                reference_name "(layers.y * 0.85 + layers.z * 0.35) * (1 - quiet)"
+                inputs {
+                    layers id=305801 type="struct" type_name="ShaderVec4"
+                    quiet id=305802 type="float"
+                }
+                outputs {
+                    Result id=305890 type="float"
+                }
+            }
+        }
+        (array)edges {
+            - from="300011.Index" to="301000.index"
+            - from="300011.Index" to="301400.index"
+            - from="300011.Index" to="304200.index"
+            - from="300011.Index" to="304900.index"
+            - from="300011.Count" to="304900.count"
+            - from="300011.Seed" to="301000.seed"
+            - from="300011.Seed" to="301400.seed"
+            - from="300011.Pattern" to="304100.pattern"
+            - from="300011.Life" to="301500.life"
+            - from="300011.Life" to="301600.life"
+            - from="300011.Quiet" to="302000.quiet"
+            - from="300011.Quiet" to="305200.quiet"
+            - from="300011.Quiet" to="305500.quiet"
+            - from="300011.Quiet" to="305600.quiet"
+            - from="300011.Quiet" to="305700.quiet"
+            - from="300011.Quiet" to="305800.quiet"
+            - from="300011.Point0" to="304200.point"
+            - from="300011.Point0" to="305000.point"
+            - from="300011.Delay" to="301700.delay"
+            - from="300011.Fade" to="301900.fade"
+            - from="300013.Value" to="301700.age"
+            - from="301000.Result" to="301600.random"
+            - from="301000.Result" to="302500.random"
+            - from="301000.Result" to="302600.random"
+            - from="301000.Result" to="303200.random"
+            - from="301000.Result" to="304200.random"
+            - from="301000.Result" to="304600.random"
+            - from="301000.Result" to="304700.random"
+            - from="301000.Result" to="304800.random"
+            - from="301000.Result" to="304900.random"
+            - from="301000.Result" to="305000.random"
+            - from="301000.Result" to="305100.random"
+            - from="301000.Result" to="305300.random"
+            - from="301000.Result" to="305400.random"
+            - from="301000.Result" to="305600.random"
+            - from="301000.Result" to="305700.random"
+            - from="301400.Result" to="301500.quantile"
+            - from="301500.Result" to="301700.birth"
+            - from="301600.Result" to="301800.duration"
+            - from="301600.Result" to="301900.duration"
+            - from="301700.Result" to="301800.elapsed"
+            - from="301700.Result" to="301900.elapsed"
+            - from="301700.Result" to="302000.elapsed"
+            - from="301800.Result" to="305100.phase"
+            - from="301800.Result" to="305300.phase"
+            - from="301900.Result" to="305100.envelope"
+            - from="301900.Result" to="305200.envelope"
+            - from="301900.Result" to="305400.envelope"
+            - from="301900.Result" to="305500.envelope"
+            - from="302000.Result" to="304400.motion"
+            - from="302000.Result" to="304500.motion"
+            - from="302000.Result" to="304600.motion"
+            - from="302000.Result" to="305700.motion"
+            - from="302500.Result" to="302600.fleck"
+            - from="302600.Result" to="305100.wake"
+            - from="302600.Result" to="305400.wake"
+            - from="303200.Result" to="303700.fracture"
+            - from="303700.Result" to="300012.Position"
+            - from="304100.Result" to="301500.layers"
+            - from="304100.Result" to="303700.layers"
+            - from="304100.Result" to="304300.layers"
+            - from="304100.Result" to="305100.layers"
+            - from="304100.Result" to="305300.layers"
+            - from="304100.Result" to="305400.layers"
+            - from="304100.Result" to="305600.layers"
+            - from="304100.Result" to="305700.layers"
+            - from="304100.Result" to="305800.layers"
+            - from="304200.Result" to="301500.source"
+            - from="304200.Result" to="303200.source"
+            - from="304200.Result" to="304700.source"
+            - from="304200.Result" to="304800.source"
+            - from="304300.Result" to="304400.drag_rate"
+            - from="304300.Result" to="304500.drag_rate"
+            - from="304400.Result" to="303200.drag_time"
+            - from="304400.Result" to="304500.drag_time"
+            - from="304400.Result" to="304700.drag_time"
+            - from="304400.Result" to="304800.drag_time"
+            - from="304400.Result" to="305000.drag_time"
+            - from="304500.Result" to="304700.gravity_time"
+            - from="304500.Result" to="304800.gravity_time"
+            - from="304600.Result" to="304800.curl"
+            - from="304700.Result" to="303700.debris"
+            - from="304800.Result" to="303700.embers"
+            - from="304900.Result" to="305000.angle"
+            - from="305000.Result" to="303700.energy"
+            - from="305100.Result" to="305200.clear_size"
+            - from="305200.Result" to="300012.Size"
+            - from="305300.Result" to="305400.color"
+            - from="305400.Result" to="305500.clear_color"
+            - from="305500.Result" to="300012.Color"
+            - from="305600.Result" to="300012.Scale"
+            - from="305700.Result" to="300012.Rotation"
+            - from="305800.Result" to="300012.Lighting"
+        }
+    }
+    - id=500000 kind="function" math_expression="fract(sin(vec3(index * 127.1 + seed, index * 269.5 + seed * 2, index * 311.7 + seed * 3)) * 43758.5453)" expression_mode=1 entry_id=600000
+    - id=500100 kind="function" math_expression="fract(index * 0.25) * 4" expression_mode=1 entry_id=604000
+    - id=500200 kind="function" math_expression="p0 * (1 - step(0.5, cell)) + p1 * (step(0.5, cell) - step(1.5, cell)) + p2 * (step(1.5, cell) - step(2.5, cell)) + p3 * step(2.5, cell)" expression_mode=1 entry_id=608000
+    - id=500300 kind="function" math_expression="(p0 + p1 + p2 + p3) * 0.25" expression_mode=1 entry_id=612000
+    - id=500400 kind="function" math_expression="fract(sin(index * 71.37 + seed * 5) * 19417.345)" expression_mode=1 entry_id=616000
+    - id=500500 kind="function" math_expression="life * 0.26 * (exp(log(65) * quantile) - 1) / 64" expression_mode=1 entry_id=620000
+    - id=500600 kind="function" math_expression="life * (0.56 + random.z * 0.16)" expression_mode=1 entry_id=624000
+    - id=500700 kind="function" math_expression="max(0, age - delay - birth)" expression_mode=1 entry_id=628000
+    - id=500800 kind="function" math_expression="clamp(elapsed / max(duration, 0.001), 0, 1)" expression_mode=1 entry_id=632000
+    - id=500900 kind="function" math_expression="smoothstep(0, min(0.016, duration * 0.16), elapsed) * (1 - smoothstep(duration * 0.28, duration, elapsed)) * fade" expression_mode=1 entry_id=636000
+    - id=501000 kind="function" math_expression="elapsed * (1 - quiet)" expression_mode=1 entry_id=640000
+    - id=501100 kind="function" math_expression="(1 - exp(-7 * motion)) / 7" expression_mode=1 entry_id=644000
+    - id=501200 kind="function" math_expression="vec3(mix((random.x - 0.5) * 21, (step(0.5, random.z) * 2 - 1) * 10.7, step(0.5, random.y)), mix((step(0.5, random.z) * 2 - 1) * 10.7, (random.x - 0.5) * 21, step(0.5, random.y)), 0.35)" expression_mode=1 entry_id=648000
+    - id=501300 kind="function" math_expression="point - center + vec3(edge.xy * 0.45, 0)" expression_mode=1 entry_id=652000
+    - id=501400 kind="function" math_expression="vec3(-radial.y, radial.x, 0) * -direction / max(length(radial.xy), 1)" expression_mode=1 entry_id=656000
+    - id=501500 kind="function" math_expression="step(0.78, random.y)" expression_mode=1 entry_id=660000
+    - id=501600 kind="function" math_expression="step(0.48, random.y) * (1 - fleck)" expression_mode=1 entry_id=664000
+    - id=501700 kind="function" math_expression="point + edge + vec3((random.x - 0.5) * 100, 25 + random.y * 55, (random.z - 0.5) * 12) * drag - vec3(0, motion * motion * 110, 0)" expression_mode=1 entry_id=668000
+    - id=501800 kind="function" math_expression="point + vec3(-direction * 10.7, (random.y - 0.5) * 19, 0.35) + vec3(-direction * (18 + random.z * 34), (random.y - 0.5) * 12, (random.z - 0.5) * 5) * drag" expression_mode=1 entry_id=672000
+    - id=501900 kind="function" math_expression="point + edge + tangent * ((55 + random.z * 65) * drag - wake * 3) + vec3((random.x - 0.5) * 8 * wake, -motion * motion * 50, (random.z - 0.5) * 4 * wake) * (1 - quiet)" expression_mode=1 entry_id=676000
+    - id=502000 kind="function" math_expression="point + vec3((random.x - 0.5) * 16, -10.7 - 30 * drag, 0.35 + (random.z - 0.5) * drag * 6)" expression_mode=1 entry_id=680000
+    - id=502100 kind="function" math_expression="point + vec3((random.x - 0.5) * 20, -10.7, 0.35) + vec3((random.x - 0.5) * (45 + fleck * 60) * drag, fleck * ((30 + random.z * 45) * motion - 150 * motion * motion), (random.z - 0.5) * (6 + fleck * 12) * drag)" expression_mode=1 entry_id=684000
+    - id=502200 kind="function" math_expression="point + edge + (center - point) * drag * 1.2 + vec3(0, 20 * drag, 0)" expression_mode=1 entry_id=688000
+    - id=502300 kind="function" math_expression="point + vec3(direction * 10.7, (random.y - 0.5) * 18, 0.35) + vec3(-direction * 16 * drag, -motion * motion * 40, (random.z - 0.5) * drag * 3)" expression_mode=1 entry_id=692000
+    - id=502400 kind="function" math_expression="smoothstep(0, 0.11, max(0, age - delay)) * (1 - quiet)" expression_mode=1 entry_id=696000
+    - id=502500 kind="function" math_expression="point + vec3((random.y - 0.5) * 3, -travel * 24 * progress + min(travel * 24 * progress, 18) * random.z * (0.2 + wake * 0.8), 0.35 + (random.x - 0.5) * 2)" expression_mode=1 entry_id=700000
+    - id=502600 kind="function" math_expression="p0 * (1 - step(0.5, abs(pattern))) + p1 * (1 - step(0.5, abs(pattern - 1))) + p2 * (1 - step(0.5, abs(pattern - 2))) + p3 * (1 - step(0.5, abs(pattern - 3))) + p4 * (1 - step(0.5, abs(pattern - 4))) + p6 * (1 - step(0.5, abs(pattern - 6))) + p7 * (1 - step(0.5, abs(pattern - 7))) + p8 * (1 - step(0.5, abs(pattern - 8)))" expression_mode=1 entry_id=704000
+    - id=502700 kind="function" math_expression="(0.58 + random.z * 0.5 + wake * 1.6) * (0.8 + strength * 0.65) * (1 - phase * 0.3) * envelope" expression_mode=1 entry_id=708000
+    - id=502800 kind="function" math_expression="mix(mix(vec3(0.17, 0.65, 0.88), vec3(0.66, 0.3, 0.9), clamp(hue, 0, 1)), vec3(1.0, 0.34, 0.065), clamp(hue - 1, 0, 1))" expression_mode=1 entry_id=712000
+    - id=502900 kind="function" math_expression="vec4(mix(vec3(1.55, 1.78, 1.95), palette, smoothstep(0, 0.55, phase)) * (0.7 + strength * 0.4), envelope * (0.42 + random.z * 0.18) * (1 - wake * 0.78) * (1 - quiet * 0.35))" expression_mode=1 entry_id=716000
+    - id=503000 kind="function" math_expression="mix(life * 0.26 * (exp(log(65) * quantile) - 1) / 64, (abs(source.x) / 118 * 0.04 + quantile * 0.008) * life / 0.24, layers.x)" expression_mode=1 entry_id=720000
+    - id=503100 kind="function" math_expression="source + vec3((random.x - 0.5) * 60, (random.y - 0.5) * 45, 16 + random.z * 24) * drag_time" expression_mode=1 entry_id=724000
+    - id=503200 kind="function" math_expression="fracture * layers.x + debris * layers.y + embers * layers.z + energy * layers.w" expression_mode=1 entry_id=728000
+    - id=503300 kind="function" math_expression="vec4(1 - step(0.5, abs(pattern - 5)), 1 - step(0.5, abs(pattern - 9)), 1 - step(0.5, abs(pattern - 10)), 1 - step(0.5, abs(pattern - 11)))" expression_mode=1 entry_id=732000
+    - id=503400 kind="function" math_expression="vec3((fract(index * 0.1) * 10 - 4.5) * 24 + (random.x - 0.5) * 18, (random.y - 0.5) * 18, point.z + 0.65 + (random.z - 0.5) * 0.6)" expression_mode=1 entry_id=736000
+    - id=503500 kind="function" math_expression="4.5 - layers.y * 2.7 - layers.z * 1.4" expression_mode=1 entry_id=740000
+    - id=503600 kind="function" math_expression="(1 - exp(-drag_rate * motion)) / drag_rate" expression_mode=1 entry_id=744000
+    - id=503700 kind="function" math_expression="(motion - drag_time) / drag_rate" expression_mode=1 entry_id=748000
+    - id=503800 kind="function" math_expression="(vec3(sin(random.z * 6.283185 + motion * 4.1) - sin(random.z * 6.283185), cos(random.x * 6.283185 + motion * 3.3) - cos(random.x * 6.283185), sin(random.y * 6.283185 + motion * 2.7) - sin(random.y * 6.283185))) * (1 - exp(-3 * motion)) * 9" expression_mode=1 entry_id=752000
+    - id=503900 kind="function" math_expression="source + vec3((random.x - 0.5) * 440, 50 + random.y * 100, 20 + random.z * 45) * drag_time - vec3(0, 250 * gravity_time, 0)" expression_mode=1 entry_id=756000
+    - id=504000 kind="function" math_expression="source + vec3((random.x - 0.5) * 180, 18 + (random.y - 0.5) * 120, 20 + random.z * 70) * drag_time - vec3(0, 18 * gravity_time, 0) + curl" expression_mode=1 entry_id=760000
+    - id=504100 kind="function" math_expression="index * 6.283185 / max(count, 1) + (random.z - 0.5) * 0.018" expression_mode=1 entry_id=764000
+    - id=504200 kind="function" math_expression="vec3(cos(angle) * (118 + 350 * drag_time), sin(angle) * (10 + 180 * drag_time), point.z + 0.8 + 60 * drag_time + (random.y - 0.5) * 2)" expression_mode=1 entry_id=768000
+    - id=504300 kind="function" math_expression="(layers.x * (1.25 + random.z * 1.5) + layers.y * (2.2 + random.z * 3.6) + layers.z * (0.45 + random.z * 0.72 + wake * 0.35) + layers.w * (0.55 + random.z * 0.7)) * (1 - phase * 0.24) * envelope" expression_mode=1 entry_id=772000
+    - id=504400 kind="function" math_expression="mix(clear_size, envelope, quiet)" expression_mode=1 entry_id=776000
+    - id=504500 kind="function" math_expression="mix(vec3(1.8, 2.25, 2.65), mix(vec3(0.18, 0.82, 1.1), vec3(1.4, 0.42, 0.1), step(0.78, random.y)), smoothstep(0, 0.5, phase)) * (1 + layers.x * 0.5 + layers.w * 0.15)" expression_mode=1 entry_id=780000
+    - id=504600 kind="function" math_expression="vec4(mix(color, mix(vec3(0.12, 0.48, 0.62), vec3(0.55, 0.18, 0.08), random.x), layers.y), envelope * (layers.x * 0.8 + layers.y + layers.z * (0.34 + random.z * 0.26) * (1 - wake * 0.72) + layers.w * 0.58))" expression_mode=1 entry_id=784000
+    - id=504700 kind="function" math_expression="mix(clear_color, vec4(0.4, 0.8, 1.0, envelope * 0.4), quiet)" expression_mode=1 entry_id=788000
+    - id=504800 kind="function" math_expression="mix(vec3(1, 1, 1), vec3(2.2, 0.38, 0.6), layers.x * (1 - quiet)) * mix(vec3(1, 1, 1), vec3(1.2 + random.x * 0.8, 0.5 + random.y * 0.55, 0.65 + random.z * 0.55), layers.y * (1 - quiet))" expression_mode=1 entry_id=792000
+    - id=504900 kind="function" math_expression="vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) * (2.2 + motion * 8) * layers.y * (1 - quiet)" expression_mode=1 entry_id=796000
+    - id=505000 kind="function" math_expression="(layers.y * 0.85 + layers.z * 0.35) * (1 - quiet)" expression_mode=1 entry_id=800000
 }

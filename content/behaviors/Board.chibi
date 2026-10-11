@@ -1,9 +1,10 @@
 behavior Board {
     world: entity
     tiles: entity[] = []
+    settled_tiles: entity[] = []
+    preview_tiles: entity[] = []
     grid: int[] = []
     queue: int[] = []
-    clear_rows: int[] = []
     seed: int64 = 1
     seen_run: int = -1
     seen_rescue: int = 0
@@ -24,7 +25,6 @@ behavior Board {
     repeat_direction: int = 0
     repeat_clock := 0
     next_repeat := 0
-    flash := 0
     visible := false
     old_mode: int = -1
     old_screen: int = 0
@@ -34,15 +34,21 @@ behavior Board {
     piece_dirty := true
     preview_dirty := true
     motion_dirty := false
+    finish_dirty := false
     origin := -120
     style_clock := 0
     music_clock := 0
+    finish_clock := 0
     drawn_style := -1
     style := 0
     block_depth := 0.6
     block_roughness := 0.24
     block_metallic := 0.18
     block_emission := 0.16
+    block_opacity := 0.965
+    base_finish: CF_V3 = { x: 0.24, y: 0.18, z: 0.16 }
+    base_opacity := 0.965
+    finish_signal: CF_V3 = { x: 0, y: 0, z: 0 }
     block_mesh := "content/meshes/Block.mesh"
     music_lift := 0
     music_scale := 0
@@ -112,7 +118,6 @@ behavior Board {
         ReactionRules.Initialize(self, seen_run)
         grid = Rules.Empty()
         queue = []
-        clear_rows = []
         seed = cast<int64>(world.Session.seed) % 2147483646
         if seed < 0 {
             seed = -seed
@@ -124,7 +129,6 @@ behavior Board {
         soft_held = false
         repeat_direction = 0
         repeat_clock = 0
-        flash = 0
         seen_rescue = world.Session.rescue1
         if self.BoardState.index == 1 {
             seen_rescue = world.Session.rescue2
@@ -155,8 +159,6 @@ behavior Board {
         self.BoardState.topout = false
         self.BoardState.combo = -1
         hold_used = false
-        flash = 0
-        clear_rows = []
         stack_dirty = true
         preview_dirty = true
         SpawnPiece(current)
@@ -234,7 +236,7 @@ behavior Board {
         Impact()
         spin := Rules.Spin(grid, current, rotation, column, row, rotated, last_kick)
         any_visible := Rules.Place(grid, current, rotation, column, row)
-        clear_rows = Rules.FullRows(grid)
+        clear_rows := Rules.FullRows(grid)
         count := length(clear_rows)
         Emit(8, 1, 0, spin, current)
         Rules.Award(self, count, spin)
@@ -248,10 +250,6 @@ behavior Board {
                 Emit(10, 1, 0, self.BoardState.combo, mask)
             }
             Rules.Collapse(grid, clear_rows)
-            flash = 0.14
-            if world.Session.reduced_motion || world.Session.effects == 0 {
-                flash = 0
-            }
             match (count) {
                 case 1 {
                     play_sound("clear1", 0.42)
@@ -507,15 +505,26 @@ behavior Board {
         tile.RenderState.hidden = true
     }
 
+    function Finish(tile: entity, active: bool) {
+        emission := block_emission
+        if active {
+            emission += 0.12 + music_scale * 1.5
+        }
+        // The coat changes alpha; the mesh's inner BlockCore always writes depth.
+        alpha := cast<uint>(cast<int>(floor(block_opacity * 255)))
+        tile.Material.scene = (tile.Material.scene & 4294967040) | alpha
+        tile.Material.emission_intensity = emission
+        set_material_parameter(tile, "Opacity", block_opacity)
+        set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
+    }
+
     function Tile(slot: int, x: number, y: number, size: number, color: uint, ghost: bool) {
         tile := get(tiles, slot)
         depth := size * block_depth
         z := 0
-        emission := block_emission
         scale := vec3(1, 1, 1)
         if slot >= 200 && slot < 204 {
             z = 3 + music_lift
-            emission += 0.12 + music_scale * 1.5
             scale = vec3(1 + music_scale * 0.25, 1 - music_scale * 0.4, 1 + music_scale)
         }
         tile.RenderState.hidden = false
@@ -524,7 +533,6 @@ behavior Board {
         tile.Geometry3D = { width: size, height: size, depth: depth }
         tile.Material.scene = color
         tile.Material.emission_color = color
-        tile.Material.emission_intensity = emission
         if ghost {
             tile.Geometry3D.primitive = 8
             tile.Geometry3D.depth = 1.2
@@ -538,10 +546,11 @@ behavior Board {
         red := floor(rgba / 16777216)
         green := floor(rgba / 65536) - red * 256
         blue := floor(rgba / 256) - floor(rgba / 65536) * 256
-        tint := vec3(red / 255, green / 255, blue / 255)
+        // A spent hold preview dims its hue while retaining a solid body.
+        brightness := 0.4 + 0.6 * (rgba - floor(rgba / 256) * 256) / 255
+        tint := vec3(red / 255, green / 255, blue / 255) * brightness
         set_material_parameter(tile, "Tint", tint)
-        set_material_parameter(tile, "Opacity", (rgba - floor(rgba / 256) * 256) / 255)
-        set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
+        Finish(tile, slot >= 200 && slot < 204)
     }
 
     function StyleWeight(index: number) -> (weight: number) {
@@ -562,9 +571,8 @@ behavior Board {
                 dune := StyleWeight(2)
                 orbit := StyleWeight(3)
                 block_depth = aurora * 0.6 + petal * 0.82 + dune * 0.42 + orbit * 0.74
-                block_roughness = aurora * 0.24 + petal * 0.38 + dune * 0.65 + orbit * 0.18
-                block_metallic = aurora * 0.18 + petal * 0.48 + dune * 0.08 + orbit * 0.62
-                block_emission = aurora * 0.16 + petal * 0.11 + dune * 0.08 + orbit * 0.2
+                base_finish = vec3(aurora * 0.24 + petal * 0.38 + dune * 0.65 + orbit * 0.18, aurora * 0.18 + petal * 0.48 + dune * 0.08 + orbit * 0.62, aurora * 0.16 + petal * 0.11 + dune * 0.08 + orbit * 0.2)
+                base_opacity = aurora * 0.965 + petal * 0.975 + dune * 0.99 + orbit * 0.95
                 block_mesh = "content/meshes/Block.mesh"
                 match (cast<int>(floor(style + 0.5)) % 4) {
                     case 1 {
@@ -581,16 +589,30 @@ behavior Board {
                 stack_dirty = true
                 piece_dirty = true
                 preview_dirty = true
+                UpdateFinish()
             }
         }
         quiet := world.Session.reduced_motion || world.Session.effects == 0
         if quiet {
+            if finish_signal.x + finish_signal.y + finish_signal.z > 0 {
+                finish_signal = vec3(0, 0, 0)
+                UpdateFinish()
+            }
             if music_lift != 0 || music_scale != 0 {
                 music_lift = 0
                 music_scale = 0
                 motion_dirty = true
             }
             return
+        }
+        if world.Session.screen == 1 {
+            finish_clock += seconds
+            if finish_clock >= 0.125 {
+                signal := vec3(clamp(world.VisualState.bass, 0, 1), clamp(world.VisualState.energy * 0.6 + world.VisualState.mid * 0.4, 0, 1), clamp(world.VisualState.treble, 0, 1))
+                finish_signal += (signal - finish_signal) * (1 - exp(-min(finish_clock, 0.25) * 6))
+                finish_clock = 0
+                UpdateFinish()
+            }
         }
         if world.Session.screen != 1 || music_clock < 0.033333333 {
             return
@@ -601,6 +623,32 @@ behavior Board {
         music_lift += (pulse * 2.6 - music_lift) * (1 - exp(-elapsed * 18))
         music_scale += (pulse * 0.075 - music_scale) * (1 - exp(-elapsed * 18))
         motion_dirty = true
+    }
+
+    function UpdateFinish() {
+        roughness := clamp(base_finish.x - finish_signal.y * 0.08 + finish_signal.z * 0.035, 0.14, 0.7)
+        metallic := clamp(base_finish.y + finish_signal.x * 0.07 + finish_signal.z * 0.04, 0, 0.72)
+        emission := base_finish.z + finish_signal.y * 0.05 + finish_signal.x * 0.025
+        opacity := clamp(base_opacity + finish_signal.x * 0.015 - finish_signal.z * 0.01, 0.94, 1)
+        if abs(roughness - block_roughness) + abs(metallic - block_metallic) + abs(emission - block_emission) + abs(opacity - block_opacity) < 0.0001 {
+            return
+        }
+        block_roughness = roughness
+        block_metallic = metallic
+        block_emission = emission
+        block_opacity = opacity
+        finish_dirty = true
+    }
+
+    // Eight finish updates per second touch visible meshes, without grid or landing queries.
+    function FinishStillBlocks() {
+        for tile in settled_tiles {
+            Finish(tile, false)
+        }
+        for tile in preview_tiles {
+            Finish(tile, false)
+        }
+        finish_dirty = false
     }
 
     // Music updates four transforms. Landing queries and the settled grid stay idle.
@@ -614,27 +662,23 @@ behavior Board {
             position.z = 3 + music_lift
             tile.Transform3D.position = position
             tile.Transform3D.scale = vec3(1 + music_scale * 0.25, 1 - music_scale * 0.4, 1 + music_scale)
-            emission := block_emission + 0.12 + music_scale * 1.5
-            tile.Material.emission_intensity = emission
-            set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
+            Finish(tile, true)
         }
         motion_dirty = false
     }
 
     function DrawStack() {
+        settled_tiles = []
         for (i in 0..199) {
             y := i / 10 + 2
             kind := get(grid, i + 20)
-            clearing := flash > 0 && contains(clear_rows, y)
-            if kind == 0 && !clearing {
+            if kind == 0 {
                 Hide(i)
                 continue
             }
             color := Pieces.Color(kind)
-            if clearing {
-                color = 3824283391
-            }
             Tile(i, origin + i % 10 * 24 + 12, -232 + (y - 2) * 24 + 12, 22, color, false)
+            settled_tiles = array_add(settled_tiles, get(tiles, i))
         }
         stack_dirty = false
     }
@@ -678,11 +722,13 @@ behavior Board {
                     color = (color & 4294967040) | 100
                 }
                 Tile(first + i, x + (cell.x - center_x) * 18, y + (cell.y - center_y) * 18, 16, color, false)
+                preview_tiles = array_add(preview_tiles, get(tiles, first + i))
             }
         }
     }
 
     function DrawPreviews() {
+        preview_tiles = []
         if world.Session.screen != 1 {
             for i in 208..231 {
                 Hide(i)
@@ -738,11 +784,14 @@ behavior Board {
         if piece_dirty {
             DrawPiece()
         }
-        if motion_dirty {
+        if motion_dirty || finish_dirty {
             AnimatePiece()
         }
         if preview_dirty {
             DrawPreviews()
+        }
+        if finish_dirty {
+            FinishStillBlocks()
         }
     }
 
@@ -761,12 +810,6 @@ behavior Board {
         if request != seen_rescue {
             seen_rescue = request
             Rescue()
-        }
-        if flash > 0 {
-            flash -= min(dt, 0.1)
-            if flash <= 0 {
-                stack_dirty = true
-            }
         }
         level := 1 + self.BoardState.lines / 10
         if world.Session.mode == 0 {

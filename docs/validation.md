@@ -1,8 +1,35 @@
 # Validation record
 
+## Cosmic materials and lit particles — October 11, 2026
+
+Opaque graphite cores now sit beneath the colored block coats. Music changes coat opacity, roughness, metallic response and emission on both active and settled blocks. Four GPU compositions—nebula, accretion disk, cellular bloom and stellar current—morph over ten seconds; particle scale, rotation, opacity and light response vary with the composition. Surrounding solid facets were removed. Clear effects emit 2,656 instances per row across four independently timed layers.
+
+The reviewed engine is `287ff20417e43ca142d2a43807ce538a8287c098`. Particle functions may append Scale, Rotation and Lighting results to the existing three-output contract. Their normals account for nonuniform instance and entity transforms. Direct and hemisphere lights are evaluated per vertex; particles do not receive shadows, occlusion, collisions or fluid simulation. Motion uses authored analytic drag, gravity and curved flow. No project migration is needed for these optional outputs.
+
+| Check | Result |
+| --- | --- |
+| Affected game consumers, motion, stage and VFX | Four C cases / 35 dispatcher assertions, plus authored reports including 56 motion, 46 stage and 141 VFX checks; 8.316 seconds under one 60-second deadline. |
+| Project validation and formatting | 107 assets, zero errors/warnings; production and fixture sources formatted. |
+| Engine `make test-native` | 280 cases / 178,388 assertions; 10.412 seconds. |
+| Engine `make test-language-all` | 178 cases / 10,510 assertions; 0.934 seconds. |
+| Engine `make test-tools` | 92 cases / 22,540 assertions; 21.750 seconds. |
+| Packaged macOS startup | Four hidden frames, three simulation steps; 1.721 seconds under a 30-second deadline. |
+
+The new particle preparation and actual WGSL/Metal compilation cases failed against the previous implementation. Restoring the former Board fails two music/material checks; restoring the previous stage director fails three facet/transition checks. Independent review covered shader classification, uniform lifetimes, particle-only light binding, inverse-transpose normals, opaque-core ordering and the cached block-finish updates.
+
+A separate, independently reviewed `--particle-depth` GPU check passed four 64 × 64 pixel comparisons in 2.094 seconds. Both particle depths and both cache orders composite correctly through the existing shared draw queue. The suspected ordering issue was disproved; no extra particle pass was added. The harness used a hidden Cocoa window but does not report its graphics backend or device.
+
+The game-wide `make test` did **not** complete: the dispatcher reached its 58-second internal deadline, including a retry without competing builds. The focused affected checks above are the available current evidence; the earlier 24-case result below belongs to the previous revision. The incomplete aggregate was not reconstructed through partitions. Full and quarantined engine/render/Studio suites remain unexecuted.
+
+A separate generic `LitRainField` rendered 128 lit, stretched and rotated drops with no opaque scene geometry. The hidden Metal game preview used 60 simulation frames, two warmup frames and one saved 640 × 360 frame: 147,784 particles and an 11.696 ms saved frame. A second preview replayed the existing six-piece route against the production scene (only bypassing music choice), clearing two rows and rendering 153,352 particles. Its saved frame took 72.950 ms while packaging work was also running. These individual frame observations are not sustained native FPS. The [clear image](screenshots/cosmic-evolution.png) comes from that actual route.
+
+The final local web export uses the clean pinned SDK and WebGPU player. At 2560 × 1440 (1280 × 720 CSS, DPR 2), 120 warmup callbacks followed by a 2.5-second sample measured 58.81 FPS, 16.7 ms median and 24.9 ms 95th percentile with all 147,456 background particles. Movement, rotation, hold, hard drop, independent Duet drops and pause were exercised. The scene evolved to another composition during play. Console output contained existing font information messages, with no observed product errors. These short observations do not establish prolonged or cross-device performance. External service authentication and completed music capture were not added or verified by this visual revision.
+
+A disposable copy of the production scene emitted three synthetic four-row releases through the real reaction queue at two, four and six seconds. At 2560 × 1440, the eight-second browser sample measured 58.94 FPS, 16.7 ms median, 24.8 ms 95th percentile, 25.1 ms 99th percentile and 25.9 ms maximum. Each burst adds 10,624 instances and four lights to the full background. A separate visual observation confirmed the release layers were on screen; no product errors were observed. The scratch workload and export are removed after use; they are not shipped.
+
 ## Layered reactions and evolving scenes — October 11, 2026
 
-The current revision replaces oversized action outlines with particles born on the four captured block faces, compact descending packets, delayed landing compression and short local lights. Births follow a logarithmic cumulative distribution; size and alpha have continuous attack, release and retirement envelopes. A saturated pool preserves live effects. Down taps advance one row, held Down repeats at ten cells per second, and faster automatic gravity remains authoritative.
+The preceding revision replaces oversized action outlines with particles born on the four captured block faces, compact descending packets, delayed landing compression and short local lights. Births follow a logarithmic cumulative distribution; size and alpha have continuous attack, release and retirement envelopes. A saturated pool preserves live effects. Down taps advance one row, held Down repeats at ten cells per second, and faster automatic gravity remains authoritative.
 
 Four seeded scene families change particle formation, block finish and lighting together. Scene transitions follow chapters and measured musical changes, with heuristic phrase and track-boundary detection rather than provider metadata. The opening flow has two actions: Enter Play or M Connect audio. Connection readiness no longer depends on non-silent samples. Reconnection preserves the previous play, pause or result screen.
 

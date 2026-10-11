@@ -1,8 +1,8 @@
 # Stillwater
 
-A falling-block game authored in Chibi. A six-chapter journey unfolds through aurora curtains, petal shells, dune ribbons and orbital lattices. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
+A falling-block game authored in Chibi. A six-chapter journey unfolds through nebula clouds, accretion disks, cellular blooms and stellar currents. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
 
-![Stillwater Journey](docs/screenshots/layered-journey.png)
+![Stillwater Journey](docs/screenshots/cosmic-evolution.png)
 
 - Journey starts at your highest unlocked chapter after you choose music. Each of its six chapters takes twelve lines.
 - Endless increases the falling speed as you clear lines.

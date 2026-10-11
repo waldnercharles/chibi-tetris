@@ -1,89 +1,110 @@
 # Reaction effects
 
-`Environment.chibi` consumes the captured reaction queue. `ReactionParticles.Cue`
-evaluates each grain on the GPU. The geometry is an instanced octahedron with
-real depth testing. There are no sprites, screen overlays or full-column drop
-ribbons. The renderer uses source-alpha additive blending and keeps depth
-writes off for the grains; opaque blocks and the board still occlude them.
+`Environment.chibi` consumes immutable reaction records. `ReactionParticles.Cue`
+evaluates ordinary contact grains; `ReactionParticles.Release` evaluates clear
+layers. Both evaluate solid octahedra on the GPU from their index, seed and age. The fixed
+pool holds 96 fields and eight local lights. No grain creates an entity or runs
+a behavior, and a visible field or light is never moved to a newer event.
 
-The effect starts at four occupied cell centers in XY. Each point's Z is the
-front face of the rendered block, including chapter depth and music lift at the
-action. The shader adds only 0.35 world units of clearance. Hard drop captures
-the original cells before lock and translates the landing origin by
-`-24 * traveled_rows`. Rotation derives each cell's tangential velocity from
-the four-cell center, so the small spark displacement follows the actual piece.
+Ordinary input starts on the four captured occupied cell fronts. Their depth
+includes the block finish, chapter depth and music lift at the action. Movement
+uses sixteen grains, turns forty-eight, soft fall twenty, hold thirty-two and
+rejection twelve. These remain brief local cues. A traveled hard drop uses 112
+descending grains, followed after 95 ms by 56 landing grains and a local light.
+The compact packet covers at most eighteen units of its path at a time.
 
-## Layers
+## A cleared row
 
-All layers use procedural 3D solids; no texture files are needed. Their shader supplies the flare-like hot core, stable grain variation and soft low-opacity wake. Depth testing places them behind nearer solids, while source-alpha additive blending accumulates their light. The layers below are ordered from the readable contact cue to the surrounding energy.
+Every original row in the recorded mask gets its own four-layer release. The
+field origin is the board center in X, `276 - 24 * row` in Y, and the average
+captured block front in Z. It never reads the new piece position or compacted
+grid. Particle seeds place grains across all ten original block faces, with
+eighteen units of scatter inside each cell. Four rows create 10,624 instances
+across sixteen fields. The prior release used 112 instances per row.
 
-| Layer | Purpose and procedural material | Motion | Envelope and blending |
-| --- | --- | --- | --- |
-| Contact grains | Small white-hot octahedra identify the local edge; the color cools into pale cyan, restrained violet or amber for rejection. A stable hash varies grain size and brightness. | Movement starts on the trailing cell edge. Turns start on the cell perimeter at 55–120 units/s along the signed tangent. Horizontal movement starts at 18–52 units/s opposite travel. Landing starts on the bottom edge. | 16 ms maximum smooth attack, smooth release after 28% of particle life; source-alpha additive. |
-| Soft wake | About 30% of the grains are larger, dimmer solids. Their low opacity and slight displacement leave a broken haze behind the contact instead of a hard outline. | Drag limits travel. Turn wakes lag the tangent by three units, with at most four units of additional lateral spread. | Same continuous size and alpha envelope; wake alpha is 22% of a bright grain's alpha. |
-| Ballistic flecks | About 22% of landing grains are fine solid fragments. They add weight without covering the board. | Initial upward velocity is 30–75 units/s; acceleration is -300 units/s². Horizontal speed is at most 52.5 units/s before drag. Depth scatter stays close to the block front. | Individually staggered births and deaths; no rigid row-wide ring. |
-| Hard-drop packet | Four compact vertical groups, one per original cell, show direction and distance. Narrow octahedra use 2.4× height. | The packet moves the traveled distance in 110 ms. Its trailing extent is capped at 18 units, less than one cell. | 260 ms field life. The packet never fills the entire path simultaneously. |
-| Landing compression | Bottom-edge grains spread sideways a few units, followed by the soft wake and ballistic flecks. | Begins 95 ms after a traveled hard drop, just before packet arrival. A zero-distance drop begins immediately. | 340 ms field life plus the arrival delay; the logical stack remains in place. |
-| Grounded light | A small cyan light binds a hard-drop contact to the nearby board. | Located below the lowest occupied cell, two units in front of the captured front face. Radius is 94 units at the authored drop strength. | Zero at creation, 25 ms smooth attack, 275 ms smooth release, maximum intensity 0.75. No live light is repositioned. |
+| Layer | Instances per row | Delay / field life | Geometry and motion |
+| --- | ---: | --- | --- |
+| Fracture front | 320 | 0 / 240 ms | Thin bright splinters, 2.2 by 0.38 by 0.6 proportions. A forty-millisecond front sweeps from the row center toward its ends. The short white-cyan core cools into cyan or occasional amber. |
+| Heavy fragments | 96 | 35 / 950 ms | Opaque chunks, 2.2 to 5.8 units before the envelope, with independent uneven proportions and tumbling. Initial X speed reaches 220 units/s, Y starts at 50 to 150 units/s, and Z starts at 20 to 65 units/s. Gravity is -250 units/s² and drag is 1.8/s. |
+| Microembers | 2,048 | 55 / 1,400 ms | Fine solids, 0.45 to 1.52 units before the envelope. They disperse through depth with 3.1/s drag, -18 units/s² gravity and bounded curl drift. Dimmer larger grains give the trailing dust a broken texture. |
+| Expanding energy | 192 | 20 / 600 ms | A sparse elliptical front begins at the row perimeter. Its horizontal and vertical radii grow by `350F` and `180F`; depth advances by `60F`, using 4.5/s drag. It leaves the center open. |
+| Row illumination | One light | 20 / 300 ms | Centered on the actual row, two units ahead of its captured front. Strength ranges from 0.89 for one row to 1.1 for four. The existing light pool skips a new light if all eight are still alive. |
 
-A rejected action uses twelve low-energy amber grains at the local side edge.
-A successful horizontal move uses sixteen grains. Turns use forty-eight. Soft
-fall uses twenty. Hold contracts thirty-two grains slightly toward the captured
-piece center. A cleared row uses 112 short-lived grains across its original
-row, while combo adds light and current impulse without another geometric arc.
-Topout and rescue have eighty grains with short ballistic motion. Session
-confirmations stay near the relevant in-world control or lower board edge.
+Fracture, ember and energy grains use source-alpha additive blending with depth
+testing and no depth writes. Heavy chunks use opaque depth-tested geometry and
+write depth, so nearer blocks can hide them and they can hide more distant
+grains. Their size and radiance shrink smoothly to zero. There are no screen
+overlays or broad opaque row flashes.
 
-Reduced effects halve counts with a floor of eight. Reduced motion and effects
-off use eight stationary confirmation grains with a 140 ms field life and no
-new local light. Changing those settings releases already-visible grains over
-60 ms. It does not remove them on the next frame.
+The shader's `Scale` and `Rotation` outputs give each chunk its own proportions
+and tumble. `Lighting` is 0.85 for chunks and 0.35 for microembers. The renderer
+uses the scene's direct and hemisphere lights for this response. Grains do not
+sample shadow maps or screen-space occlusion. The fracture and expanding
+front remain emissive. Reaction lights have a smooth 25 ms attack and 275 ms
+release; their intensity is zero before arrival and at retirement. The short
+light pulse is separate from the longer fragment lifetime.
 
-## Implemented timing
+## Timing and motion
 
-For each grain, an independent stable hash gives `q` in `[0, 1)`. For field life
-`L`, the emission window is `E = 0.26L` and the birth delay is
+Except for the fracture front, birth time uses an independent stable hash `q`
+in `[0, 1)`. For field life `L`, the emission window is `E = 0.26L`:
 
 ```
 b(q) = E * (exp(log(65) * q) - 1) / 64
-N(t) / N = log(1 + 64t/E) / log(65),  0 <= t <= E
-r(t) / N = 64 / (E * log(65) * (1 + 64t/E))
+N(t) / N = log(1 + 64t/E) / log(65)
 ```
 
-The cumulative count is logarithmic. Its derivative, the emission rate, falls
-reciprocally. The initial rate is 65 times the rate at the end of the window;
-about 65% of births occur in its first 22%.
-
-Particle duration is `D = L * (0.56 + 0.16h)`, where `h` is another hash
-component. With event delay `d` and field age `t`, the grain's elapsed age is
-`a = max(0, t - d - b)`. Let `S(a,b,x)` mean GLSL `smoothstep(a,b,x)`.
+This gives a dense initial burst followed by fewer births. A fracture grain's
+birth is `(abs(source.x) / 118 * 0.04 + q * 0.008) * L / 0.24`. Particle duration is
+`D = L * (0.56 + 0.16h)`, using another hash component. With event delay `d` and
+field age `t`, elapsed age is `a = max(0, t - d - b)`.
 
 ```
-A(a) = S(0, min(0.016, 0.16D), a) * (1 - S(0.28D, D, a))
+A(a) = smoothstep(0, min(0.016, 0.16D), a)
+       * (1 - smoothstep(0.28D, D, a))
 phase = clamp(a / D, 0, 1)
-size = grain_size * (1 - 0.3phase) * A(a) * retirement_fade
-alpha = grain_opacity * A(a) * retirement_fade
+clear_size = base_size * (1 - 0.24phase) * A(a) * retirement_fade
+alpha = base_opacity * A(a) * retirement_fade
 ```
 
-Both size and alpha are zero at birth and death. Color cools smoothly with
-`S(0, 0.55, phase)`. Since `b + D < 0.98L`, every particle is invisible before
-the field is retired at `d + L`. The remaining margin prevents the pool from
-cutting off a late grain. A mode change multiplies size and alpha by a smooth
-60 ms retirement envelope.
+Size and alpha are zero at birth and death. Every grain reaches zero before
+its field deadline, including the latest fracture grain. Changing run or
+turning motion off applies a smooth sixty-millisecond retirement envelope to
+existing geometry. Reduced effects halves each layer count, giving 1,328
+instances per row. Reduced motion and effects-off emit only eight stationary
+confirmation grains for 140 ms, with no new lights.
 
-Drag displacement is `v * a / (1 + 7a)`. Ballistic vertical displacement is
-`vy * a - 150a²`. Hard-drop displacement is
-`-24 * rows * S(0, 0.11, t - d)`. Quiet confirmations multiply motion by zero.
+For clear particles, constant gravity and linear drag use the exact analytic
+solution, evaluated at the particle's age:
+
+```
+F(a, k) = (1 - exp(-k * a)) / k
+G(a, k) = (a - F(a, k)) / k
+position = source + initial_velocity * F + gravity * G
+```
+
+The microember curl adds three phase-offset sine/cosine differences multiplied
+by `9 * (1 - exp(-3a))`. It starts at zero and stays bounded. This is a
+prescribed flowing trajectory, not a fluid solver. Chunk tumble is constant
+angular motion. The GPU does not persist particle state or simulate collisions,
+rigid-body contacts or particle-to-particle forces.
+
+Ordinary contact drag also uses `F(a, 7)`. Its small landing flecks retain their
+ballistic vertical formula `vy * a - 150a²`. The hard-drop packet follows
+`-24 * rows * smoothstep(0, 0.11, t - d)`.
 
 ## Bounds and validation
 
-The pool contains 96 fields and eight lights. No grain creates an entity or
-runs CPU behavior. Each field holds at most 112 instances. Full pools skip an
-incoming cue and increment `VisualState.cue_dropped`; an existing visible field
-is never overwritten. Event sequence accounting continues normally.
-`cue_overwrites` remains zero. Light reuse also waits for the full envelope.
+The largest field holds 2,048 instances, and the 96-field worst-case bound is
+196,608 reaction instances. Normal events remain at their smaller counts.
+When the pool is full, the next cue increments `VisualState.cue_dropped` and
+keeps the existing fields unchanged. Event queue consumption continues, and
+`cue_overwrites` remains zero. The field and light entity pools do not grow on clear. The renderer may allocate or resize an instance buffer when a field first activates or its count changes.
 
-`VfxChecks` exercises the production consumer with captured points, hard-drop
-arrival timing, light attack and release, cue expiration, saturation, and mode
-change retirement. Shader compilation and a rendered view are separate checks;
-CPU fixture success does not establish visual quality or browser performance.
+`VfxChecks` exercises the production consumer: local action origins, hard-drop
+arrival and lighting, full-pool saturation, four-row budgets and independent
+layer lifetimes, original row masks after compaction, captured front depth,
+Solo and Duet placement, reduced effects and continuous mode-change retirement.
+The C/pico_unit dispatcher runs the fixture under the production supervisor.
+Shader compilation, rendered appearance and warmed browser frame times remain
+separate checks from the authored simulation.
