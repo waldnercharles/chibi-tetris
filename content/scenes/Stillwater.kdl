@@ -8,7 +8,7 @@ name "Stillwater"
         name "Board1"
         prototype "Board"
         components {
-            GAME.GameGlobalBinding name="Board1"
+            GlobalBinding name="Board1"
             BoardState index=0
         }
     }
@@ -16,7 +16,7 @@ name "Stillwater"
         name "Board2"
         prototype "Board"
         components {
-            GAME.GameGlobalBinding name="Board2"
+            GlobalBinding name="Board2"
             BoardState index=1
         }
     }
