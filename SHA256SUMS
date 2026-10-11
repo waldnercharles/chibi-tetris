@@ -1,9 +1,9 @@
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./.nojekyll
 5314a20202beadedd2ac202a16be3295ece4c194f8ae47d2298791474e30f792  ./LICENSES.md
 061bf5853f8feb989c0bbeeb76f6619e0bafff0417942a14b433d273c204003d  ./chibi-player.js
-6236af45e42930f412f40fd82528de432fbd4997aa565b31a9c935498acffc9c  ./chibi-player.wasm
+97b08a699a9ab92cdacfcfca9562429d239e690f6315680f3da2bc3d45997057  ./chibi-player.wasm
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./data/.chibi-export
-7fd4fcff8e0e02dc512d8ebe1fe08990dbc1dc2bc8d0d3e8711dd127807ebce2  ./data/engine/engine.json
+ce0195b24a9969b060d45cfd58fac4b419493ba1d79fac2fe42e0785e6125d06  ./data/engine/engine.json
 68a3e676d7e94093b102d5cba0d4e04af812040d6f230c3db67a6664574e43d2  ./data/engine/licenses/box2d/LICENSE
 da5e31a26bf3cfd5ba5c96d6823e480128c81e76c107ef9d3ee5d94789184b90  ./data/engine/licenses/box3d/LICENSE
 d009372b564221f6956013d19f664db49c4b436d3e94293a15daf473eef3d1bf  ./data/engine/licenses/ckdl/COPYING
@@ -117,6 +117,6 @@ e0e649ce6e804f9dea46f4f11a425d123466b119b02de61854f1c4f25f7df67f  ./data/engine/
 36ccdd8718e501ed00ffb0bdd51e3cfef6cc71ac1e9976d1fcd56379a7a0042c  ./data/engine/shaders/tonemap.shd
 04aa8aae1a788393b8626a110de449dcb720b8e2bdd75c0b7292442709e5ea34  ./data/engine/shaders/unlit.shd
 21b9463540e2a8c5bc8692e9237b6ea6c4d02afcb273ae2e89be927874be2a0d  ./data/game.chibip
-4469a4c22f3e70238a878ef94ade361337e57c70399615431b601c7dd6d85c9c  ./deployment.json
+5543422f9f8e02ea134fab7c0af8e2d660eeca0d22de0e0b05823e9e2920714a  ./deployment.json
 1ecfce6d5a777a3c5fd0caace6ce2f6425143f3f8e886d82ca96050ebf4a68bd  ./files.json
 e5f2c8717b2c729129ba658f8ac7a93e1f8c873f79f964bb2cb85e8541303f7e  ./index.html
