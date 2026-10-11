@@ -1,9 +1,9 @@
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./.nojekyll
-5314a20202beadedd2ac202a16be3295ece4c194f8ae47d2298791474e30f792  ./LICENSES.md
-9f3b0cbd2078515544ec06327a9bd448e76a47d39ca042e5d5410b32f58022aa  ./chibi-player.js
-2f8cccdcb387ce18e038c34c03bb05400ef57cbe2adf1a14ef5c4fce5b5994f5  ./chibi-player.wasm
+ad4a60745d68a9f1fcdb2b10a86e45ead8390bea21e40c614f3588889ae30141  ./LICENSES.md
+a7b9e888e51d67dd705b197bccdab28080c1d1b23515531f2cf90c9f9a8a1d92  ./chibi-player.js
+16efa635dcce08f5c83176eda68bf0a362318c2d2c6f9ddfa3aa5f80184629c9  ./chibi-player.wasm
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./data/.chibi-export
-81ebb764f2000dd697d489852d05446d345b74d5fecc0f96953b582bb0590b04  ./data/engine/engine.json
+0e4cf1f3e28bc82f539a1e3518051199cbd55465964a1486c250df42a0a89f9a  ./data/engine/engine.json
 68a3e676d7e94093b102d5cba0d4e04af812040d6f230c3db67a6664574e43d2  ./data/engine/licenses/box2d/LICENSE
 da5e31a26bf3cfd5ba5c96d6823e480128c81e76c107ef9d3ee5d94789184b90  ./data/engine/licenses/box3d/LICENSE
 d009372b564221f6956013d19f664db49c4b436d3e94293a15daf473eef3d1bf  ./data/engine/licenses/ckdl/COPYING
@@ -118,7 +118,7 @@ f3da2c3042535405efad97fcb8ef7352fec06835453601f4e96721848b5e051b  ./data/engine/
 e0e649ce6e804f9dea46f4f11a425d123466b119b02de61854f1c4f25f7df67f  ./data/engine/shaders/surface_material.shd
 36ccdd8718e501ed00ffb0bdd51e3cfef6cc71ac1e9976d1fcd56379a7a0042c  ./data/engine/shaders/tonemap.shd
 04aa8aae1a788393b8626a110de449dcb720b8e2bdd75c0b7292442709e5ea34  ./data/engine/shaders/unlit.shd
-b8532f4b83a689b5a93ce9aaa235e1d2c371ecac62eb95afe951a21edda03ae6  ./data/game.chibip
-3937979a33eb5a1e9341560a0d16ecfdc8f553d8110dc530fcc22eac794e4e81  ./deployment.json
+4dfb24f3f632a9802d2be6eff72242719463888c2c102cb67ac1f0ac30b10629  ./data/game.chibip
+a43c8a50e4b9274361d6322da4ff341b2c900411a582a98ef197cea94f5d492b  ./deployment.json
 0eee4869a9cec07e601f9e97f6e4360aa6353de4fff128534030eabe9544ced8  ./files.json
 e5f2c8717b2c729129ba658f8ac7a93e1f8c873f79f964bb2cb85e8541303f7e  ./index.html
