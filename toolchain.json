@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "287ff20417e43ca142d2a43807ce538a8287c098",
-    "source_snapshot_sha256": "64125879dff9d417c9d242408558cc4372af4303bc4a591af776b96bb701b0d5",
+    "revision": "9fff00c8c371a5a09ac01fe455b7f8d23e5893d2",
+    "source_snapshot_sha256": "321ec9a6ccec25b6fbbeaa449558e8607232d35eab3583fe7a83cf3cb451dda5",
     "project_format": 22,
     "player_prepared_format": 12,
     "local_branch": "cwaldner/stillwater-3d-sdk"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "d607d72d409c02d5bc578e77dd910d2f558faa704f963ff859040a8ff61904b4",
-    "manifest_sha256": "c1498905c9f2e7fb5ad1e240c0ce73bd824fcac4c98b023b534fee434ad29b36",
+    "build_id": "035c7953f54eee7c45a8cfabb128518257e4820420f9fc23f56dceff64110e4e",
+    "manifest_sha256": "f678d7d8027fc48d13f3375a56c030d2aa9a6af23d90e3aaab1a37dae14c5066",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,12 +22,12 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "287ff20417e43ca142d2a43807ce538a8287c098",
+    "source_revision": "9fff00c8c371a5a09ac01fe455b7f8d23e5893d2",
     "files": {
-      "chibi-player.js": "592e5df3b9e25c2c99080e851b317e16287be827137ef4f279b39b6b078b76e3",
-      "chibi-player.wasm": "4aadae8f0cc8245ffaf593135a9b937600a04f0f85c205945b7c62256285f514",
-      "compiler/chibi-compile.js": "2ac7307c6b736f9b2fc044f3a70810f3139178f6b7020b0fe8cab902fe5494d1",
-      "compiler/chibi-compile.wasm": "ab9129b07961b3cb456b62fd9fef10a2c328d2b7f42054186e7c677942217200",
+      "chibi-player.js": "67f8db76860b99a1dcffd9390cf3fc2af1d09423a36c287869da8eb6c993b942",
+      "chibi-player.wasm": "232992db3e780c4cd11ce6ff0668287fb2c94a71fe88f09764e35191f817c5de",
+      "compiler/chibi-compile.js": "f7edb1b13d5d6e9ef738f6c6ffd8e673c086b38efa0fb3a5a15668fccbb4f9b2",
+      "compiler/chibi-compile.wasm": "eba5170dbce228b4938731e858009ed31a17391584149fa8da15c1f6726dd914",
       "index.html": "6311f1efd7cf0dfea0fcb96fbef452b64f6c8712f05a1f1d2293e6655eff965e"
     }
   }

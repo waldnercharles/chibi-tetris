@@ -1,5 +1,34 @@
 # Validation record
 
+## GLSL particles, music response and compact controls — October 11, 2026
+
+The reviewed engine is `9fff00c8c371a5a09ac01fe455b7f8d23e5893d2`. The four production particle entrypoints now use ordinary GLSL with typed KDL descriptors and shared source includes. They compile directly through the renderer compiler; they do not pass through the graph's 1,024-node IR. Material graphs remain supported. The initial source-authoring contract covers particle shaders, not general surface or compute shaders, HLSL or WGSL input. The engine embeds source and includes in prepared artifacts and preserves the last valid runtime program if replacement compilation fails.
+
+The background retains 147,456 GPU mesh grains. Four formations morph over ten seconds. Measured bass changes compression and depth waves, midrange drives curl, and treble changes color and grain size. Four bounded, world-space impulses carry player actions into the background. The live camera position keeps those impulses aligned with the board during the opening camera move. Clear fragments retain their quick fracture front while dim embers last 3.2–6 seconds according to tempo confidence. Cooling completes independently of that tail. No extra per-row particles were added.
+
+The opening uses compact charcoal panels with neutral mesh text, audio status, mode choices, expandable options and an explicit Play button. The real autoplayer remains beside the controls. Starting clears its occupied rows and retains their particle tails while the camera centers and the HUD fades in.
+
+| Check | Result |
+| --- | --- |
+| Project formatting and validation | 144 assets, zero errors or warnings. |
+| Music response, spatial forces and clear effects | Three C cases / 26 dispatcher assertions, plus 41 music-response, 24 field and 211 VFX authored checks; 3.827 seconds under one deadline. |
+| UI, audio onboarding and attract transitions | Affected selections passed together in 46.722 seconds. The separate final consumer check passed in 2.696 seconds. |
+| Direct GLSL actual backend compilation | 13 cases / 187 assertions; 0.889 seconds. |
+| Source authoring and controller operations | 16 cases / 1,318 assertions; 1.251 seconds. |
+| Engine native checks | 294 cases / 178,865 assertions; 12.016 seconds. |
+| Engine language checks | 178 cases / 10,510 assertions; 0.970 seconds. |
+| Engine tooling checks | 93 cases / 22,586 assertions; 24.983 seconds. |
+
+The prepared-program decoder previously reserved suspension storage as if every pause copied every value. It now charges actual retained vector capacities and owned descriptor storage against the same limit. The regression retains 1,725,425 bytes, succeeds under a 4 MiB budget, rejects a one-byte-short budget, and verifies the resumed result on both execution backends. The per-module decoder limits are unchanged. Separately, the complete game retains about 70 MiB of prepared resources and modules, exceeding the standalone player's former 64 MiB whole-project allowance. The player now selects a named 128 MiB canonical-storage budget; individual file, module and scratch limits remain unchanged. A CPU-only decode of the actual packaged artifact established the size before changing the host allowance: 73,532,564 retained bytes and a 74,445,232-byte peak loading reservation. The generic `test_tools --player-decode` case reproduces rejection at 64 MiB and reaches the pre-publication boundary at 128 MiB, including a one-byte-budget failure before retry. That case passed in 0.347 seconds. Packaged execution separately checks the player host wiring.
+
+Independent review covered the final game shaders and music consumers, engine source ownership and replacement failure paths, prepared codecs and suspension accounting, controller authoring, and headless compiler dependencies. The separate GlslRainField fixture uses 128 lit grains and a GLSL helper loop without Tetris mechanics. It rendered through Metal in a hidden Cocoa window, with four CPU frames, two warmup frames and one saved 640 × 360 frame. The game preview used 60 CPU frames at the same render budget and showed 147,520 particles and 868 entities. Its saved frame cost 17.005 ms. Neither capture is a sustained frame-rate measurement.
+
+Native and web exports use the clean pinned SDK and player. The packaged macOS application completed four hidden frames and three steps in 2.653 seconds. Local browser checks covered the opening controls, full-motion options, shared-clear play transition, movement, rotation, hold, hard drop, independent Duet boards, pause and restart. The background changed formation during play, and no block striping or current product console errors were observed. With 120 warmup frames followed by 2.5-second samples, Journey measured 58.80 FPS at 2047 × 2350 pixels (852.5 × 979.17 CSS, DPR 2.4); Duet measured 58.83 FPS at 3137 × 2350 pixels (1306.67 × 979.17 CSS, DPR 2.4). Both had a 16.7 ms median and 25.0 ms 95th percentile. The browser resized naturally between observations; no viewport override was applied. These short samples do not establish sustained or cross-device performance. Publication and public browser play are verified again after the clean source commit.
+
+Diagnostic logs and images remain in ignored `build/music-response` and engine `.chibi/shader-source`, `.chibi/prepared-suspensions` and `.chibi/package-exports`. Disposable diagnostic project copies and the headless compiler scratch build were removed.
+
+All test commands retain their production 60-second deadline. The earlier game aggregate remains incomplete and was not reconstructed. Full and quarantined native/render/Studio suites remain unexecuted. External service authentication, completed audio capture and human listening remain unverified. Particle motion uses GPU analytic forces, drag and gravity; it is not a stateful fluid solver or Radiance Cascades lighting.
+
 ## Attract mode, stable blocks and action trails — October 11, 2026
 
 The opening runs a real autoplayer beside compact audio and mode controls. Explicit Play releases the occupied demo rows through the existing line-clear effect, moves the camera to the board and reveals the HUD. Demo results do not advance player progress. The title, mode heading and chapter heading are removed from gameplay and results. Blocks share a small bevel, retain song-reactive finishes and have lower ordinary emission, rougher highlights and a narrower bloom radius.

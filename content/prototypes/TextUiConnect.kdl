@@ -1,0 +1,4 @@
+name "TextUiConnect"
+components {
+    MeshAsset source="content/meshes/text/ui_connect.mesh"
+}

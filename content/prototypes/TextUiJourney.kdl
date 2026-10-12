@@ -1,0 +1,4 @@
+name "TextUiJourney"
+components {
+    MeshAsset source="content/meshes/text/ui_journey.mesh"
+}

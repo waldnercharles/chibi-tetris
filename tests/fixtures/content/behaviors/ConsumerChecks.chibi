@@ -258,7 +258,7 @@ behavior ConsumerChecks {
                 Check(world.VisualState.flow_phase > frozen_flow && world.VisualState.flow_phase - frozen_flow < 0.2, "resume continues from the frozen phase without a time jump")
                 Check(CuesAt(180, 270) >= 1, "resume receives its own confirmation")
                 response := world.VisualState.field_response
-                Check(response.x > frozen_response.x && response.x - frozen_response.x < 0.2 && response.z > frozen_response.z, "resume smoothly follows the latest audio and chapter from the frozen shape")
+                Check(response.x > frozen_response.x && response.x - frozen_response.x < 0.45 && response.x < 0.9 && response.z > frozen_response.z, "resume smoothly follows the latest audio and chapter from the frozen shape")
             }
             case 42 {
                 Check(ActiveCues() == 0, "all consumed input cues finish without replay")

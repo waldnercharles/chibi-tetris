@@ -1,4 +1,0 @@
-name "TextAttractVolume"
-components {
-    MeshAsset source="content/meshes/text/attract_volume.mesh"
-}

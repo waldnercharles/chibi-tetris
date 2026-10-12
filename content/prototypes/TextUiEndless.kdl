@@ -1,0 +1,4 @@
+name "TextUiEndless"
+components {
+    MeshAsset source="content/meshes/text/ui_endless.mesh"
+}

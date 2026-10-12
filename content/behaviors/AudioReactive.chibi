@@ -5,6 +5,7 @@ behavior AudioReactive {
 
     on Begin {
         set_audio_source(0)
+        MusicResponse.Reset(self)
     }
 
     function PauseForConnection() {
@@ -21,6 +22,7 @@ behavior AudioReactive {
         self.Session.audio_quiet = false
         signal_time = 0
         quiet_time = 0
+        MusicResponse.Reset(self)
     }
 
     function Listen() {
@@ -97,11 +99,6 @@ behavior AudioReactive {
         }
         if !current_source {
             ClearSignal()
-            self.VisualState.energy = 0
-            self.VisualState.bass = 0
-            self.VisualState.mid = 0
-            self.VisualState.treble = 0
-            self.VisualState.beat = 0
             return
         }
         if self.Session.audio_source == 1 && audio.Status == 2 {
@@ -120,10 +117,12 @@ behavior AudioReactive {
         }
         self.Session.audio_signal = signal_time > 0
         self.Session.audio_quiet = quiet_time >= 2
-        self.VisualState.energy = clamp(audio.Level * 6, 0, 1)
-        self.VisualState.bass = clamp(audio.Bass * 9, 0, 1)
-        self.VisualState.mid = clamp(audio.Mid * 8, 0, 1)
-        self.VisualState.treble = clamp(audio.Treble * 15, 0, 1)
-        self.VisualState.beat = audio.Onset
+        // Analysis continues while the game is paused; visual consumers retain
+        // their own paused shape and resume against the currently playing song.
+        if !audio.Active || self.Session.audio_source == 1 && audio.Status != 2 {
+            MusicResponse.Step(self, 0, vec3(0, 0, 0), 0, dt)
+            return
+        }
+        MusicResponse.Step(self, audio.Level, vec3(audio.Bass, audio.Mid, audio.Treble), audio.Onset, dt)
     }
 }

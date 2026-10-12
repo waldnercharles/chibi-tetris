@@ -1,0 +1,113 @@
+// Absolute PCM bands become responsive visuals without flattening loud songs.
+library MusicResponse {
+    function Reset(world: entity) {
+        world.MusicDynamics = {
+            reference: 0.025,
+            candidate_period: 0.5,
+            pulse_age: 4
+        }
+        world.VisualState.energy = 0
+        world.VisualState.bass = 0
+        world.VisualState.mid = 0
+        world.VisualState.treble = 0
+        world.VisualState.beat = 0
+        world.VisualState.beat_period = 0.5
+        world.VisualState.beat_confidence = 0
+    }
+
+    function Envelope(value: number, target: number, dt: number) -> (result: number) {
+        speed := 6
+        if target > value {
+            speed = 28
+        }
+        return value + (target - value) * (1 - exp(-dt * speed))
+    }
+
+    function Compress(value: number) -> (result: number) {
+        return value / (0.32 + value)
+    }
+
+    function Pulse(world: entity, strength: number) {
+        spacing := world.MusicDynamics.pulse_age
+        if world.MusicDynamics.heard_pulse && spacing >= 0.24 && spacing <= 1.5 {
+            candidate := world.MusicDynamics.candidate_period
+            if abs(spacing - candidate) <= candidate * 0.18 {
+                world.MusicDynamics.matching_intervals = min(8, world.MusicDynamics.matching_intervals + 1)
+                world.MusicDynamics.candidate_period += (spacing - candidate) * 0.25
+            } else {
+                world.MusicDynamics.candidate_period = spacing
+                world.MusicDynamics.matching_intervals = 1
+                world.VisualState.beat_confidence *= 0.5
+            }
+            if world.MusicDynamics.matching_intervals >= 2 {
+                world.VisualState.beat_period = world.MusicDynamics.candidate_period
+                world.VisualState.beat_confidence = min(1, world.VisualState.beat_confidence + 0.2)
+            }
+        } else {
+            world.MusicDynamics.matching_intervals = 0
+            world.VisualState.beat_confidence *= 0.5
+        }
+        world.MusicDynamics.heard_pulse = true
+        world.MusicDynamics.pulse_age = 0
+        world.MusicDynamics.pulse = max(world.MusicDynamics.pulse, strength)
+    }
+
+    function Step(world: entity, level: number, bands: CF_V3, onset: number, dt: number) {
+        // A suspended frame has no intermediate measurements to time a beat.
+        if dt > 0.1 {
+            Reset(world)
+        }
+        delta := clamp(dt, 0, 0.1)
+        level = clamp(level, 0, 1)
+        bands = max(vec3(0, 0, 0), min(vec3(1, 1, 1), bands))
+        onset = clamp(onset, 0, 1)
+        // A slow peak reference preserves dips and avoids auto-gain on room noise.
+        reference := max(0.025, max(level, world.MusicDynamics.reference * exp(-delta * 0.12)))
+        world.MusicDynamics.reference = reference
+        gate := clamp((level - 0.0025) / 0.0075, 0, 1)
+        gate *= gate * (3 - 2 * gate)
+        energy := Compress(level / reference) * gate
+        bass := Compress(bands.x * 1.7 / reference) * gate
+        mid := Compress(bands.y * 1.9 / reference) * gate
+        treble := Compress(bands.z * 2.8 / reference) * gate
+        world.VisualState.energy = Envelope(world.VisualState.energy, energy, delta)
+        world.VisualState.bass = Envelope(world.VisualState.bass, bass, delta)
+        world.VisualState.mid = Envelope(world.VisualState.mid, mid, delta)
+        world.VisualState.treble = Envelope(world.VisualState.treble, treble, delta)
+
+        // Compare actual rises to a short background envelope. Steady levels,
+        // low noise and the decay of the host's onset envelope cannot retrigger.
+        level_rise := max(0, level - world.MusicDynamics.level_mean)
+        bass_rise := max(0, bands.x - world.MusicDynamics.bass_mean)
+        flux := max(level_rise, bass_rise * 1.6) / reference
+        host_rise := onset > 0.035 && onset > world.MusicDynamics.previous_onset + 0.015
+        band_rise := flux > 0.16 && world.MusicDynamics.previous_flux <= 0.16 && max(level_rise, bass_rise) > 0.003
+        world.MusicDynamics.pulse_age = min(8, world.MusicDynamics.pulse_age + delta)
+        world.MusicDynamics.pulse *= exp(-delta * 7)
+        if gate > 0.35 && world.MusicDynamics.pulse_age >= 0.24 && (host_rise || band_rise) {
+            Pulse(world, clamp(0.5 + flux * 0.7 + onset, 0, 1) * gate)
+        }
+        world.VisualState.beat = Envelope(world.VisualState.beat, world.MusicDynamics.pulse, delta)
+        background := 1 - exp(-delta * 5)
+        world.MusicDynamics.level_mean += (level - world.MusicDynamics.level_mean) * background
+        world.MusicDynamics.bass_mean += (bands.x - world.MusicDynamics.bass_mean) * background
+        world.MusicDynamics.previous_onset = onset
+        world.MusicDynamics.previous_flux = flux
+
+        if level <= 0.0025 {
+            world.MusicDynamics.quiet_age = min(4, world.MusicDynamics.quiet_age + delta)
+        } else {
+            world.MusicDynamics.quiet_age = 0
+        }
+        if world.MusicDynamics.pulse_age > max(1.5, world.VisualState.beat_period * 3) {
+            world.VisualState.beat_confidence *= exp(-delta * 1.5)
+        }
+        if world.MusicDynamics.quiet_age >= 1.5 {
+            world.MusicDynamics.heard_pulse = false
+            world.MusicDynamics.matching_intervals = 0
+            world.MusicDynamics.candidate_period = 0.5
+            world.VisualState.beat_period = 0.5
+            world.VisualState.beat_confidence = 0
+        }
+    }
+}

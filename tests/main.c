@@ -422,6 +422,36 @@ static bool no_decorative_hud()
     return true;
 }
 
+static bool connection_depth()
+{
+    int plates = 0, text = 0;
+    yyjson_val *entity;
+    size_t i, count;
+    yyjson_arr_foreach(snapshot_entities(), i, count, entity)
+    {
+        if (yyjson_get_bool(entity_field(entity, "RenderState", "hidden"))) {
+            continue;
+        }
+        const char *mesh = yyjson_get_str(entity_field(entity, "MeshAsset", "source"));
+        yyjson_val *position = entity_field(entity, "Transform3D", "position");
+        double z = yyjson_get_num(yyjson_obj_get(position, "z"));
+        if (mesh) {
+            REQUIRE(z >= 70);
+            text++;
+            continue;
+        }
+        if (!yyjson_is_num(entity_field(entity, "Geometry3D", "depth"))) {
+            continue;
+        }
+        double depth = yyjson_get_num(entity_field(entity, "Geometry3D", "depth"));
+        REQUIRE(depth > 0 && z + depth * .5 < 69);
+        plates++;
+    }
+    REQUIRE(plates >= 5 && text >= 6);
+    REQUIRE(no_decorative_hud());
+    return true;
+}
+
 static bool modal_depth()
 {
     yyjson_val *entities = snapshot_entities();
@@ -791,8 +821,8 @@ TEST_CASE(music_choices_use_world_space_pointer)
         int source;
         bool starts;
     } choices[] = {
-        { -440, 96, 0, true },
-        { -440, 39, 1, false },
+        { -440, -86, 0, true },
+        { -440, 135, 1, false },
         { 600, 24, 0, false },
     };
     for (int i = 0; i < (int)(sizeof choices / sizeof *choices); i++) {
@@ -845,7 +875,7 @@ TEST_CASE(attract_reduced_motion)
     yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
     yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
     key(doc, 0, 0);
-    click_world(doc, 6, -360, -114);
+    click_world(doc, 6, -367, 11);
     tap(doc, 12, KEY_ENTER);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_bool(field("World", "Session", "reduced_motion")));
@@ -869,6 +899,26 @@ TEST_CASE(attract_audio_failure_recovery)
     tap(doc, 20, KEY_ENTER);
     REQUIRE(snapshot(doc));
     REQUIRE(report(10));
+    return true;
+}
+
+TEST_CASE(compact_opening_pointer_controls)
+{
+    yyjson_mut_doc *doc = request("UiChecks", 76);
+    key(doc, 0, 0);
+    click_world(doc, 6, -440, 135);
+    click_world(doc, 10, -367, 11);
+    click_world(doc, 14, -440, -36);
+    click_world(doc, 18, -378, -80);
+    click_world(doc, 22, -378, -118);
+    click_world(doc, 26, -378, -156);
+    click_world(doc, 30, -447, -194);
+    click_world(doc, 34, -316, -194);
+    click_world(doc, 38, -440, -36);
+    click_world(doc, 42, -378, -118);
+    click_world(doc, 46, -440, -86);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(18));
     return true;
 }
 
@@ -1092,14 +1142,14 @@ TEST_CASE(audio_source_status_labels)
     {
         const char *source, *status, *signal, *quiet, *action, *label;
     } states[] = {
-        { "0", "0", "0", "0", "music_listen", NULL },
-        { "1", "1", "0", "0", "music_listen", "audio_share_hint" },
-        { "1", "2", "0", "0", "music_listen", "audio_connected" },
-        { "1", "2", "1", "0", "music_listen", "audio_connected" },
-        { "1", "2", "0", "1", "music_listen", "audio_quiet" },
-        { "1", "3", "0", "0", "music_retry", "audio_no_source" },
-        { "1", "4", "0", "0", "music_retry", "audio_cancelled" },
-        { "1", "5", "0", "0", "music_retry", "audio_ended" },
+        { "0", "0", "0", "0", "ui_connect", NULL },
+        { "1", "1", "0", "0", "ui_connect", "ui_waiting" },
+        { "1", "2", "0", "0", "ui_connect", "ui_connected" },
+        { "1", "2", "1", "0", "ui_connect", "ui_connected" },
+        { "1", "2", "0", "1", "ui_connect", "ui_quiet" },
+        { "1", "3", "0", "0", "ui_retry", "ui_unavailable" },
+        { "1", "4", "0", "0", "ui_retry", "ui_cancelled" },
+        { "1", "5", "0", "0", "ui_retry", "ui_ended" },
     };
     for (int i = 0; i < (int)(sizeof states / sizeof *states); i++) {
         yyjson_mut_doc *doc = request("AudioHudChecks", 18);
@@ -1120,11 +1170,11 @@ TEST_CASE(audio_source_status_labels)
         REQUIRE(!visible_mesh("content/meshes/text/music_youtube.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/music_spotify.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/music_tidal.mesh"));
-        REQUIRE(visible_mesh("content/meshes/text/music_score.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/ui_play.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/play_controls.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/score.mesh"));
         REQUIRE(stats_backings(0));
-        REQUIRE(modal_depth());
+        REQUIRE(connection_depth());
     }
     for (int capture = 0; capture < 2; capture++) {
         yyjson_mut_doc *doc = request("HudChecks", 18);
@@ -1141,7 +1191,7 @@ TEST_CASE(audio_source_status_labels)
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_signal")));
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_quiet")));
         REQUIRE(yyjson_get_num(field("World", "VisualState", "energy")) == 0);
-        REQUIRE(visible_mesh("content/meshes/text/audio_share_hint.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/ui_waiting.mesh"));
         REQUIRE(!visible_mesh("content/meshes/text/pause_hint.mesh"));
     }
     return true;
@@ -1348,12 +1398,30 @@ TEST_CASE(evolving_stage_direction)
 
 TEST_CASE(layered_world_space_reactions)
 {
-    yyjson_mut_doc *doc = request("VfxChecks", 250);
+    yyjson_mut_doc *doc = request("VfxChecks", 770);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(141));
-    REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 1);
+    REQUIRE(report(211));
+    REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 5);
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
+    return true;
+}
+
+TEST_CASE(authored_music_response)
+{
+    yyjson_mut_doc *doc = request("MusicResponseChecks", 1);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(41));
+    return true;
+}
+
+TEST_CASE(musical_spatial_forces)
+{
+    yyjson_mut_doc *doc = request("MusicFieldChecks", 212);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(24));
     return true;
 }
 
@@ -1373,14 +1441,24 @@ int main(int argc, char **argv)
     bool hud = !strcmp(selection, "--hud");
     bool onboarding = !strcmp(selection, "--onboarding");
     bool attract = !strcmp(selection, "--attract");
+    bool ui = !strcmp(selection, "--ui");
     bool previews = !strcmp(selection, "--previews");
     bool motion = !strcmp(selection, "--motion");
     bool stage = !strcmp(selection, "--stage");
     bool vfx = !strcmp(selection, "--vfx");
+    bool music_response = !strcmp(selection, "--music-response");
+    bool music_field = !strcmp(selection, "--music-field");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
-        !(all || reactions || consumer || hud || onboarding || attract ||
-          previews || motion || stage || vfx)) {
-        fprintf(stderr, "Usage: %s --all|--reactions|--consumer|--hud|--onboarding|--attract|--previews|--motion|--stage|--vfx /path/to/chibi_ctl /path/to/game\n", argv[0]);
+        !(all || reactions || consumer || hud || onboarding || attract || ui ||
+          previews || motion || stage || vfx || music_response || music_field)) {
+        fprintf(
+            stderr,
+            "Usage: %s "
+            "--all|--reactions|--consumer|--hud|--onboarding|--attract|--ui|--"
+            "previews|--motion|--stage|--vfx|--music-response|--music-field "
+            "/path/to/chibi_ctl /path/to/game\n",
+            argv[0]
+        );
         return 2;
     }
     assert(realpath(controller_path, controller) && realpath(project_path, project));
@@ -1395,6 +1473,12 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(ordered_session_reactions);
         RUN_TEST_CASE(ordered_clear_reactions);
         RUN_TEST_CASE(topout_and_rescue);
+    }
+    if (all || ui) {
+        RUN_TEST_CASE(compact_opening_pointer_controls);
+        if (ui) {
+            RUN_TEST_CASE(audio_source_status_labels);
+        }
     }
     if (all || attract) {
         RUN_TEST_CASE(attract_placement_rules);
@@ -1434,6 +1518,12 @@ int main(int argc, char **argv)
     }
     if (all || vfx) {
         RUN_TEST_CASE(layered_world_space_reactions);
+    }
+    if (all || music_response) {
+        RUN_TEST_CASE(authored_music_response);
+    }
+    if (all || music_field) {
+        RUN_TEST_CASE(musical_spatial_forces);
     }
     pu_print_stats();
     yyjson_doc_free(reply);

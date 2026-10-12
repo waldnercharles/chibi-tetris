@@ -5,6 +5,9 @@ component VisualState {
     mid: number
     treble: number
     beat: number
+    // Measured onset spacing in seconds; .5 until repeated intervals agree.
+    beat_period: number
+    beat_confidence: number
     // Integrated field motion remains continuous across audio and input changes.
     flow_phase: number
     flow_velocity: number
@@ -14,6 +17,17 @@ component VisualState {
     field_bands: CF_V3
     // Exact energy, beat and chapter controls sent to both particle shaders.
     field_response: CF_V3
+    // Four captured event positions/ages and their radial, swirl and lift forces.
+    field_impulse0: CF_V3
+    field_impulse1: CF_V3
+    field_impulse2: CF_V3
+    field_impulse3: CF_V3
+    field_motion0: CF_V3
+    field_motion1: CF_V3
+    field_motion2: CF_V3
+    field_motion3: CF_V3
+    // Continuous musical phase sent to both particle shaders.
+    field_pulse: number
     // Cosmetic pool saturation; event queue loss is tracked separately.
     cue_overwrites: int
     // Rejected new cues when every pooled field is still visibly fading.

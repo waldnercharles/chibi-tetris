@@ -1,0 +1,4 @@
+name "TextUiM"
+components {
+    MeshAsset source="content/meshes/text/ui_m.mesh"
+}

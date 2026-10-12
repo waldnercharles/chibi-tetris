@@ -4,6 +4,7 @@ components {
     Material emission_color=0x85c6d4ff emission_intensity=0.16 emission_multiplier=1.0 scene=0xdbe4e7ff
     MeshAsset source="content/meshes/text/digit_0.mesh"
     RenderState hidden=#true
+    Shader material="UiInk"
     Transform3D {
         scale x=1.0 y=1.0 z=1.0
     }

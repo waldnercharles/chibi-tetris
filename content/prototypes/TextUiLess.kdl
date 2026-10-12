@@ -1,0 +1,4 @@
+name "TextUiLess"
+components {
+    MeshAsset source="content/meshes/text/ui_less.mesh"
+}

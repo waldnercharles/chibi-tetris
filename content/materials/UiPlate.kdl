@@ -1,0 +1,44 @@
+version 3
+name "UiPlate"
+domain "material"
+id_counter 20000
+description "Neutral unlit 3D interface plate with an opaque center and fine boundary."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 100
+                type "Shader Surface Output"
+                inputs Roughness=1.0 Unlit=#true "Alpha Mode"=1
+            }
+            - id=200 type="Shader UV"
+            - {
+                id 300
+                type "Behavior Expression"
+                reference_name "vec3(Shade, Shade, Shade) + vec3(0.025, 0.025, 0.025) * (1 - smoothstep(0.004, 0.008, min(min(UV.x, 1 - UV.x), min(UV.y, 1 - UV.y))))"
+                inputs {
+                    UV id=301 type="struct" type_name="ShaderVec2"
+                    Shade id=303 type="float"
+                }
+                outputs {
+                    Result id=302 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 400
+                type "Shader Parameter"
+                reference_id 1
+                reference_name "Shade"
+                outputs Value=0.006
+            }
+        }
+        (array)edges {
+            - from="200.UV" to="300.UV"
+            - from="300.Result" to="100.Base Color"
+            - from="400.Value" to="300.Shade"
+        }
+    }
+    - id=10000 kind="function" math_expression="vec3(Shade, Shade, Shade) + vec3(0.025, 0.025, 0.025) * (1 - smoothstep(0.004, 0.008, min(min(UV.x, 1 - UV.x), min(UV.y, 1 - UV.y))))" expression_mode=1 entry_id=11000
+}

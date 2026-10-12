@@ -174,3 +174,92 @@ and a review test. Keep the constraints separate from style choices. This note
 uses first-party written material and the GDC session description; it does not
 claim a full viewing of the linked talks or experimental validation of the
 proposed Stillwater timings.
+
+## Reference catalog notes
+
+Reviewed 2026-10-11. These references inform composition and motion choices.
+The suggestions below are original Chibi proposals, not reproductions of the
+referenced scenes. No reference shaders, presets, code or artwork were copied.
+
+### Tetris Spheres
+
+[Tetris Spheres at `401f083c`](https://github.com/dcts/tetris-spheres/tree/401f083cc0e825ff1192f17fc4ee9b686e02d05b)
+places simple cyan outline cells over dark translucent board and foreground
+layers. Its background particles are a muted looping MP4, so this is a useful
+composition reference rather than evidence for a reactive particle technique.
+[The hard-drop animation](https://github.com/dcts/tetris-spheres/blob/401f083cc0e825ff1192f17fc4ee9b686e02d05b/css/style.css#L21-L31)
+lasts 650 ms and reaches a five-pixel downward offset at 30 percent, or 195 ms.
+Each hard drop restarts it. Move, rotate and hold have no additional VFX in the
+inspected handlers.
+
+[Completed rows disappear immediately](https://github.com/dcts/tetris-spheres/blob/401f083cc0e825ff1192f17fc4ee9b686e02d05b/js/game.js#L48-L68)
+and trigger separate ordinary-clear or four-line-clear sounds. The inspected
+source has no timed shine, fragment breakup, audio analysis or all-clear
+celebration. Use foreground readability and event hierarchy as design cues;
+measure clear choreography from the user's Tetris Effect footage separately.
+
+The source declares MIT. The page separately credits Edan Kwan's particles and
+Tobias Herzog's music without documenting separate media permissions in the
+inspected text. No code or media from this repository is included in Stillwater.
+
+### Particula
+
+[Particula at `9c05c666`](https://github.com/Humprt/particula/tree/9c05c6664dd318eeeefd14457fa15862c72ae8c3)
+uses frequency-specific point clouds, noise acceleration, outward impulses,
+damping and soft containment. Its
+[update loop](https://github.com/Humprt/particula/blob/9c05c6664dd318eeeefd14457fa15862c72ae8c3/main.js#L1306-L1484)
+runs per particle on the CPU and uploads positions each frame. It does not
+implement particle collisions. The traveling-wave helper is unused.
+
+Borrow distinct band roles and lingering momentum. Keep Chibi's GPU field
+evaluation, stable identities and time-based decay. Small event-driven radial
+or tangential displacements fit the existing authored model; persistent
+collisions would require a different capability. Particula's per-frame motion
+and damping should not be ported unchanged. Its
+[MIT license](https://github.com/Humprt/particula/blob/9c05c6664dd318eeeefd14457fa15862c72ae8c3/LICENSE)
+requires retaining the notice when copying substantial code. The
+[README](https://github.com/Humprt/particula/blob/9c05c6664dd318eeeefd14457fa15862c72ae8c3/README.md)
+also asks derivatives to avoid its name without permission.
+
+### Vizz.fm
+
+The [gallery](https://vizz.fm/visualizers/) identifies
+[Mesh Grid](https://vizz.fm/app/?preset=Y29uZmlnLTE3NDEzNjczMDkyMjItNjA4)
+as rippling terrain and
+[Particle Dance](https://vizz.fm/app/?preset=Y29uZmlnLTE3NzAxNDYyOTMzNTYtNjg0)
+as changing particle clouds. Live browser inspection in this task covered Mesh
+Grid and Particle Dance variant 4; these gallery links are entry points, not a
+saved record of that session's settings. The useful distinction is structural:
+terrain establishes a horizon and connected surface, while clouds occupy a
+volume. Changing particle count or palette alone does not produce that change.
+
+[Vizz's terms](https://vizz.fm/terms/) permit recording its output but identify
+the site, visualizers, shaders, presets and code as proprietary, with copying
+and derivative-use restrictions. Use the observations to discuss broad visual
+goals; do not extract or port its implementation or presets.
+
+### VVavy
+
+The [JSON catalog](https://vvavy.io/visuals.json), generated
+2026-10-10T17:47:52.501Z, contains 226 entries. The following descriptions were
+verified in that data, not through playback. Each entry links to its exact
+visual. Proposed costs are qualitative authoring estimates, not benchmarks.
+
+| Catalog entry | Proposed particle composition and difference from Stillwater's current formations | Cost |
+| --- | --- | --- |
+| [Volumetric LED Field](https://vvavy.io/app?visual=volumetric-led-field) | An ordered 3D lattice with traveling displacement. Regular depth layers add a structure absent from the nebula and cellular blooms. | Low to moderate; analytic positions and onset envelopes. |
+| [Ghostlight Tree](https://vvavy.io/app?visual=ghostlight-tree) | Grains trace an original trunk, branches and hanging canopy. A rooted silhouette replaces the current free-floating formations. | Moderate; authored branch paths and controlled density. |
+| [CRT Lissajous Tunnel](https://vvavy.io/app?visual=crt-lissajous-tunnel) | Nested contours recede behind a stationary board. Axial depth differs from the accretion disk's broad plane. Keep the aperture open. | Low to moderate; analytic curves, no camera flight needed. |
+| [Coastal Landscape](https://vvavy.io/app?visual=coastal-landscape) | Original particle banks, a water band and sparse vegetation establish a horizon. This adds landscape composition to the abstract set. | Moderate; several authored silhouettes and depth layers. |
+| [Magnetic Silk](https://vvavy.io/app?visual=magnetic-silk) | Two sparse curtains interweave around clear central space. Paired sheets differ from the multiple stellar-current lanes. | Moderate; continuous surface sampling and bounded deformation. |
+
+The catalog credits Coastal Landscape to `bitless`, Ghostlight Tree to `VVavy`
+and the other selected entries to `vvavy`. It has no per-entry license field.
+[VVavy's terms](https://vvavy.io/legal) limit service use to personal,
+non-commercial purposes unless approved, prohibit unauthorized copying and do
+not dedicate submitted visuals to the public domain. Catalog availability is
+not permission to redistribute its scenes. Retain these links as provenance
+for the research and build any selected composition from original authored
+geometry and motion.
+
+The [Tetris Effect reference study](reference-tetris-effect.md) adds timestamped visual observations and a proposed layer stack. It distinguishes ordinary clears from successful stage completion and identifies the full-board behavior that still needs a suitable recording.

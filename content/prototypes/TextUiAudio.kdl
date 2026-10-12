@@ -1,0 +1,4 @@
+name "TextUiAudio"
+components {
+    MeshAsset source="content/meshes/text/ui_audio.mesh"
+}

@@ -1,0 +1,4 @@
+name "TextUiQuiet"
+components {
+    MeshAsset source="content/meshes/text/ui_quiet.mesh"
+}

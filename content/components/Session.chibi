@@ -10,6 +10,8 @@ component Session {
     // A pointer-selected mode plus one; zero leaves the selection unchanged.
     mode_request: int
     play_request: bool
+    // Pointer settings: effects, motion, ghost, volume down or volume up.
+    setting_request: int
     mode: int
     won: bool
     disconnected: bool

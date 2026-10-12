@@ -1,0 +1,4 @@
+name "TextUiRetry"
+components {
+    MeshAsset source="content/meshes/text/ui_retry.mesh"
+}

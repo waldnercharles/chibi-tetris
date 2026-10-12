@@ -1,0 +1,4 @@
+name "TextUiSprint"
+components {
+    MeshAsset source="content/meshes/text/ui_sprint.mesh"
+}

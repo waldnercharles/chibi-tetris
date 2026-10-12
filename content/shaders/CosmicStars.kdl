@@ -1,0 +1,57 @@
+version 1
+name "CosmicParticles.Dust"
+kind "particle"
+source "CosmicStars.glsl"
+entry "stars"
+(array)includes "CosmicCommon.glsl"
+parameters {
+    Energy type="float" default=0.0
+    Bass type="float" default=0.0
+    Mid type="float" default=0.0
+    Treble type="float" default=0.0
+    Beat type="float" default=0.0
+    Reaction type="float" default=0.0
+    Turn type="float" default=0.0
+    Flow type="float" default=0.0
+    Style type="float" default=0.0
+    Variation type="float" default=0.0
+    Duet type="float" default=0.0
+    Pulse type="float" default=0.0
+    Wind type="float" default=0.0
+    Source0 {
+        type "vec3"
+        (array)default 0.0 0.0 2.6
+    }
+    Source1 {
+        type "vec3"
+        (array)default 0.0 0.0 2.6
+    }
+    Source2 {
+        type "vec3"
+        (array)default 0.0 0.0 2.6
+    }
+    Source3 {
+        type "vec3"
+        (array)default 0.0 0.0 2.6
+    }
+    Drive0 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive1 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive2 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive3 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Eye {
+        type "vec3"
+        (array)default 90.0 50.0 1080.0
+    }
+}

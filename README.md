@@ -27,7 +27,7 @@ The native export is `dist/Stillwater.app` on macOS. Open it normally. The local
 | Hold | C / Shift | R | Either shoulder |
 | Pause | P | P | Start |
 
-A live demonstration plays beside the opening controls. Choose a mode with **1–4** or click its label. Press **M Connect audio** to share music already playing in another tab, then select the music tab and enable audio in the browser's picker. Connection leaves you on this screen. **Enter Play** keeps a connected source, or uses the bundled score when no source is ready. Play clears the demonstration, centers the camera and reveals a fresh board. Browser and operating-system capture support varies; there is no service account sign-in inside the game.
+A live demonstration plays beside the opening controls. Choose a mode with **1–4** or its button. Expand **Options** for particle density, motion, ghost and volume. Press **M Connect audio** to share music already playing in another tab, then select the music tab and enable audio in the browser's picker. Connection leaves you on this screen. **Enter Play** keeps a connected source, or uses the bundled score when no source is ready. Play clears the demonstration, centers the camera and reveals a fresh board. Browser and operating-system capture support varies; there is no service account sign-in inside the game.
 
 These controls work inside the scene:
 
@@ -52,7 +52,7 @@ External music uses browser audio sharing or a native loopback device. Press M t
 
 ## Build from source
 
-This game consumes the Chibi SDK. KDL owns scene composition and `.chibi` owns the game rules and presentation. Blocks, scenery and text use the 3D renderer. There is no game-specific native module or separate browser implementation.
+This game consumes the Chibi SDK. KDL owns scene composition and material graphs, `.chibi` owns game rules and presentation, and ordinary GLSL files in `content/shaders` own particle motion and appearance. Blocks, scenery and text use the 3D renderer. There is no game-specific native module or separate browser implementation.
 
 The exact engine commit and package identities are recorded in `toolchain.json`. This development revision uses the engine branch `cwaldner/stillwater-3d-sdk`. Use its existing checkout through `.chibi/engine`, or pass `ENGINE=/absolute/path/to/that/checkout` to Make. The engine's documented CMake, C compiler, libclang and platform dependencies are required. Browser packaging also requires Emscripten.
 
@@ -94,6 +94,6 @@ make test
 
 The C/pico_unit dispatcher calls the real authored libraries and behaviors through the controller. It covers deterministic rules, both keyboard and controller slots, lock/reset/hold behavior, topout/rescue, Journey and Sprint completion, cooperative progression, disconnect pause, save readback, the music gate, controlled soft drop, piece-surface reactions, scene transitions and the 3D environment's effect controls. It runs under the engine's single 60-second production supervisor. Configuration and compilation are separate from that deadline.
 
-`content/behaviors/Board.chibi` handles each board, `content/libraries/Pieces.chibi` and `Rules.chibi` own piece geometry and rule calculations, and `Shell.chibi` owns progression and in-game controls. `StageDirector.chibi` morphs four scenes, block finishes and their lighting. `Environment.chibi` drives two GPU particle fields and fixed pools of short-lived reaction geometry and lights. `CosmicParticles.kdl` and `ReactionParticles.kdl` author their trajectories. `AudioReactive.chibi` maps measured audio into the scene, and `Hud.chibi` places mesh text. Test-only fixtures stay in `tests/fixtures` and are never exported.
+`content/behaviors/Board.chibi` handles each board, `content/libraries/Pieces.chibi` and `Rules.chibi` own piece geometry and rule calculations, and `Shell.chibi` owns progression and in-game controls. `StageDirector.chibi` morphs four scenes, block finishes and their lighting. `Environment.chibi` drives two GPU particle fields and fixed pools of reaction geometry and lights. The GLSL files in `content/shaders` define their trajectories. `AudioReactive.chibi` reads measured audio, `MusicResponse.chibi` adapts its levels and estimates tempo, and `Hud.chibi` places mesh text. Test-only fixtures stay in `tests/fixtures` and are never exported.
 
 Read [validation](docs/validation.md) for executed checks and limits, [rules](docs/rules.md) for scoring, [audio](docs/audio.md) and [visuals](docs/visuals.md) for asset provenance, and [licenses](LICENSES.md) for terms.

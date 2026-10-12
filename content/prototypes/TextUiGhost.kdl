@@ -1,0 +1,4 @@
+name "TextUiGhost"
+components {
+    MeshAsset source="content/meshes/text/ui_ghost.mesh"
+}

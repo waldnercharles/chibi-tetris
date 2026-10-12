@@ -1,0 +1,4 @@
+name "TextUiWaiting"
+components {
+    MeshAsset source="content/meshes/text/ui_waiting.mesh"
+}

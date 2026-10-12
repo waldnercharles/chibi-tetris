@@ -2,6 +2,7 @@
 // local lights; no particle creates an entity or runs a behavior of its own.
 behavior Environment {
     world: entity
+    camera: entity
     vortex: entity
     stars: entity
     boards: entity[]
@@ -43,13 +44,27 @@ behavior Environment {
     cue_point3 := vec3(0, 0, 10.5)
     cue_delay := 0
     cue_depth := 0
+    // Four bounded impulse origins retain event position and age. Overlapping
+    // inputs add force at an existing origin instead of restarting its wave.
+    sources: CF_V3[]
+    drives: CF_V3[]
+    targets: CF_V3[]
+    pulse := 0
+    pulse_velocity := 0
+    wind := 0
 
     on Begin {
         world = get_global_variable("World")
+        camera = get_global_variable("Camera")
         vortex = get_global_variable("Vortex")
         stars = get_global_variable("Stars")
         boards = [get_global_variable("Board1"), get_global_variable("Board2"), world]
         cursors = [world, world, world]
+        for i in 0..3 {
+            sources = array_add(sources, vec3(0, 0, 2.6))
+            drives = array_add(drives, vec3(0, 0, 0))
+            targets = array_add(targets, vec3(0, 0, 0))
+        }
         for i in 0..95 {
             field := await spawn(ReactionField)
             fields = array_add(fields, field)
@@ -107,9 +122,12 @@ behavior Environment {
     }
 
     // A mode change releases existing grains over 60ms instead of hiding them.
-    function Retire() {
+    function Retire(preserve_release: bool) {
         for i in 0..95 {
             field := get(fields, i)
+            if preserve_release && field.Shader.material == "ReactionParticles.Release" {
+                continue
+            }
             if field.ParticleField3D.count > 0 && get(retires, i) < 0 {
                 retires[i] = 0.06
             }
@@ -124,6 +142,53 @@ behavior Environment {
         impulse = min(1, impulse + strength)
         flow_velocity = min(3, flow_velocity + strength * 1.2)
         turn_velocity = clamp(turn_velocity + direction * strength, -0.8, 0.8)
+    }
+
+    function Kick(x: number, y: number, strength: number, swirl: number) {
+        if world.Session.effects == 0 || world.Session.reduced_motion || world.Session.screen >= 2 {
+            return
+        }
+        chosen: int = 0
+        nearest := 1000000000
+        vacant: int = -1
+        for i in 0..3 {
+            source := get(sources, i)
+            if source.z >= 2.6 && vacant < 0 {
+                vacant = i
+            }
+            distance := (source.x - x) * (source.x - x) + (source.y - y) * (source.y - y)
+            if source.z < 2.6 && distance < nearest {
+                nearest = distance
+                chosen = i
+            }
+        }
+        if vacant >= 0 && nearest > 3600 {
+            chosen = vacant
+            sources[chosen] = vec3(x, y, 0)
+            drives[chosen] = vec3(0, 0, 0)
+            targets[chosen] = vec3(0, 0, 0)
+        }
+        target := get(targets, chosen)
+        targets[chosen] = vec3(min(1.8, target.x + strength), clamp(target.y + swirl, -1.8, 1.8), max(-0.9, target.z - strength * 0.12))
+    }
+
+    function AdvanceImpulses(delta: number) {
+        blend := 1 - exp(-delta * 24)
+        for i in 0..3 {
+            source := get(sources, i)
+            source.z = min(2.6, source.z + delta)
+            sources[i] = source
+            drive := get(drives, i)
+            drives[i] = drive + (get(targets, i) - drive) * blend
+        }
+    }
+
+    function Follow(current: number, target: number, attack: number, release: number, delta: number) -> (value: number) {
+        rate := release
+        if target > current {
+            rate = attack
+        }
+        return current + (target - current) * (1 - exp(-delta * rate))
     }
 
     // Patterns: fracture, move edge, tangential turn, soft fall, contact,
@@ -257,12 +322,18 @@ behavior Environment {
         if world.Session.reduced_motion || world.Session.effects == 0 {
             return
         }
+        // Capture the measured song once. A later tempo change cannot cut
+        // an existing trail short or move its particles to another clock.
+        confidence := clamp(world.VisualState.beat_confidence, 0, 1)
+        period := 0.5 + (clamp(world.VisualState.beat_period, 0.3, 0.9) - 0.5) * confidence
+        song := clamp(world.VisualState.energy * 0.7 + world.VisualState.bass * 0.3, 0, 1)
+        tail := clamp(period * 7 + 0.8 + song * 0.7, 3.2, 6)
         cue_delay = 0.035
-        Cue(9, center, row_y, 1, 0, strength, 0.95, 0.25)
+        Cue(9, center, row_y, 1, 0, strength, 1 + song * 0.35, 0.25)
         cue_delay = 0.055
-        Cue(10, center, row_y, 1, 0, strength, 1.4, 0.1)
+        Cue(10, center, row_y, 1, 0, strength, tail, 0.1)
         cue_delay = 0.02
-        Cue(11, center, row_y, 1, 0, strength, 0.6, 0.2)
+        Cue(11, center, row_y, 1, 0, strength, tail * 0.88 + 0.3, 0.2)
         Glow(vec3(center, row_y, front + 2), 0.82 + cast<number>(amount) * 0.07, 0, 0.02)
     }
 
@@ -288,18 +359,22 @@ behavior Environment {
             case 1 {
                 Cue(1, x, y, direction, 0, 0.035, 0.52, 0)
                 Push(0.08, cast<number>(direction))
+                Kick(piece_x, y, 0.16, cast<number>(direction) * 0.26)
             }
             case 2 {
                 Cue(2, x, y, direction, 0, 0.12, 0.76, 0.25)
                 Push(0.15, cast<number>(direction) * 1.2)
+                Kick(piece_x, y, 0.20, cast<number>(direction) * 0.65)
             }
             case 3 {
                 Cue(3, x, y, 1, 0, 0.035, 0.48, 0)
                 Push(0.06, 0)
+                Kick(piece_x, y, 0.08, 0)
             }
             case 4 {
                 Cue(3, x, y, 1, amount, 0.025, 0.48, 0)
                 Push(0.04, 0)
+                Kick(piece_x, y, 0.045, 0)
             }
             case 5 {
                 Cue(3, x, y, 1, 0, 0.025, 0.38, 0)
@@ -313,10 +388,12 @@ behavior Environment {
                 }
                 Landing(x, y - amount * 24, piece_x, 0.45)
                 Push(0.34, 0.12)
+                Kick(piece_x, y - amount * 24, 0.85, 0.12)
             }
             case 7 {
                 Cue(6, x, y, -1, 0, 0.1, 0.72, 0.4)
                 Push(0.12, -0.7)
+                Kick(piece_x, y, 0.24, -0.38)
             }
             case 8 {
                 if get(drop_serials, board.BoardState.index) == record.ReactionEvent.serial - 1 {
@@ -324,6 +401,7 @@ behavior Environment {
                 }
                 Landing(x, y, piece_x, 0.16)
                 Push(0.1, 0)
+                Kick(piece_x, y, 0.22, 0)
             }
             case 9 {
                 center := 0
@@ -334,6 +412,7 @@ behavior Environment {
                 front := (record.ReactionEvent.point0.z + record.ReactionEvent.point1.z + record.ReactionEvent.point2.z + record.ReactionEvent.point3.z) * 0.25
                 for row in 0..21 {
                     if (mask >> row & 1) != 0 {
+                        Kick(center, 276 - row * 24, 0.40 + cast<number>(amount) * 0.12, 0.30)
                         ClearRow(center, row, amount, front)
                     }
                 }
@@ -343,16 +422,19 @@ behavior Environment {
                 // The row already owns its release. Combo adds light and force.
                 Glow(vec3(piece_x, y, 10.5), 0.35, 0.4, 0.04)
                 Push(0.25, 0.5)
+                Kick(piece_x, y, 0.38, 0.42)
             }
             case 11 {
                 Cue(0, x, y, -1, 0, 0.65, 0.42, 2)
                 Glow(vec3(piece_x, y, 10.5), 0.6, 2, 0)
                 Push(0.7, -0.4)
+                Kick(piece_x, y, 0.75, -0.55)
             }
             case 12 {
                 Cue(0, x, y, 1, 0, 0.7, 0.46, 0.2)
                 Glow(vec3(piece_x, y, 10.5), 0.65, 0, 0)
                 Push(1, 0.6)
+                Kick(piece_x, y, 1, 0.65)
             }
         }
     }
@@ -426,6 +508,17 @@ behavior Environment {
         set_material_parameter(field, "Reaction", world.VisualState.flow_energy)
         set_material_parameter(field, "Flow", flow)
         set_material_parameter(field, "Turn", turn)
+        set_material_parameter(field, "Pulse", pulse)
+        set_material_parameter(field, "Wind", wind)
+        set_material_parameter(field, "Eye", camera.Transform3D.position)
+        set_material_parameter(field, "Source0", get(sources, 0))
+        set_material_parameter(field, "Source1", get(sources, 1))
+        set_material_parameter(field, "Source2", get(sources, 2))
+        set_material_parameter(field, "Source3", get(sources, 3))
+        set_material_parameter(field, "Drive0", get(drives, 0))
+        set_material_parameter(field, "Drive1", get(drives, 1))
+        set_material_parameter(field, "Drive2", get(drives, 2))
+        set_material_parameter(field, "Drive3", get(drives, 3))
     }
 
     on Tick(dt) {
@@ -434,8 +527,9 @@ behavior Environment {
         }
         delta := min(dt, 0.05)
         if visual_run != world.Session.run {
+            preserve_release := visual_run == 0 && world.Session.entering && world.Session.run == 1
+            Retire(preserve_release)
             visual_run = world.Session.run
-            Retire()
             impulse = 0
         }
         effects := world.Session.effects
@@ -445,7 +539,7 @@ behavior Environment {
             time += delta
         }
         if !moving && was_moving {
-            Retire()
+            Retire(false)
         }
         was_moving = moving
         if quality != effects {
@@ -463,12 +557,16 @@ behavior Environment {
         }
         // Retain the entire shape when stopped, including musical deformation.
         if advancing {
-            blend := 1 - exp(-delta * 4)
-            energy += (world.VisualState.energy - energy) * blend
-            bass += (world.VisualState.bass - bass) * blend
-            mid += (world.VisualState.mid - mid) * blend
-            treble += (world.VisualState.treble - treble) * blend
-            beat += (world.VisualState.beat - beat) * (1 - exp(-delta * 5))
+            energy = Follow(energy, world.VisualState.energy, 14, 3.5, delta)
+            bass = Follow(bass, world.VisualState.bass, 24, 4, delta)
+            mid = Follow(mid, world.VisualState.mid, 16, 3, delta)
+            treble = Follow(treble, world.VisualState.treble, 32, 7, delta)
+            beat = Follow(beat, world.VisualState.beat, 40, 7, delta)
+            tempo := 6.2831853 / clamp(world.VisualState.beat_period, 0.25, 1.5)
+            tempo *= clamp(world.VisualState.beat_confidence * 4, 0, 1)
+            pulse_velocity += (tempo - pulse_velocity) * (1 - exp(-delta * 5))
+            pulse += pulse_velocity * delta
+            wind += (0.18 + mid * 0.7 + energy * 0.25) * delta
             chapter += (cast<number>(world.Session.stage) - chapter) * min(1, delta * 1.8)
         }
         impulse *= exp(-delta * 1.8)
@@ -519,12 +617,22 @@ behavior Environment {
             Light(160, 70, treble * 0.3, 1)
         }
         if advancing {
+            AdvanceImpulses(delta)
             reaction += (impulse - reaction) * (1 - exp(-delta * 5))
             flow_velocity += (0.16 + energy * 0.5 + bass * 0.65 + beat * 0.35 - flow_velocity) * (1 - exp(-delta * 1.6))
             turn_velocity *= exp(-delta * 1.4)
             flow += flow_velocity * delta
             turn += turn_velocity * delta
         }
+        world.VisualState.field_impulse0 = get(sources, 0)
+        world.VisualState.field_impulse1 = get(sources, 1)
+        world.VisualState.field_impulse2 = get(sources, 2)
+        world.VisualState.field_impulse3 = get(sources, 3)
+        world.VisualState.field_motion0 = get(drives, 0)
+        world.VisualState.field_motion1 = get(drives, 1)
+        world.VisualState.field_motion2 = get(drives, 2)
+        world.VisualState.field_motion3 = get(drives, 3)
+        world.VisualState.field_pulse = pulse
         world.VisualState.flow_phase = flow
         world.VisualState.flow_velocity = flow_velocity
         world.VisualState.flow_energy = reaction

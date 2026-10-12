@@ -1,0 +1,14 @@
+// Private adaptation and onset history. A source change clears the entire state.
+component MusicDynamics {
+    reference: number
+    level_mean: number
+    bass_mean: number
+    previous_onset: number
+    previous_flux: number
+    pulse: number
+    pulse_age: number
+    heard_pulse: bool
+    candidate_period: number
+    matching_intervals: int
+    quiet_age: number
+}

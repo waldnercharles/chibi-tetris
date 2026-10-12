@@ -15,6 +15,11 @@ behavior VfxChecks {
     falling: entity
     light: entity
     oldest: entity
+    fast_tail: entity
+    slow_tail: entity
+    slow_energy: entity
+    charged_tail: entity
+    sparse_tail: entity
     old_age := 0
     frame: int = 0
 
@@ -289,35 +294,40 @@ behavior VfxChecks {
                 Check(RowInstances(-254, -228) == 2336, "fracture retirement keeps the full longer-lived row budget")
             }
             case 104 {
-                Check(ActiveCues() == 8, "expanding energy retires before the heavier fragments and microembers")
-                Check(RowInstances(-254, -228) == 2144, "debris and ember layers retain independent lifetimes")
+                Check(ActiveCues() == 12, "chunks and dim energy continue after the brief fracture front")
+                Check(RowInstances(-254, -228) == 2336, "long tails do not stretch the bright fracture lifetime")
             }
             case 128 {
-                Check(ActiveCues() == 4, "microembers keep flowing after the heavy fragments expire")
-                Check(RowInstances(-254, -228) == 2048, "the long tail retains thousands of independently evaluated microembers")
+                Check(ActiveCues() == 8, "microembers and energy keep flowing after the heavy fragments expire")
+                Check(RowInstances(-254, -228) == 2240, "only dim additive layers retain the long release")
             }
             case 156 {
-                Check(ActiveCues() == 0, "all clear layers expire before their fixed fields can be reused")
-                world.Session.effects = 1
+                Check(ActiveCues() == 8, "all four rows retain their dim tails after the former clear deadline")
+                world.Session.effects = 0
                 world.Session.mode = 1
             }
             case 158 {
-                Clear(1 << 2 | 1 << 20, 2)
+                Check(ActiveCues() == 8, "full clear tails remain alive during the continuous retirement interval")
             }
             case 160 {
+                Check(ActiveCues() == 0, "full clear tails reach zero before their slots are reused")
+                world.Session.effects = 1
+                Clear(1 << 2 | 1 << 20, 2)
+            }
+            case 162 {
                 Check(ActiveCues() == 8, "nonadjacent clear rows receive independent layers in Solo")
                 Check(RowInstances(0, 228) == 1328 && RowInstances(0, -204) == 1328, "reduced effects halves every clear layer without moving its row")
                 Check(CueAt(0, -228) == world, "the row mask never fills an uncleared neighboring row")
                 world.Session.effects = 0
             }
-            case 162 {
-                Check(ActiveCues() == 8, "effects-off releases the existing long clear tails continuously")
+            case 164 {
+                Check(ActiveCues() == 8, "effects-off releases existing sparse tails continuously")
             }
-            case 166 {
+            case 168 {
                 Check(ActiveCues() == 0, "effects-off finishes retirement before field reuse")
                 Clear(1 << 21, 1)
             }
-            case 168 {
+            case 170 {
                 Check(ActiveCues() == 1 && RowInstances(0, -228) == 8, "effects-off uses one small stationary clear confirmation")
             }
             case 180 {
@@ -354,6 +364,121 @@ behavior VfxChecks {
             case 248 {
                 Check(ActiveCues() == 0, "both natural landing layers finish before their fields are reused")
                 Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "long ordinary tails stay within the fixed pool")
+            }
+            case 250 {
+                world.Session.mode = 1
+                world.VisualState.beat_confidence = 1
+                world.VisualState.beat_period = 0.3
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                Clear(1 << 21, 1)
+            }
+            case 252 {
+                fast_tail = LayerAt(0, -228, 2048)
+                Check(fast_tail != world && RowInstances(0, -228) == 2656, "fast quiet music starts a full bounded clear")
+            }
+            case 280 {
+                world.VisualState.beat_period = 0.9
+                world.VisualState.energy = 1
+                world.VisualState.bass = 1
+                Clear(1 << 18, 1)
+            }
+            case 282 {
+                slow_tail = LayerAt(0, -156, 2048)
+                slow_energy = LayerAt(0, -156, 192)
+                Check(slow_tail != world && slow_energy != world, "slow measured music starts both long additive layers")
+                Check(fast_tail.ParticleField3D.time > 0.45 && fast_tail.ParticleField3D.count == 2048, "new tempo leaves the previous clear clock and budget untouched")
+            }
+            case 286 {
+                world.VisualState.beat_confidence = 0
+                Clear(1 << 19, 1)
+            }
+            case 288 {
+                charged_tail = LayerAt(0, -180, 2048)
+                Check(charged_tail != world, "energetic audio can shape a tail before tempo confidence is available")
+            }
+            case 340 {
+                Check(fast_tail.ParticleField3D.count == 2048 && slow_tail.ParticleField3D.count == 2048, "both song-shaped tails outlive the old 1.4 second effect")
+                Check(abs(fast_tail.Transform3D.position.x) < 0.01 && abs(fast_tail.Transform3D.position.y + 228) < 0.01 && abs(fast_tail.Transform3D.position.z - 10.5) < 0.01 && abs(slow_tail.Transform3D.position.x) < 0.01 && abs(slow_tail.Transform3D.position.y + 156) < 0.01 && abs(slow_tail.Transform3D.position.z - 10.5) < 0.01, "long motion keeps the original row and front-depth anchors")
+            }
+            case 440 {
+                Check(fast_tail.ParticleField3D.count == 2048 && fast_tail.ParticleField3D.time > 3.1, "fast-song embers remain allocated through their final smooth fade")
+                Check(slow_tail.ParticleField3D.count == 2048 && slow_energy.ParticleField3D.count == 192, "slow-song energy and embers still coexist after two seconds")
+            }
+            case 452 {
+                Check(fast_tail.ParticleField3D.count == 0 && slow_tail.ParticleField3D.count == 2048, "fast clear finishes independently while the slower song tail continues")
+                world.Session.effects = 1
+                world.VisualState.beat_confidence = 0
+                world.VisualState.beat_period = 0.9
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                Clear(1 << 20, 1)
+            }
+            case 454 {
+                sparse_tail = LayerAt(0, -204, 1024)
+                Check(sparse_tail != world && RowInstances(0, -204) == 1328, "sparse mode preserves all four release layers at half density")
+                Check(slow_tail.ParticleField3D.count == 2048 && slow_tail.ParticleField3D.time > 2.8, "density and confidence changes never mutate an existing tail")
+            }
+            case 564 {
+                Check(charged_tail.ParticleField3D.count == 2048 && charged_tail.ParticleField3D.time > 4.5, "measured energy extends the fallback-period tail beyond its quiet duration")
+            }
+            case 590 {
+                Check(slow_tail.ParticleField3D.count == 2048 && slow_energy.ParticleField3D.count == 192, "slow music sustains dim energy and ember motion beyond five seconds")
+                Check(sparse_tail.ParticleField3D.count == 1024, "sparse tails keep the full song-derived duration")
+            }
+            case 594 {
+                Check(charged_tail.ParticleField3D.count == 0, "energy-shaped tails finish independently of the slower measured tempo")
+            }
+            case 624 {
+                Check(slow_energy.ParticleField3D.count == 0 && slow_tail.ParticleField3D.count == 2048, "energy thins before the final six-second ember tail")
+            }
+            case 648 {
+                Check(slow_tail.ParticleField3D.count == 0, "even the slowest full-density tail respects the six-second bound")
+                Check(sparse_tail.ParticleField3D.count == 1024, "uncertain tempo uses a stable middle-length fallback")
+            }
+            case 708 {
+                Check(sparse_tail.ParticleField3D.count == 1024 && sparse_tail.ParticleField3D.time > 4.2, "fallback tempo retains the last smooth ember fade")
+            }
+            case 720 {
+                Check(ActiveCues() == 0, "all song-shaped fields finish before their slots are reused")
+                world.Session.effects = 2
+                world.VisualState.beat_confidence = 1
+                world.VisualState.beat_period = 0.9
+                world.VisualState.energy = 1
+                world.VisualState.bass = 1
+                Clear((1 << 22) - 4, 20)
+            }
+            case 722 {
+                Check(ActiveCues() == 80, "a tall demonstration clear stays inside the same fixed pool")
+                oldest = LayerAt(0, 228, 2048)
+                old_age = oldest.ParticleField3D.time
+                Clear(1 << 18 | 1 << 19 | 1 << 20 | 1 << 21, 4)
+            }
+            case 724 {
+                Check(ActiveCues() == 96, "overlapping long clear bursts fill but never enlarge the pool")
+                Clear(1 << 2, 1)
+            }
+            case 726 {
+                Check(ActiveCues() == 96 && world.VisualState.cue_dropped == 5, "a saturated release skips four incoming layers without overwriting visible tails")
+                Check(oldest.ParticleField3D.count == 2048 && oldest.ParticleField3D.time > old_age, "saturation preserves the oldest captured tail and its clock")
+                Check(world.VisualState.cue_overwrites == 0, "long lifetimes never introduce destructive field reuse")
+            }
+            case 748 {
+                Check(ActiveCues() == 72, "every overlapped fracture ends promptly despite long tails")
+                world.Session.reduced_motion = true
+            }
+            case 750 {
+                Check(ActiveCues() == 72, "reduced-motion changes release long fields through a continuous fade")
+            }
+            case 754 {
+                Check(ActiveCues() == 0, "reduced-motion retirement reaches zero before reuse")
+                Clear(1 << 21, 1)
+            }
+            case 756 {
+                Check(ActiveCues() == 1 && RowInstances(0, -228) == 8, "reduced motion ignores song length and keeps a short stationary confirmation")
+            }
+            case 768 {
+                Check(ActiveCues() == 0 && world.VisualState.cue_dropped == 5 && world.VisualState.cue_overwrites == 0, "quiet release expires and preserves saturation diagnostics")
                 self.TestReport.done = true
             }
         }

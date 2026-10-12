@@ -1,0 +1,4 @@
+name "TextUiScore"
+components {
+    MeshAsset source="content/meshes/text/ui_score.mesh"
+}

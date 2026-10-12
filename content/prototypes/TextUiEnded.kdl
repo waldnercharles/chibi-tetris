@@ -1,0 +1,4 @@
+name "TextUiEnded"
+components {
+    MeshAsset source="content/meshes/text/ui_ended.mesh"
+}

@@ -43,10 +43,26 @@ across sixteen fields. The prior release used 112 instances per row.
 | Layer | Instances per row | Delay / field life | Geometry and motion |
 | --- | ---: | --- | --- |
 | Fracture front | 320 | 0 / 240 ms | Thin bright splinters, 2.2 by 0.38 by 0.6 proportions. A forty-millisecond front sweeps from the row center toward its ends. The short white-cyan core cools into cyan or occasional amber. |
-| Heavy fragments | 96 | 35 / 950 ms | Opaque chunks, 2.2 to 5.8 units before the envelope, with independent uneven proportions and tumbling. Initial X speed reaches 220 units/s, Y starts at 50 to 150 units/s, and Z starts at 20 to 65 units/s. Gravity is -250 units/s² and drag is 1.8/s. |
-| Microembers | 2,048 | 55 / 1,400 ms | Fine solids, 0.45 to 1.52 units before the envelope. They disperse through depth with 3.1/s drag, -18 units/s² gravity and bounded curl drift. Dimmer larger grains give the trailing dust a broken texture. |
-| Expanding energy | 192 | 20 / 600 ms | A sparse elliptical front begins at the row perimeter. Its horizontal and vertical radii grow by `350F` and `180F`; depth advances by `60F`, using 4.5/s drag. It leaves the center open. |
+| Heavy fragments | 96 | 35 ms / 1–1.35 s | Opaque chunks, 2.2 to 5.8 units before the envelope, with independent uneven proportions and tumbling. Initial X speed reaches 220 units/s, Y starts at 50 to 150 units/s, and Z starts at 20 to 65 units/s. Gravity is -250 units/s² and drag is 1.8/s. |
+| Microembers | 2,048 | 55 ms / 3.2–6 s | Fine solids, 0.45 to 1.52 units before the envelope. They disperse through depth with 0.9/s drag, -7 units/s² gravity and bounded curl drift. Dimmer larger grains give the trailing dust a broken texture. |
+| Expanding energy | 192 | 20 ms / 3.116–5.58 s | A sparse elliptical front begins at the row perimeter. Its horizontal and vertical radii grow by `180F` and `90F`; depth advances by `30F`, using 1.1/s drag. It leaves the center open. |
 | Row illumination | One light | 20 / 300 ms | Centered on the actual row, two units ahead of its captured front. Strength ranges from 0.89 for one row to 1.1 for four. The existing light pool skips a new light if all eight are still alive. |
+
+The release captures the current song response once, so its lifetime cannot jump
+when a later beat arrives. Let `c` be tempo confidence, `p` the measured beat
+period in seconds, and `s = clamp(0.7 energy + 0.3 bass, 0, 1)`:
+
+```
+period = 0.5 + (clamp(p, 0.3, 0.9) - 0.5) * c
+ember_life = clamp(7 * period + 0.8 + 0.7 * s, 3.2, 6)
+energy_life = 0.88 * ember_life + 0.3
+chunk_life = 1 + 0.35 * s
+```
+
+The bright opening cools over 550 ms regardless of tail length. Ember and energy
+alpha also multiply by `0.3 + 0.7 exp(-2.8a)`, leaving dim drifting grains rather
+than holding a bright glow for six seconds. The opening demo's release survives
+the first run handoff, while ordinary restarts still retire all old fields.
 
 Fracture, ember and energy grains use source-alpha additive blending with depth
 testing and no depth writes. Heavy chunks use opaque depth-tested geometry and
@@ -65,7 +81,7 @@ light pulse is separate from the longer fragment lifetime.
 ## Timing and motion
 
 For clear layers except the fracture front, birth time uses an independent stable hash `q`
-in `[0, 1)`. For field life `L`, the emission window is `E = 0.26L`:
+in `[0, 1)`. For field life `L`, the emission window is `E = 0.26L` for chunks and `0.10L` for the longer ember and energy tails:
 
 ```
 b(q) = E * (exp(log(65) * q) - 1) / 64
@@ -74,7 +90,7 @@ N(t) / N = log(1 + 64t/E) / log(65)
 
 This gives a dense initial burst followed by fewer births. A fracture grain's
 birth is `(abs(source.x) / 118 * 0.04 + q * 0.008) * L / 0.24`. Particle duration is
-`D = L * (0.56 + 0.16h)`, using another hash component. With event delay `d` and
+`D = L * (0.56 + 0.16h)` for fracture/chunks and `L * (0.72 + 0.18h)` for tails, using another hash component. With event delay `d` and
 field age `t`, elapsed age is `a = max(0, t - d - b)`.
 
 ```
@@ -102,7 +118,7 @@ position = source + initial_velocity * F + gravity * G
 ```
 
 The microember curl adds three phase-offset sine/cosine differences multiplied
-by `9 * (1 - exp(-3a))`. It starts at zero and stays bounded. This is a
+by `18 * (1 - exp(-1.6a))`. It starts at zero and stays bounded. This is a
 prescribed flowing trajectory, not a fluid solver. Chunk tumble is constant
 angular motion. The GPU does not persist particle state or simulate collisions,
 rigid-body contacts or particle-to-particle forces.

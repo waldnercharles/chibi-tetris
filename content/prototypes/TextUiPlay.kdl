@@ -1,0 +1,4 @@
+name "TextUiPlay"
+components {
+    MeshAsset source="content/meshes/text/ui_play.mesh"
+}

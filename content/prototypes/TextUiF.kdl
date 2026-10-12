@@ -1,0 +1,4 @@
+name "TextUiF"
+components {
+    MeshAsset source="content/meshes/text/ui_f.mesh"
+}

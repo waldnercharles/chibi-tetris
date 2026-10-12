@@ -1,0 +1,145 @@
+// Feed measured PCM envelopes through the production response, without a device.
+behavior MusicResponseChecks {
+    peak_energy := 0
+    low_energy := 1
+    peak_beat := 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function Steady(level: number, bands: CF_V3, frames: int) {
+        for frame in 0..frames - 1 {
+            MusicResponse.Step(self, level, bands, 0, 1.0 / 60)
+        }
+    }
+
+    function Rhythm(volume: number, period: int, cycles: int) {
+        peak_energy = 0
+        low_energy = 1
+        peak_beat = 0
+        for frame in 0..period * cycles - 1 {
+            phase := cast<number>(frame % period) / 60
+            hit := exp(-phase * 18)
+            level := volume * (0.14 + hit * 0.86)
+            bands := vec3(0.04 + hit * 0.71, 0.16 + hit * 0.17, 0.05 + hit * 0.05) * volume
+            // Quiet tracks may never exceed the host's absolute onset floor.
+            MusicResponse.Step(self, level, bands, 0, 1.0 / 60)
+            if frame >= period {
+                peak_energy = max(peak_energy, self.VisualState.energy)
+                low_energy = min(low_energy, self.VisualState.energy)
+                peak_beat = max(peak_beat, self.VisualState.beat)
+            }
+        }
+    }
+
+    on Begin {
+        MusicResponse.Reset(self)
+        Check(self.VisualState.energy == 0 && self.VisualState.beat == 0, "reset has no invented energy or beat")
+        Check(self.VisualState.beat_period == 0.5 && self.VisualState.beat_confidence == 0, "unmeasured tempo uses a half-second fallback without confidence")
+        for frame in 0..239 {
+            noise := 0.001 + cast<number>(frame % 7) * 0.0002
+            MusicResponse.Step(self, noise, vec3(noise, noise, noise), 0, 1.0 / 60)
+        }
+        Check(self.VisualState.energy == 0 && self.VisualState.bass == 0 && self.VisualState.treble == 0, "quiet noise is never amplified into the field")
+        Check(self.VisualState.beat == 0 && self.VisualState.beat_confidence == 0, "noise never invents beats or a tempo")
+        Check(self.MusicDynamics.reference == 0.025, "silence gain has a fixed floor instead of pumping upward")
+
+        Rhythm(0.04, 30, 9)
+        Check(peak_energy > 0.48 && peak_energy < 0.9, "quiet measured music has strong unsaturated response")
+        Check(peak_energy - low_energy > 0.2, "normalized response preserves musical amplitude changes")
+        Check(peak_beat > 0.55, "quiet bass rises trigger visible pulses even below the host onset floor")
+        Check(abs(self.VisualState.beat_period - 0.5) < 0.025, "repeated measured half-second beats produce the correct period")
+        Check(self.VisualState.beat_confidence > 0.8, "repeated matching intervals establish tempo confidence")
+        quiet_peak := peak_energy
+        quiet_pulse := peak_beat
+
+        MusicResponse.Reset(self)
+        Rhythm(0.4, 30, 9)
+        Check(abs(peak_energy - quiet_peak) < 0.08, "normalization remains responsive across a tenfold volume change")
+        Check(abs(peak_beat - quiet_pulse) < 0.1, "beat strength remains useful across recording volumes")
+        Check(peak_energy - low_energy > 0.15 && peak_energy < 0.9, "loud music does not flatten at the old gain ceiling")
+        Check(self.VisualState.beat_confidence > 0.8, "loud and quiet tracks both establish a measured tempo")
+
+        MusicResponse.Reset(self)
+        Rhythm(0.15, 45, 9)
+        Check(abs(self.VisualState.beat_period - 0.75) < 0.03, "slow tracks retain their measured three-quarter-second period")
+        Check(self.VisualState.beat_confidence > 0.8, "slow tempo reaches confidence without assuming 120 BPM")
+        Rhythm(0.15, 20, 14)
+        Check(abs(self.VisualState.beat_period - 1.0 / 3) < 0.025, "a new faster rhythm replaces the old tempo")
+        Check(self.VisualState.beat_confidence > 0.8, "confidence recovers after the new rhythm repeats")
+
+        MusicResponse.Reset(self)
+        Rhythm(0.15, 84, 9)
+        Check(abs(self.VisualState.beat_period - 1.4) < 0.03 && self.VisualState.beat_confidence > 0.8, "slow measured rhythm establishes confidence near the supported upper period")
+        Steady(0.15, vec3(0.1, 0.03, 0.01), 390)
+        Check(self.VisualState.energy > 0.5 && self.VisualState.beat_confidence < 0.05, "stale slow tempo expires during sustained nonsilent sound")
+        Check(self.MusicDynamics.pulse_age > 4.5 && self.MusicDynamics.pulse_age <= 8, "bounded onset age can reach every supported tempo timeout")
+
+        MusicResponse.Reset(self)
+        Steady(0.12, vec3(0.03, 0.07, 0.02), 60)
+        for frame in 0..239 {
+            phase := cast<number>(frame % 30)
+            onset := 0.25 * exp(-phase * 0.35)
+            MusicResponse.Step(self, 0.12, vec3(0.03, 0.07, 0.02), onset, 1.0 / 60)
+        }
+        Check(abs(self.VisualState.beat_period - 0.5) < 0.025 && self.VisualState.beat_confidence > 0.8, "short host onsets recover tempo even when displayed RMS is steady")
+        Check(self.MusicDynamics.matching_intervals >= 6 && self.MusicDynamics.matching_intervals <= 8, "one decaying host onset produces one accepted pulse")
+        for frame in 0..239 {
+            MusicResponse.Step(self, 0.12, vec3(0.03, 0.07, 0.02), 0.8, 1.0 / 60)
+        }
+        Check(self.VisualState.beat < 0.0001 && self.VisualState.beat_confidence < 0.04, "a held onset peak never acts as a repeated beat")
+
+        MusicResponse.Reset(self)
+        for frame in 0..134 {
+            phase := cast<number>(frame % 15) / 30
+            hit := exp(-phase * 18)
+            MusicResponse.Step(self, 0.15 * (0.14 + hit * 0.86), vec3(0.04 + hit * 0.71, 0.16 + hit * 0.17, 0.05 + hit * 0.05) * 0.15, 0, 1.0 / 30)
+        }
+        Check(abs(self.VisualState.beat_period - 0.5) < 0.035 && self.VisualState.beat_confidence > 0.8, "tempo follows seconds at both 30 and 60 Hz instead of frame count")
+
+        MusicResponse.Reset(self)
+        Steady(0.2, vec3(0.15, 0.02, 0.005), 180)
+        Check(self.VisualState.bass > self.VisualState.mid + 0.2, "bass-heavy music retains a distinct low-frequency response")
+        Check(self.VisualState.bass > self.VisualState.treble + 0.4, "normalization preserves spectrum instead of equalizing every band")
+        Check(self.VisualState.beat < 0.0001 && self.VisualState.beat_confidence == 0, "a sustained tone cannot retrigger musical pulses")
+        old_bass := self.VisualState.bass
+        old_treble := self.VisualState.treble
+        MusicResponse.Step(self, 0.2, vec3(0.005, 0.02, 0.15), 0, 1.0 / 60)
+        Check(self.VisualState.bass < old_bass && self.VisualState.bass > 0.5, "band release retains a smooth tail")
+        Check(self.VisualState.treble > old_treble && self.VisualState.treble < 0.65, "treble attacks promptly without a one-frame jump")
+        Steady(0.2, vec3(0.005, 0.02, 0.15), 60)
+        Check(self.VisualState.treble > self.VisualState.bass + 0.5, "high-frequency passages visibly reverse the spectrum")
+
+        MusicResponse.Reset(self)
+        Rhythm(0.12, 30, 8)
+        self.Session.screen = 2
+        self.VisualState.flow_phase = 123
+        Rhythm(0.12, 24, 12)
+        Check(abs(self.VisualState.beat_period - 0.4) < 0.025, "music analysis follows the current song during a gameplay pause")
+        Check(self.Session.screen == 2 && self.VisualState.flow_phase == 123, "analysis never advances paused game or field motion")
+        MusicResponse.Reset(self)
+        Check(self.VisualState.energy == 0 && self.VisualState.bass == 0 && self.VisualState.mid == 0 && self.VisualState.treble == 0 && self.VisualState.beat == 0, "source reset removes every old visual envelope")
+        Check(self.VisualState.beat_period == 0.5 && self.VisualState.beat_confidence == 0, "source reset removes old tempo confidence")
+        Check(!self.MusicDynamics.heard_pulse && self.MusicDynamics.matching_intervals == 0, "source reset removes the previous source onset history")
+        Check(self.VisualState.flow_phase == 123, "source changes retain continuous field coordinates")
+
+        Rhythm(0.15, 30, 9)
+        MusicResponse.Step(self, 0.15, vec3(0.1, 0.03, 0.01), 0.2, 3)
+        Check(self.VisualState.beat_confidence == 0 && self.VisualState.beat_period == 0.5, "a suspended frame never fabricates a short beat interval")
+
+        Rhythm(0.15, 30, 9)
+        Steady(0, vec3(0, 0, 0), 120)
+        Check(self.VisualState.energy < 0.00001 && self.VisualState.beat < 0.00001, "silence settles the response without a free-running fake beat")
+        Check(self.VisualState.beat_confidence == 0 && self.VisualState.beat_period == 0.5, "silence clears stale musical timing")
+        Check(!self.MusicDynamics.heard_pulse && self.MusicDynamics.pulse_age <= 8, "silence retains bounded timing state")
+        self.TestReport.done = true
+    }
+}

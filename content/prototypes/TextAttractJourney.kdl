@@ -1,4 +1,0 @@
-name "TextAttractJourney"
-components {
-    MeshAsset source="content/meshes/text/attract_journey.mesh"
-}

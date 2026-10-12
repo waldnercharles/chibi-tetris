@@ -1,0 +1,125 @@
+// Drive the real environment without depending on a live capture device.
+behavior MusicFieldChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+    origin := vec3(0, 0, 0)
+    frozen := vec3(0, 0, 0)
+    drive := vec3(0, 0, 0)
+    phase := 0
+    flow := 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function Emit(x: number, y: number) {
+        record := board.ReactionQueue.write
+        ReactionRules.Emit(board, 1, 1, x, y, 1, 1, 3)
+        record.ReactionEvent.point0 = vec3(x - 12, y - 12, 10.5)
+        record.ReactionEvent.point1 = vec3(x + 12, y - 12, 10.5)
+        record.ReactionEvent.point2 = vec3(x - 12, y + 12, 10.5)
+        record.ReactionEvent.point3 = vec3(x + 12, y + 12, 10.5)
+    }
+
+    function Capture() {
+        frozen = world.VisualState.field_impulse0
+        drive = world.VisualState.field_motion0
+        phase = world.VisualState.field_pulse
+        flow = world.VisualState.flow_phase
+    }
+
+    function Frozen() {
+        actual := world.VisualState.field_impulse0
+        force := world.VisualState.field_motion0
+        Check(actual.x == frozen.x && actual.y == frozen.y && actual.z == frozen.z, "stopped forces retain their origin and age")
+        Check(force.x == drive.x && force.y == drive.y && force.z == drive.z, "stopped force strength does not drift")
+        Check(world.VisualState.field_pulse == phase, "stopped musical phase stays fixed")
+        Check(world.VisualState.flow_phase == flow, "stopped flow does not advance")
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        ReactionRules.Initialize(world, 1)
+        ReactionRules.Initialize(board, 1)
+        ReactionRules.Initialize(get_global_variable("Board2"), 1)
+    }
+
+    on Tick {
+        match (frame) {
+            case 4 {
+                Check(world.VisualState.field_bands.x == 0, "silence starts without bass deformation")
+                world.VisualState.bass = 0.8
+                world.VisualState.energy = 0.7
+                world.VisualState.beat_period = 0.5
+                world.VisualState.beat_confidence = 1
+            }
+            case 6 {
+                bands := world.VisualState.field_bands
+                Check(bands.x > 0.3 && bands.x < 0.8, "bass has a prompt bounded attack")
+                Check(bands.y == 0 && bands.z == 0, "bass does not fabricate other bands")
+                Check(world.VisualState.field_pulse > 0, "confident measured tempo advances phase")
+                Emit(-200, 120)
+            }
+            case 8 {
+                origin = world.VisualState.field_impulse0
+                force := world.VisualState.field_motion0
+                Check(origin.x == -200 && origin.y == 120 && origin.z > 0, "input force starts at its recorded world position")
+                Check(force.x > 0 && force.y > 0, "movement imparts radial and signed tangential force")
+                Emit(-190, 125)
+                world.VisualState.treble = 0.9
+            }
+            case 10 {
+                actual := world.VisualState.field_impulse0
+                Check(actual.x == origin.x && actual.y == origin.y && actual.z > origin.z, "nearby input strengthens a live force without teleporting or resetting it")
+                Check(world.VisualState.field_bands.z > 0.4 && world.VisualState.field_bands.y == 0, "high frequencies retain an independent prompt response")
+                Emit(250, -100)
+            }
+            case 12 {
+                second := world.VisualState.field_impulse1
+                Check(second.x == 250 && second.y == -100 && second.z > 0, "distant input gets a separate captured origin")
+                Check(world.VisualState.field_impulse0.x == -200, "distant input leaves the first wave in place")
+            }
+            case 14 {
+                Capture()
+                world.Session.screen = 2
+            }
+            case 20 {
+                Frozen()
+                world.Session.screen = 1
+            }
+            case 22 {
+                age := world.VisualState.field_impulse0.z
+                Check(age > frozen.z && age - frozen.z < 0.05, "resume advances only elapsed active frames")
+                Check(world.VisualState.field_pulse > phase && world.VisualState.field_pulse - phase < 0.6, "resume continues musical phase without replaying paused time")
+                Capture()
+                world.Session.reduced_motion = true
+                Emit(700, 300)
+            }
+            case 26 {
+                Frozen()
+                Check(world.VisualState.field_impulse2.z == 2.6 && world.VisualState.field_impulse3.z == 2.6, "reduced motion creates no new spatial force")
+                world.Session.reduced_motion = false
+            }
+            case 210 {
+                Check(world.VisualState.field_impulse0.z == 2.6 && world.VisualState.field_impulse1.z == 2.6, "all spatial impulses finish after their bounded lifetime")
+                fields: int = 0
+                for field in find_entities_with_component("ParticleField3D") {
+                    fields += 1
+                }
+                Check(fields == 98, "actions retain the fixed field pool")
+                Check(world.VisualState.cue_dropped == 0 && world.VisualState.cue_overwrites == 0, "ordinary input preserves visible fields without saturation")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

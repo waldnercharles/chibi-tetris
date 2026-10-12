@@ -1,0 +1,4 @@
+name "TextUiOff"
+components {
+    MeshAsset source="content/meshes/text/ui_off.mesh"
+}

@@ -1,0 +1,4 @@
+name "TextUiEffects"
+components {
+    MeshAsset source="content/meshes/text/ui_effects.mesh"
+}
