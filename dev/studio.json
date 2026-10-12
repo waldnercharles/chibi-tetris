@@ -1,16 +1,20 @@
 {
   "format": 1,
-  "engine": "25d8540245cee1f0eb0797c83327658e1991ce08",
-  "studio": "0ad2e5a1fea7d38e4aba19d9d04074ba5e0558d5",
-  "archive": "editor-0ad2e5a1fea7d38e4aba19d9d04074ba5e0558d5-25d8540245cee1f0eb0797c83327658e1991ce08.tar.gz",
-  "sha256": "4bc07f241a66f225a28c06e599e412ae0a048bbad9af7a1f5a59abddfae2e7ff",
+  "engine": "88c5dac493a650dd035e3e05ac0ab3323a7a36fa",
+  "studio": "de027ec8d23d471c42c3cc22210375ffd4aeca2e",
+  "archive": "editor-de027ec8d23d471c42c3cc22210375ffd4aeca2e-88c5dac493a650dd035e3e05ac0ab3323a7a36fa.tar.gz",
+  "sha256": "9e4e3b502bfe5b78eb1a3a9caa67defd2d508b228977f4222cd1ec5408d85d26",
   "capabilities": {
     "prototype_includes": true,
-    "project_audio": true
+    "project_audio": true,
+    "glsl_particle_loading": true,
+    "device_api": true,
+    "device_host": false,
+    "raw_glsl_authoring": false
   },
-  "sdk_build_id": "b5afba7547ba3176b1395c967c601de3a5d76c5ae509f7f4f007f8d8f2e865e9",
-  "sdk_manifest_sha256": "7ec83ae33ac39864c3828cfd7699b155607a76b7287fbe5f8c402522bf3fb375",
-  "compatible_engines": [
-    "287ff20417e43ca142d2a43807ce538a8287c098"
+  "limitations": [
+    "Editor Play uses desktop input; Phone viewport sensing, tilt and haptics are unavailable.",
+    "Raw GLSL shaders load and play through the pinned SDK; this editor does not create or edit raw GLSL assets.",
+    "Edit composed prototypes in Text Editor; reopen after child definitions, entity-reference paths or sound-file changes."
   ]
 }
