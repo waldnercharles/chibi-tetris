@@ -1,3 +1,5 @@
+#include "ParticleFlow.glsl"
+
 // Stable identities, a continuous divergence-free flow, and board-space forces.
 const float COSMIC_TAU = 6.28318530718;
 
@@ -23,31 +25,11 @@ vec4 cosmic_stage_weights(float style)
     return 1.0 - smoothstep(0.0, 1.0, distance);
 }
 
-vec2 cosmic_board_projection(vec3 position, vec3 eye)
-{
-    return eye.xy + (position.xy - eye.xy) * eye.z / max(eye.z - position.z, 1.0);
-}
-
 float cosmic_board_quiet(vec2 projected, float duet)
 {
     float horizontal = mix(abs(projected.x), abs(abs(projected.x) - 254.0), duet) / 148.0;
     float vertical = abs(projected.y - 20.0) / 268.0;
     return mix(0.055, 1.0, smoothstep(0.78, 1.65, max(horizontal, vertical)));
-}
-
-// Curl of a trigonometric vector potential, with zero divergence. Rotated
-// octaves break axis alignment. The GPU integrates velocity through this field;
-// this function never prescribes a particle's final position or a surface.
-vec3 cosmic_curl(vec3 q, float phase)
-{
-    vec3 a = q + vec3(phase * 0.071, -phase * 0.053, phase * 0.037);
-    vec3 first = vec3(sin(a.z) + cos(a.y), sin(a.x) + cos(a.z), sin(a.y) + cos(a.x));
-    mat3 basis = mat3(0.0, 0.8, 0.6, -0.8, 0.36, -0.48, -0.6, -0.48, 0.64);
-    vec3 b = basis * q * 2.13 + vec3(-phase * 0.041, phase * 0.033, phase * 0.027);
-    vec3 second = transpose(basis) * vec3(sin(b.z) + cos(b.y), sin(b.x) + cos(b.z), sin(b.y) + cos(b.x));
-    vec3 c = q * 4.31 + vec3(1.7, -2.1, 4.3) + phase * 0.017;
-    vec3 detail = vec3(sin(c.z) + cos(c.y), sin(c.x) + cos(c.z), sin(c.y) + cos(c.x));
-    return first * 0.62 + second * 0.26 + detail * 0.09;
 }
 
 vec3 cosmic_ball(vec3 random)
@@ -56,19 +38,6 @@ vec3 cosmic_ball(vec3 random)
     float ring = sqrt(max(0.0, 1.0 - z * z));
     float angle = random.x * COSMIC_TAU;
     return vec3(cos(angle) * ring, sin(angle) * ring, z) * pow(random.z, 0.3333333333);
-}
-
-vec3 cosmic_impulse(vec2 projected, vec3 source, vec3 drive)
-{
-    if (source.z <= 0.0 || source.z >= 2.6) return vec3(0.0);
-    vec2 delta = projected - source.xy;
-    float radius = length(delta);
-    float front = (radius - source.z * 320.0) / 170.0;
-    float decay = source.z * exp(-source.z * 1.7) * (1.0 - smoothstep(1.8, 2.6, source.z));
-    vec2 radial = delta * drive.x * 300.0 / max(radius, 1.0) / (1.0 + front * front);
-    vec2 tangent = vec2(-delta.y, delta.x) * drive.y * 0.40;
-    return vec3(radial + tangent + vec2(0.0, drive.z * 70.0), drive.x * 55.0)
-        * decay / (1.0 + radius * 0.003);
 }
 
 vec3 cosmic_event_force(vec3 position, ChibiParameters u)
@@ -84,13 +53,12 @@ vec3 cosmic_event_force(vec3 position, ChibiParameters u)
 
 float cosmic_source_light(vec2 projected, vec3 source, vec3 drive)
 {
-    if (source.z <= 0.0 || source.z >= 2.6) return 0.0;
+    if (source.z <= 0.0) return 0.0;
     float radius = length(projected - source.xy);
-    float spread = 115.0 + source.z * 190.0;
+    float spread = 100.0 + min(source.z, 1.0) * 140.0;
     float distance = radius / spread;
     float attack = smoothstep(0.0, 0.10, source.z);
-    float release = 1.0 - smoothstep(1.4, 2.6, source.z);
-    return (drive.x + abs(drive.y) * 0.28) * attack * release /
+    return (drive.x + abs(drive.y) * 0.28) * attack /
         (1.0 + distance * distance * distance * distance);
 }
 

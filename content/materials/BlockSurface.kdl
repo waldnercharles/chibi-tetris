@@ -2,7 +2,7 @@ version 3
 name "BlockSurface"
 domain "material"
 id_counter 7000
-description "Colored beveled coat with a fine luminous face border over an opaque BlockCore. Darker face centers keep each cell readable through the surrounding particle wakes."
+description "Dark colored faces with a narrow luminous border over an opaque BlockCore. The faces receive local landing light while the border keeps each cell readable among the particle wakes."
 (array)graphs {
     - {
         kind "event"
@@ -38,7 +38,7 @@ description "Colored beveled coat with a fine luminous face border over an opaqu
             - {
                 id 400
                 type "Behavior Expression"
-                reference_name "Tint.xyz * (0.68 + Edge * 0.42)"
+                reference_name "Tint.xyz * (0.32 + Edge * 0.36)"
                 inputs {
                     Tint id=401 type="struct" type_name="ShaderVec3"
                     Edge id=403 type="float"
@@ -50,7 +50,7 @@ description "Colored beveled coat with a fine luminous face border over an opaqu
             - {
                 id 500
                 type "Behavior Expression"
-                reference_name "Tint.xyz * (Finish.z + Edge * (0.24 + Finish.z * 0.6))"
+                reference_name "Tint.xyz * (Finish.z * 0.45 + Edge * (0.6 + Finish.z * 0.7))"
                 inputs {
                     Tint id=501 type="struct" type_name="ShaderVec3"
                     Finish id=502 type="struct" type_name="ShaderVec3"
@@ -93,7 +93,7 @@ description "Colored beveled coat with a fine luminous face border over an opaqu
             - {
                 id 910
                 type "Behavior Expression"
-                reference_name "smoothstep(0.76, 0.9, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))"
+                reference_name "smoothstep(0.84, 0.96, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))"
                 inputs {
                     UV id=911 type="struct" type_name="ShaderVec2"
                 }
@@ -118,9 +118,9 @@ description "Colored beveled coat with a fine luminous face border over an opaqu
             - from="910.Result" to="500.Edge"
         }
     }
-    - id=1000 kind="function" math_expression="Tint.xyz * (0.68 + Edge * 0.42)" expression_mode=1 entry_id=1100
-    - id=2000 kind="function" math_expression="Tint.xyz * (Finish.z + Edge * (0.24 + Finish.z * 0.6))" expression_mode=1 entry_id=2100
+    - id=1000 kind="function" math_expression="Tint.xyz * (0.32 + Edge * 0.36)" expression_mode=1 entry_id=1100
+    - id=2000 kind="function" math_expression="Tint.xyz * (Finish.z * 0.45 + Edge * (0.6 + Finish.z * 0.7))" expression_mode=1 entry_id=2100
     - id=3000 kind="function" math_expression="Finish.x" expression_mode=1 entry_id=3100
     - id=4000 kind="function" math_expression="Finish.y" expression_mode=1 entry_id=4100
-    - id=5000 kind="function" math_expression="smoothstep(0.76, 0.9, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=5100
+    - id=5000 kind="function" math_expression="smoothstep(0.84, 0.96, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=5100
 }

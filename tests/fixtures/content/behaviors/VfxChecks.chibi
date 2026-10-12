@@ -182,14 +182,14 @@ behavior VfxChecks {
                 }
                 Check(light != world, "grounded light sits below the lowest captured landing cell")
                 if light != world {
-                    Check(abs(light.Transform.y - 12.5) < 0.01, "light depth follows the captured front face")
+                    Check(abs(light.Transform.y - 24.5) < 0.01, "light depth follows the captured front face")
                     Check(light.PointLight.intensity > 0.1, "hard-drop contact lights the landing on the placement frame")
                 }
             }
             case 17 {
                 if light != world {
                     Check(light.PointLight.intensity > 0.1, "contact illumination continues while the brief wash has already finished")
-                    Check(packet.ParticleField3D.count == 0, "the traveled-space wash ends before the former delayed impact would begin")
+                    Check(packet.ParticleField3D.count == 96, "the drop column remains visible while its rising plume begins")
                     if drop_tail != world {
                         Check(drop_tail.ParticleField3D.count == 768, "secondary drop grains outlive the immediate wash")
                     }
@@ -203,7 +203,7 @@ behavior VfxChecks {
             }
             case 30 {
                 if packet != world && landing != world {
-                    Check(packet.ParticleField3D.count == 0, "the short drop wash never lingers over the next falling piece")
+                    Check(packet.ParticleField3D.count == 96 && packet.ParticleField3D.time < 0.4, "the volumetric beam fades independently within four tenths of a second")
                     if drop_tail != world {
                         Check(drop_tail.ParticleField3D.count == 768 && drop_tail.ParticleField3D.time > 0.3, "drop wake retains its own clock after placement")
                     }
@@ -298,7 +298,7 @@ behavior VfxChecks {
                 for candidate in lights {
                     if abs(candidate.Transform.x + 254) < 0.01 {
                         row_lights += 1
-                        Check(abs(candidate.Transform.y - 12.5) < 0.01, "clear illumination starts just in front of the captured block face")
+                        Check(abs(candidate.Transform.y - 26.5) < 0.01, "clear illumination starts just in front of the captured block face")
                         Check(candidate.PointLight.elevation <= -156 && candidate.PointLight.elevation >= -228, "clear illumination belongs to the cleared rows")
                     }
                 }
@@ -360,8 +360,8 @@ behavior VfxChecks {
                 for candidate in lights {
                     if abs(candidate.Transform.x - 92) < 0.01 && abs(candidate.PointLight.elevation + 4.7) < 0.01 {
                         found = true
-                        Check(abs(candidate.Transform.y - 12.5) < 0.01, "natural lock light uses the captured block front")
-                        Check(candidate.PointLight.intensity > 0.1 && candidate.PointLight.intensity <= 0.324, "natural lock has a smaller immediate light than hard drop")
+                        Check(abs(candidate.Transform.y - 24.5) < 0.01, "natural lock light uses the captured block front")
+                        Check(candidate.PointLight.intensity > 0.1 && candidate.PointLight.intensity <= 0.504, "natural lock has a smaller immediate light than hard drop")
                     }
                 }
                 Check(found, "natural lock illumination belongs to its lowest occupied cells")
@@ -529,6 +529,27 @@ behavior VfxChecks {
             }
             case 804 {
                 Check(LayerAt(50, 50, 768) == world, "a zero-distance hard drop has no traveled-space wake")
+            }
+            case 976 {
+                Record(first, 1, 1, -90, 180, 1)
+                Record(second, 2, 1, 90, 180, 0)
+            }
+            case 978 {
+                shifting = LayerAt(-90, 180, 48)
+                turning = LayerAt(90, 180, 96)
+                Check(shifting != world && turning != world, "movement and rotation retain distinct bounded trail budgets")
+            }
+            case 1055 {
+                if shifting != world && turning != world {
+                    Check(shifting.ParticleField3D.count == 48 && turning.ParticleField3D.count == 96, "movement and rotation grains keep flowing beyond one active second")
+                    Check(shifting.ParticleField3D.time > 1.2 && turning.ParticleField3D.time > 1.2, "overlapping action trails retain independent continuous clocks")
+                    Check(shifting.Transform3D.position.x == -90 && turning.Transform3D.position.x == 90, "shared currents do not move the captured action origins")
+                }
+            }
+            case 1090 {
+                if shifting != world && turning != world {
+                    Check(shifting.ParticleField3D.count == 0 && turning.ParticleField3D.count == 96, "the light move feather ends before the larger rotating plume")
+                }
             }
             case 1040 {
                 if drop_tail != world && duet_tail != world {

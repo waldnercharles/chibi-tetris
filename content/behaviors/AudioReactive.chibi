@@ -56,10 +56,7 @@ behavior AudioReactive {
         if self.Session.entering || self.Session.journey || self.Session.screen == 4 {
             return
         }
-        if self.Session.screen == 0 && input.Confirm.pressed {
-            request = 3
-        }
-        if input.AudioSource.pressed {
+        if self.Session.screen != 0 && input.AudioSource.pressed {
             request = 2
         }
         match (request) {

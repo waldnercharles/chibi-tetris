@@ -3,7 +3,8 @@ name "ReactionParticles.Release"
 kind "particle"
 source "ReactionRelease.glsl"
 entry "release"
-(array)includes "ReactionCommon.glsl"
+update "advect"
+(array)includes "ReactionCommon.glsl" "ParticleFlow.glsl"
 parameters {
     Loss type="float" default=0.0
     RowMask type="float" default=1023.0
@@ -29,6 +30,50 @@ parameters {
     Point3 {
         type "vec3"
         (array)default 0.0 0.0 0.0
+    }
+    Origin {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Current {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source0 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source1 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source2 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source3 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive0 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive1 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive2 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive3 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Eye {
+        type "vec3"
+        (array)default 90.0 50.0 1080.0
     }
     Delay type="float" default=0.0
     Fade type="float" default=1.0

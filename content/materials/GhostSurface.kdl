@@ -1,0 +1,70 @@
+version 3
+name "GhostSurface"
+domain "material"
+id_counter 2000
+description "A thin cyan landing silhouette. Each adjoining cell masks its shared edges; transparent interiors reveal the board beneath."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - {
+                id 100
+                type "Shader Surface Output"
+                inputs {
+                    "Base Color" {
+                        default x=0.0 y=0.0 z=0.0
+                    }
+                    Roughness 1.0
+                    Unlit #true
+                }
+            }
+            - {
+                id 200
+                type "Shader Parameter"
+                reference_id 1
+                reference_name "Tint"
+                outputs {
+                    Value {
+                        type "struct"
+                        type_name "ShaderVec3"
+                        default x=0.2 y=0.92 z=1.0
+                    }
+                }
+            }
+            - {
+                id 300
+                type "Shader Parameter"
+                reference_id 2
+                reference_name "Edges"
+                outputs {
+                    Value {
+                        type "struct"
+                        type_name "ShaderVec3"
+                        default x=1.0 y=1.0 z=3.0
+                    }
+                }
+            }
+            - id=400 type="Shader UV"
+            - {
+                id 500
+                type "Behavior Expression"
+                reference_name "1 - smoothstep(0.025, 0.055, min(min(UV.x + 1 - Edges.x, 2 - UV.x - Edges.y), min(UV.y + 1 - (Edges.z - 2 * floor(Edges.z / 2)), 2 - UV.y - floor(Edges.z / 2))))"
+                inputs {
+                    UV id=501 type="struct" type_name="ShaderVec2"
+                    Edges id=502 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=503 type="float"
+                }
+            }
+        }
+        (array)edges {
+            - from="200.Value" to="100.Emission"
+            - from="300.Value" to="500.Edges"
+            - from="400.UV" to="500.UV"
+            - from="500.Result" to="100.Opacity"
+        }
+    }
+    - id=1000 kind="function" math_expression="1 - smoothstep(0.025, 0.055, min(min(UV.x + 1 - Edges.x, 2 - UV.x - Edges.y), min(UV.y + 1 - (Edges.z - 2 * floor(Edges.z / 2)), 2 - UV.y - floor(Edges.z / 2))))" expression_mode=1 entry_id=1100
+}

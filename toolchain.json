@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "d18cebe9f134c8c12f4e4bb5908ac8697f900232",
-    "source_snapshot_sha256": "74fe749947c9d6765ae727ca8ec68dbdfd684e1f21aeb243b9365aa1ede96334",
+    "revision": "e3f1d8f817a56e297d2fbb247d73ca3b24484694",
+    "source_snapshot_sha256": "e820371c0c7c6bb0e00651d52e23243318024969b7901e4cc2420948aff609b9",
     "project_format": 22,
     "player_prepared_format": 12,
-    "local_branch": "cwaldner/stillwater-3d-sdk"
+    "local_branch": "cwaldner/tetris-render-polish"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "fac5ded199776596140fda3e9680bb256ea4f6ee57e21d3b7c9855f91b96f688",
-    "manifest_sha256": "f213f09d95b4d780ffb6f3876901fac27d7dbf5fd1425045247476bb6934cc1f",
+    "build_id": "093b616444459ab7197dd9a1b988ced00a5016d5451efb40c8e79374a154a972",
+    "manifest_sha256": "e8441582fb3eb7ccc712a9c0bf8ec8d4f5c0fcd8aab116facac7c796688f383b",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,10 +22,10 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "d18cebe9f134c8c12f4e4bb5908ac8697f900232",
+    "source_revision": "e3f1d8f817a56e297d2fbb247d73ca3b24484694",
     "files": {
-      "chibi-player.js": "0f4f1b920aa3dea3ca836bb7356ab18e58ddc1e2e973eda71d770faa8c296282",
-      "chibi-player.wasm": "f04206bafdd57d05279f13e02a4b54394e692fadd75d2d4c1dd64e100993b924",
+      "chibi-player.js": "12c570697ea188d33ec1d7a3a18a1d5adf06ab1acb6167830b61e60508d6df16",
+      "chibi-player.wasm": "2a754c2d5935f73e8cc6f7f544f0289bcd722e7170f156c869bff2b0cbe15b79",
       "compiler/chibi-compile.js": "c574d91e45e74ac12dbd07080042699451bd6c3023c3e92dd1f74ba263c948cd",
       "compiler/chibi-compile.wasm": "73f35fecf7d0db93bc5859cff4bc2d3d5e6281480ce89965c478c013314a7192",
       "index.html": "039ddc45202bcc909e1e405b593121dabd128d47aca0ff8020a30a629ca4de73"

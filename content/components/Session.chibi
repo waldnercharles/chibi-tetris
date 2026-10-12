@@ -1,4 +1,4 @@
-// Shared session and user settings. Screen: 0 music, 1 play, 2 pause, 3 completed run, 4 loss release.
+// Shared session and user settings. Screen: 0 menu or audio, 1 play, 2 pause, 3 completed run, 4 loss release.
 component Session {
     screen: int
     loss_time: number
@@ -12,9 +12,6 @@ component Session {
     journey_time: number
     intro_time: number
     hud_alpha: number
-    selected_mode: int
-    // A pointer-selected mode plus one; zero leaves the selection unchanged.
-    mode_request: int
     play_request: bool
     // Pointer settings: effects, motion, ghost, volume down or volume up.
     setting_request: int

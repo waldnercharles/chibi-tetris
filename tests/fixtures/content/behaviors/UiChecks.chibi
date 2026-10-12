@@ -43,18 +43,19 @@ behavior UiChecks {
         match (frame) {
             case 4 {
                 Check(VisibleLabel("content/meshes/text/ui_audio.mesh") && VisibleLabel("content/meshes/text/ui_play.mesh"), "opening actions have compact labelled panels")
-                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 15, "game options start collapsed")
+                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 5, "game options start collapsed")
             }
             case 9 {
                 Check(world.Session.audio_source == 1 && world.Session.audio_status == 1, "Connect button requests the host source")
                 Check(world.Session.run == 0 && world.Session.screen == 0, "Connect does not start the player run")
             }
             case 13 {
-                Check(world.Session.selected_mode == 3 && world.Session.mode == 0, "mode button selects Duet without replacing the demo")
+                Check(world.Session.mode == 0, "old mode button positions leave Journey selected")
             }
             case 17 {
                 Check(VisibleLabel("content/meshes/text/ui_effects.mesh") && VisibleLabel("content/meshes/text/ui_volume.mesh"), "options disclosure reveals grouped settings")
-                Check(VisiblePlates() == 23, "expanded controls have their own visible button geometry")
+                Check(VisiblePlates() == 10, "expanded controls have their own visible button geometry")
+                Check(!VisibleLabel("content/meshes/text/ui_v.mesh") && !VisibleLabel("content/meshes/text/ui_f.mesh") && !VisibleLabel("content/meshes/text/ui_g.mesh"), "expanded settings have no keyboard legends")
             }
             case 21 {
                 Check(world.Session.effects == 0, "pointer effects action shares the keyboard setting path")
@@ -73,7 +74,7 @@ behavior UiChecks {
                 Check(world.Session.setting_request == 0, "pointer setting request is consumed")
             }
             case 41 {
-                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 15, "collapse removes the settings geometry and text")
+                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 5, "collapse removes the settings geometry and text")
             }
             case 45 {
                 Check(world.Session.reduced_motion && world.Session.effects == 0 && !world.Session.ghost, "collapsed setting hitboxes are inactive")
@@ -83,7 +84,7 @@ behavior UiChecks {
                 Check(VisiblePlates() == 0 && !VisibleLabel("content/meshes/text/ui_play.mesh"), "all opening panels hide during the clear handoff")
             }
             case 79 {
-                Check(world.Session.run == 1 && world.Session.mode == 3 && !world.Session.entering, "selected mode starts after the reduced-motion handoff")
+                Check(world.Session.run == 1 && world.Session.mode == 0 && !world.Session.entering, "Journey starts after the reduced-motion handoff")
                 Check(VisiblePlates() == 0 && VisibleLabel("content/meshes/text/score.mesh"), "play HUD replaces the compact opening controls")
                 self.TestReport.done = true
             }

@@ -3,6 +3,7 @@ behavior MusicResponseChecks {
     peak_energy := 0
     low_energy := 1
     peak_beat := 0
+    low_beat := 1
 
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
@@ -25,6 +26,7 @@ behavior MusicResponseChecks {
         peak_energy = 0
         low_energy = 1
         peak_beat = 0
+        low_beat = 1
         for frame in 0..period * cycles - 1 {
             phase := cast<number>(frame % period) / 60
             hit := exp(-phase * 18)
@@ -36,6 +38,7 @@ behavior MusicResponseChecks {
                 peak_energy = max(peak_energy, self.VisualState.energy)
                 low_energy = min(low_energy, self.VisualState.energy)
                 peak_beat = max(peak_beat, self.VisualState.beat)
+                low_beat = min(low_beat, self.VisualState.beat)
             }
         }
     }
@@ -75,6 +78,28 @@ behavior MusicResponseChecks {
         Rhythm(0.15, 20, 14)
         Check(abs(self.VisualState.beat_period - 1.0 / 3) < 0.025, "a new faster rhythm replaces the old tempo")
         Check(self.VisualState.beat_confidence > 0.8, "confidence recovers after the new rhythm repeats")
+        Check(peak_beat > 0.8, "fast measured beats retain a clear attack")
+        Check(low_beat < 0.12, "fast measured beats release far enough to rearm the environment")
+
+        // Percussion can change spectral balance while the overall level and
+        // bass stay steady. Neither of those older onset inputs can see it.
+        for band in 0..1 {
+            MusicResponse.Reset(self)
+            Steady(0.12, vec3(0.025, 0.025, 0.002), 60)
+            peak_beat = 0
+            for frame in 0..269 {
+                phase := cast<number>(frame % 30) / 60
+                hit := 0.06 * exp(-phase * 18)
+                bands := vec3(0.025, 0.025 + hit, 0.002)
+                if band == 1 {
+                    bands = vec3(0.025, 0.025, 0.002 + hit)
+                }
+                MusicResponse.Step(self, 0.12, bands, 0, 1.0 / 60)
+                peak_beat = max(peak_beat, self.VisualState.beat)
+            }
+            Check(peak_beat > 0.8, "mid and treble attacks remain visible under a steady music bed")
+            Check(abs(self.VisualState.beat_period - 0.5) < 0.025 && self.VisualState.beat_confidence > 0.8, "measured mid and treble rhythm establishes its own tempo")
+        }
 
         MusicResponse.Reset(self)
         Rhythm(0.15, 84, 9)

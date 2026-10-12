@@ -1,4 +1,4 @@
-// Screen 0 offers Play or Connect audio; 1 plays, 2 pauses, 3 holds a result; 4 releases a lost board.
+// Screen 0 offers Journey and audio; 1 plays, 2 pauses, 3 celebrates completion; 4 releases a lost board.
 behavior Shell {
     board1: entity
     board2: entity
@@ -138,12 +138,12 @@ behavior Shell {
             pad2 = controller_connected(1)
             return
         }
-        pending_mode = self.Session.selected_mode
+        pending_mode = 0
         BeginDeparture()
     }
 
     function Occupied() -> (occupied: bool) {
-        if !self.Session.audio_ready || self.Session.screen == 3 && !self.Session.won {
+        if !self.Session.audio_ready {
             return false
         }
         return board1.BoardState.ready && board1.BoardState.pieces > 0 || self.Session.mode == 3 && board2.BoardState.ready && board2.BoardState.pieces > 0
@@ -198,17 +198,14 @@ behavior Shell {
         if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
-        if self.Session.attract {
-            previous := self.Session.selected_mode
-            self.Session.selected_mode = mode
-            ReactionRules.Emit(self, 16, 1, previous, mode, 0, mode, mode)
+        if self.Session.screen == 0 {
             return
         }
         Start(mode)
     }
 
     function RestartRun() {
-        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
+        if self.Session.screen == 0 || self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if !self.Session.audio_ready {
@@ -258,7 +255,7 @@ behavior Shell {
     }
 
     function ResumePlay() {
-        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
+        if self.Session.screen == 0 || self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if !self.Session.audio_ready {
@@ -273,7 +270,7 @@ behavior Shell {
     }
 
     function ChangeChapter(direction: int) {
-        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
+        if self.Session.screen == 0 || self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if !self.Session.audio_ready || self.Session.mode != 0 || self.Session.screen == 1 {
@@ -330,6 +327,21 @@ behavior Shell {
             set_saved_number("duet", score)
         }
         writer.Exec()
+    }
+
+    function ReturnToMenu() {
+        if self.Session.mode == 0 {
+            chapter = self.Session.stage
+        }
+        self.Session.mode = 0
+        self.Session.stage = chapter
+        self.Session.screen = 0
+        self.Session.attract = true
+        self.Session.hud_alpha = 0
+        self.Session.audio_return_screen = 1
+        self.Session.play_request = false
+        self.Session.audio_request = 0
+        self.Session.disconnected = false
     }
 
     function Progress() {
@@ -403,33 +415,34 @@ behavior Shell {
         request := self.Session.setting_request
         self.Session.setting_request = 0
         changed := false
-        if input.Effects.pressed || request == 1 {
+        keyboard := self.Session.screen != 0
+        if keyboard && input.Effects.pressed || request == 1 {
             previous := self.Session.effects
             self.Session.effects = (self.Session.effects + 1) % 3
             ReactionRules.Emit(self, 18, 1, previous, self.Session.effects, 1, self.Session.effects, 1)
             changed = true
         }
-        if input.Motion.pressed || request == 2 {
+        if keyboard && input.Motion.pressed || request == 2 {
             previous := ReactionRules.Flag(self.Session.reduced_motion)
             self.Session.reduced_motion = !self.Session.reduced_motion
             value := ReactionRules.Flag(self.Session.reduced_motion)
             ReactionRules.Emit(self, 18, 1, previous, value, 0, value, 2)
             changed = true
         }
-        if input.Ghost.pressed || request == 3 {
+        if keyboard && input.Ghost.pressed || request == 3 {
             previous := ReactionRules.Flag(self.Session.ghost)
             self.Session.ghost = !self.Session.ghost
             value := ReactionRules.Flag(self.Session.ghost)
             ReactionRules.Emit(self, 18, 1, previous, value, 0, value, 3)
             changed = true
         }
-        if input.VolumeDown.pressed || request == 4 {
+        if keyboard && input.VolumeDown.pressed || request == 4 {
             previous := self.Session.master
             self.Session.master = max(0, self.Session.master - 0.1)
             ReactionRules.Emit(self, 18, ReactionRules.Flag(previous != self.Session.master), previous, self.Session.master, -1, cast<int>(round(self.Session.master * 100)), 4)
             changed = true
         }
-        if input.VolumeUp.pressed || request == 5 {
+        if keyboard && input.VolumeUp.pressed || request == 5 {
             previous := self.Session.master
             self.Session.master = min(1, self.Session.master + 0.1)
             ReactionRules.Emit(self, 18, ReactionRules.Flag(previous != self.Session.master), previous, self.Session.master, 1, cast<int>(round(self.Session.master * 100)), 4)
@@ -449,7 +462,6 @@ behavior Shell {
         Preferences()
         if self.Session.journey {
             self.Session.play_request = false
-            self.Session.mode_request = 0
             self.Session.journey_time = min(2.6, self.Session.journey_time + min(dt, 0.1))
             passage := clamp(self.Session.journey_time / 0.8, 0, 1)
             if self.Session.journey_time > 1.8 {
@@ -464,7 +476,6 @@ behavior Shell {
         }
         if self.Session.entering {
             self.Session.play_request = false
-            self.Session.mode_request = 0
             Intro()
             return
         }
@@ -474,19 +485,17 @@ behavior Shell {
             if self.Session.reduced_motion || self.Session.effects == 0 {
                 duration = 0.4
             }
-            self.Session.mode_request = 0
             if self.Session.loss_time >= duration {
-                self.Session.screen = 3
+                ReturnToMenu()
             }
             return
         }
-        if self.Session.screen == 3 && !self.Session.won && self.Session.loss_time > 0 {
-            self.Session.loss_time = min(4, self.Session.loss_time + min(dt, 0.1))
-        }
-        if self.Session.mode_request > 0 {
-            mode := self.Session.mode_request - 1
-            self.Session.mode_request = 0
-            SelectMode(mode)
+        if self.Session.screen == 0 {
+            if self.Session.play_request {
+                self.Session.play_request = false
+                EnterPlay()
+            }
+            return
         }
         if input.JourneyMode.pressed {
             SelectMode(0)
@@ -502,13 +511,6 @@ behavior Shell {
         }
         if input.DuetMode.pressed {
             SelectMode(3)
-            return
-        }
-        if self.Session.screen == 0 {
-            if self.Session.play_request {
-                self.Session.play_request = false
-                EnterPlay()
-            }
             return
         }
         if self.Session.screen == 1 {

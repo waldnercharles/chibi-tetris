@@ -99,7 +99,7 @@ behavior Environment {
         available := false
         for offset in 0..7 {
             candidate := (light_slot + offset) % 8
-            if get(light_ages, candidate) >= 0.3 + get(light_delays, candidate) {
+            if get(light_ages, candidate) >= 1 + get(light_delays, candidate) || get(light_peaks, candidate) == 0 {
                 light_slot = candidate
                 available = true
                 break
@@ -111,7 +111,7 @@ behavior Environment {
         light := get(lights, light_slot)
         light.Transform = vec2(position.x, position.z)
         light.PointLight.elevation = position.y
-        light.PointLight.radius = 64 + strength * 40
+        light.PointLight.radius = 72 + strength * 48
         light.PointLight.intensity = 0
         light.PointLight.color = cast<uint>(102) << 24 | cast<uint>(198) << 16 | cast<uint>(230) << 8 | cast<uint>(255)
         if hue > 0.5 {
@@ -122,7 +122,7 @@ behavior Environment {
         }
         light_ages[light_slot] = 0
         light_delays[light_slot] = delay
-        light_peaks[light_slot] = min(1.2, strength)
+        light_peaks[light_slot] = min(1.8, strength)
         light_gameplay[light_slot] = cue_gameplay
         light_slot = (light_slot + 1) % 8
     }
@@ -163,11 +163,11 @@ behavior Environment {
         vacant: int = -1
         for i in 0..3 {
             source := get(sources, i)
-            if source.z >= 2.6 && vacant < 0 {
+            if source.z >= 2.6 && get(targets, i).x + abs(get(targets, i).y) < 0.025 && vacant < 0 {
                 vacant = i
             }
             distance := (source.x - x) * (source.x - x) + (source.y - y) * (source.y - y)
-            if source.z < 2.6 && distance < nearest {
+            if distance < nearest && get(targets, i).x + abs(get(targets, i).y) >= 0.025 {
                 nearest = distance
                 chosen = i
             }
@@ -305,9 +305,10 @@ behavior Environment {
         set_material_parameter(field, "Point3", cue_point3)
         if field.Shader.material == "ReactionParticles.Cue" {
             set_material_parameter(field, "Pivot", cue_pivot)
-            set_material_parameter(field, "Origin", vec3(x, y, cue_depth))
-            set_material_parameter(field, "Current", vec3(flow, turn_velocity, energy))
         }
+        set_material_parameter(field, "Origin", vec3(x, y, cue_depth))
+        set_material_parameter(field, "Current", vec3(flow, turn_velocity, min(1, energy + beat * 0.6)))
+        FieldForces(field)
         set_material_parameter(field, "Delay", cue_delay)
         set_material_parameter(field, "Fade", 1)
         lives[slot] = cue_delay + life
@@ -328,7 +329,7 @@ behavior Environment {
         Cue(12, x, y, 1, 0, strength * 0.6, 1.05, 0.12)
         low := min(min(cue_point0.y, cue_point1.y), min(cue_point2.y, cue_point3.y))
         front := (cue_point0.z + cue_point1.z + cue_point2.z + cue_point3.z) * 0.25
-        Glow(vec3(piece_x, y + low - 10.7, front + 2), 0.26 + strength * 0.4, 0, arrival)
+        Glow(vec3(piece_x, y + low - 10.7, front + 14), 0.32 + strength * 1.15, 0, arrival)
     }
 
     // The immutable row mask survives board collapse. Each row starts at its
@@ -358,7 +359,7 @@ behavior Environment {
         Cue(10, center, row_y, 1, 0, strength, tail, 0.1)
         cue_delay = 0.02
         Cue(11, center, row_y, 1, 0, strength, tail * 0.88 + 0.3, 0.2)
-        Glow(vec3(center, row_y, front + 2), 0.82 + cast<number>(amount) * 0.07, 0, 0.02)
+        Glow(vec3(center, row_y, front + 16), 1.05 + cast<number>(amount) * 0.1, 0, 0.02)
     }
 
     function BoardEvent(board: entity, record: entity) {
@@ -393,12 +394,14 @@ behavior Environment {
         }
         match (kind) {
             case 1 {
-                Cue(1, x, y, direction, amount, 0.08, 0.62, 0)
+                Cue(1, x, y, direction, amount, 0.10, 1.65, 0)
+                Glow(vec3(piece_x, y, front + 12), 0.45, 0, 0)
                 Push(0.08, cast<number>(direction))
                 Kick(piece_x, y, 0.16, cast<number>(direction) * 0.26)
             }
             case 2 {
-                Cue(2, x, y, direction, 0, 0.14, 0.72, 0.25)
+                Cue(2, x, y, direction, 0, 0.18, 2.3, 0.25)
+                Glow(vec3(piece_x, y, front + 14), 0.6, 0, 0)
                 Push(0.15, cast<number>(direction) * 1.2)
                 Kick(piece_x, y, 0.20, cast<number>(direction) * 0.65)
             }
@@ -419,7 +422,7 @@ behavior Environment {
                 drop_serials[board.BoardState.index] = record.ReactionEvent.serial
                 quiet := world.Session.reduced_motion || world.Session.effects == 0
                 if !quiet && amount > 0 {
-                    Cue(8, x, y, 1, amount, 0.32, 0.09, 0)
+                    Cue(8, x, y, 1, amount, 0.32, 0.4, 0)
                     tail := 4.8 + clamp(world.VisualState.energy * 0.7 + world.VisualState.bass * 0.3, 0, 1) * 1.2
                     Cue(13, x, y, 1, amount, 0.35, tail, 0)
                 }
@@ -551,6 +554,18 @@ behavior Environment {
         }
     }
 
+    function FieldForces(field: entity) {
+        set_material_parameter(field, "Eye", camera.Transform3D.position)
+        set_material_parameter(field, "Source0", get(sources, 0))
+        set_material_parameter(field, "Source1", get(sources, 1))
+        set_material_parameter(field, "Source2", get(sources, 2))
+        set_material_parameter(field, "Source3", get(sources, 3))
+        set_material_parameter(field, "Drive0", get(drives, 0))
+        set_material_parameter(field, "Drive1", get(drives, 1))
+        set_material_parameter(field, "Drive2", get(drives, 2))
+        set_material_parameter(field, "Drive3", get(drives, 3))
+    }
+
     function FieldAudio(field: entity) {
         field.ParticleField3D.time = time
         set_material_parameter(field, "Energy", world.VisualState.field_response.x)
@@ -563,15 +578,7 @@ behavior Environment {
         set_material_parameter(field, "Turn", turn)
         set_material_parameter(field, "Pulse", pulse)
         set_material_parameter(field, "Wind", wind)
-        set_material_parameter(field, "Eye", camera.Transform3D.position)
-        set_material_parameter(field, "Source0", get(sources, 0))
-        set_material_parameter(field, "Source1", get(sources, 1))
-        set_material_parameter(field, "Source2", get(sources, 2))
-        set_material_parameter(field, "Source3", get(sources, 3))
-        set_material_parameter(field, "Drive0", get(drives, 0))
-        set_material_parameter(field, "Drive1", get(drives, 1))
-        set_material_parameter(field, "Drive2", get(drives, 2))
-        set_material_parameter(field, "Drive3", get(drives, 3))
+        FieldForces(field)
     }
 
     on Tick(dt) {
@@ -660,10 +667,11 @@ behavior Environment {
             }
             age := max(0, get(light_ages, i) - get(light_delays, i))
             attack := clamp(age / 0.025, 0, 1)
-            release := clamp((0.3 - age) / 0.275, 0, 1)
-            intensity := get(light_peaks, i) * attack * attack * (3 - 2 * attack) * release * release * (3 - 2 * release)
+            release := clamp((1 - age) / 0.975, 0, 1)
+            intensity := get(light_peaks, i) * attack * attack * (3 - 2 * attack)
+            intensity *= release * release * (3 - 2 * release) * (0.35 + 0.65 * exp(-age * 5))
             if !moving {
-                light_peaks[i] = max(0, get(light_peaks, i) - delta * 10)
+                light_peaks[i] = max(0, get(light_peaks, i) - delta * 30)
             }
             light.PointLight.intensity = intensity
         }
@@ -704,6 +712,15 @@ behavior Environment {
         world.VisualState.flow_turn = turn
         world.VisualState.field_bands = vec3(bass, mid, treble)
         world.VisualState.field_response = vec3(energy, beat, chapter)
+        if advancing {
+            for i in 0..95 {
+                field := get(fields, i)
+                if field.ParticleField3D.count > 0 {
+                    set_material_parameter(field, "Current", vec3(flow, turn_velocity, min(1, energy + beat * 0.6)))
+                    FieldForces(field)
+                }
+            }
+        }
         FieldAudio(vortex)
         FieldAudio(stars)
         self.Environment.bloom_strength = 0.3 + energy * 0.045 + reaction * 0.05

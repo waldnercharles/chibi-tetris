@@ -95,7 +95,7 @@ behavior ShellChecks {
                 Check(world.Session.screen == 4 && world.Session.run == 7, "chapter selection waits for the loss release")
             }
             case 273 {
-                Check(world.Session.stage == 1 && world.Session.screen == 2 && world.Session.run == 8, "chapter selection also works from results")
+                Check(world.Session.stage == 2 && world.Session.screen == 0 && world.Session.run == 7 && world.Session.attract, "loss returns to the reached Journey chapter and menu ignores chapter keys")
                 self.TestReport.done = true
             }
         }

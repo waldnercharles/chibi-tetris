@@ -96,8 +96,8 @@ ChibiParticle stars(ChibiParticleInput p, ChibiParameters u)
         float role = floor(random.z * 4.0);
         vec3 geometry = stage_orbit(random, u.Flow, weights.w);
         vec3 opening = stage_school(random, u.Flow);
-        opacity = 0.38 + u.Energy * 0.20;
-        brightness = 0.65 + u.Energy * 0.50 + u.Beat * 0.75;
+        opacity = 0.065 + u.Energy * 0.14 + u.Beat * 0.28;
+        brightness = 0.36 + u.Energy * 0.55 + u.Beat * 1.1;
         size = 0.95 + random.y * 0.18;
         if (role < 1.0) {
             float angle = random.x * COSMIC_TAU;

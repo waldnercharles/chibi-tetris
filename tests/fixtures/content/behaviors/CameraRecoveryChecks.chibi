@@ -1,0 +1,66 @@
+// Pointer Play can interrupt the camera while a lost run returns to the menu.
+behavior CameraRecoveryChecks {
+    world: entity
+    board: entity
+    camera: entity
+    frame: int = 0
+    phase: int = 0
+    previous_width := 700
+    previous_x := 90
+    entry_width := 700
+    entry_x := 90
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        camera = get_global_variable("Camera")
+    }
+
+    on Tick {
+        if frame == 20 {
+            board.BoardState.topout = true
+        }
+        if frame == 200 {
+            Check(world.Session.screen == 0 && world.Session.attract && !world.Session.entering, "loss returns to the pointer menu before replay")
+            Check(camera.Camera.width > 700 && camera.Camera.width < 1100, "pointer Play will interrupt unfinished menu camera travel")
+        }
+        width := camera.Camera.width
+        x := camera.Transform3D.position.x
+        match (phase) {
+            case 0 {
+                if world.Session.entering {
+                    Check(previous_width > 700 && previous_width < 1100, "Play arrives before the menu camera reaches its endpoint")
+                    Check(abs(width - previous_width) < 20, "Play keeps the current framing on its entering edge")
+                    Check(abs(x - previous_x) < 10, "Play keeps the current camera position on its entering edge")
+                    entry_width = width
+                    entry_x = x
+                    phase = 1
+                }
+            }
+            case 1 {
+                Check(abs(width - entry_width) < 0.001, "the first intro frame preserves the interrupted return framing")
+                Check(abs(x - entry_x) < 0.2, "the first intro frame preserves the interrupted return position")
+                phase = 2
+            }
+        }
+        if frame == 435 {
+            Check(phase == 2 && world.Session.screen == 1 && !world.Session.entering && world.Session.run == 2, "pointer replay finishes exactly one new Journey run")
+            Check(abs(width - 700) < 0.001, "interrupted menu return still reaches gameplay framing")
+            self.TestReport.done = true
+        }
+        previous_width = width
+        previous_x = x
+        frame += 1
+    }
+}

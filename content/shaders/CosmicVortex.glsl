@@ -69,7 +69,9 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
     vec3 force = confinement + cosmic_event_force(state.position, u) * 5.2;
     force.z -= max(0.0, state.position.z + 650.0) * 1.4;
     force.z += max(0.0, -3400.0 - state.position.z) * 0.7;
-    force += radial * u.Beat * (120.0 + u.Bass * 260.0) * (1.0 - layer * 0.13);
+    force += radial * u.Beat * (180.0 + u.Bass * 320.0) * (1.0 - layer * 0.13);
+    force += cosmic_curl(state.position * 0.004, u.Flow + layer) * u.Beat *
+        (u.Mid * 110.0 + u.Treble * 150.0) * (0.35 + layer * 0.16);
     // Exact exponential velocity relaxation, then semi-implicit position update.
     float response = 1.0 - exp(-p.delta * 1.6);
     state.velocity += (target - state.velocity) * response + force * p.delta;
@@ -92,14 +94,15 @@ ChibiParticle vortex(ChibiParticleInput p, ChibiParameters u)
     float accent = pow(random.x, 12.0);
     float speed = length(p.velocity);
     float wake = cosmic_event_light(p.position, u);
-    float light = 0.72 + foreground * 0.30 + u.Energy * 0.24 + u.Treble * accent * 0.38 + wake * 1.3;
+    float activity = clamp(u.Energy * 0.25 + u.Beat * 0.42 + wake * 0.85, 0.0, 1.0);
+    float light = 0.30 + foreground * 0.12 + activity * 1.2 + u.Treble * accent * 0.35;
     ChibiParticle result = chibi_particle();
     result.position = p.position;
     result.size = size * (0.86 + u.Treble * accent * 0.45) * sqrt(envelope);
     vec3 tint = cosmic_tint(random, p.position, weights, u);
     tint = mix(tint, vec3(0.50, 0.95, 1.12), wake * 0.32);
     result.color = vec4(tint * light,
-        envelope * quiet * (0.30 + 0.55 * random.y));
+        envelope * quiet * (0.10 + 0.30 * random.y) * (0.5 + activity * 1.5));
     // Most grains are round solids. Only rare fast foreground grains stretch,
     // in their actual direction of travel, retaining a sharp visible center.
     float streak = accent * foreground * clamp(speed / 220.0, 0.0, 2.0);

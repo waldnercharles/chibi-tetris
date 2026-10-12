@@ -3,7 +3,7 @@ name "CosmicParticles.Dust"
 kind "particle"
 source "CosmicStars.glsl"
 entry "stars"
-(array)includes "CosmicCommon.glsl"
+(array)includes "CosmicCommon.glsl" "ParticleFlow.glsl"
 parameters {
     Energy type="float" default=0.0
     Bass type="float" default=0.0

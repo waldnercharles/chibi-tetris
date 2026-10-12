@@ -19,7 +19,6 @@ behavior Hud {
     hover_choice: int = -1
     pointer_choice: int = -1
     screen: int = -1
-    selected_mode: int = -1
     world_serial: int = -1
     setting_serial: int = 0
     setting_kind: int = 0
@@ -42,7 +41,7 @@ behavior Hud {
         timer_backing.Geometry3D.height = 140
         timer_backing.Transform3D.position = vec3(-205, -149, 42)
         panel = await spawn(HudPanel)
-        for i in 0..22 {
+        for i in 0..9 {
             plate := await spawn(UiPlate)
             plates = array_add(plates, plate)
         }
@@ -139,9 +138,6 @@ behavior Hud {
         if slot < 3 {
             depth = 64
         }
-        if slot >= 9 && slot <= 14 || slot >= 20 {
-            depth = 68
-        }
         plate.Transform3D.position = vec3(x, y, depth)
         plate.Geometry3D.width = width
         plate.Geometry3D.height = height
@@ -154,10 +150,7 @@ behavior Hud {
         set_material_parameter(get(labels, slot), "Shade", shade)
     }
 
-    function ButtonShade(choice: int, selected: bool) -> (shade: number) {
-        if selected {
-            return 0.085
-        }
+    function ButtonShade(choice: int) -> (shade: number) {
         if hover_choice == choice {
             return 0.042
         }
@@ -184,7 +177,6 @@ behavior Hud {
             return
         }
         names := ["ui_effects", "ui_motion", "ui_ghost"]
-        shortcuts := ["ui_v", "ui_f", "ui_g"]
         for i in 0..2 {
             row := -80 - i * 38
             UiText(26 + i * 3, get(names, i), x - 111, row, 9, 0.58)
@@ -201,14 +193,12 @@ behavior Hud {
                     value = "ui_on"
                 }
             }
-            Plate(15 + i, x + 62, row, 160, 28, ButtonShade(7 + i, false))
-            UiText(27 + i * 3, value, x + 45, row, 9, 0.7)
-            Plate(20 + i, x + 124, row, 20, 20, 0.01)
-            UiText(28 + i * 3, get(shortcuts, i), x + 124, row, 7, 0.36)
+            Plate(5 + i, x + 62, row, 160, 28, ButtonShade(3 + i))
+            UiText(27 + i * 3, value, x + 62, row, 9, 0.7)
         }
         UiText(35, "ui_volume", x - 111, -194, 9, 0.58)
-        Plate(18, x - 7, -194, 26, 26, ButtonShade(10, false))
-        Plate(19, x + 124, -194, 26, 26, ButtonShade(11, false))
+        Plate(8, x - 7, -194, 26, 26, ButtonShade(6))
+        Plate(9, x + 124, -194, 26, 26, ButtonShade(7))
         UiText(36, "ui_minus", x - 7, -194, 2.5, 0.65)
         UiText(37, "ui_plus", x + 124, -194, 9, 0.65)
         Number(38, 3, cast<int>(round(world.Session.master * 100)), x + 53, -194, 10)
@@ -249,27 +239,17 @@ behavior Hud {
             }
         }
         UiText(1, status, x, 177, 11, 0.72)
-        Plate(3, x, 135, 286, 32, ButtonShade(1, false))
+        Plate(3, x, 135, 286, 32, ButtonShade(1))
         connect := "ui_connect"
         if world.Session.audio_status >= 3 {
             connect = "ui_retry"
         }
-        UiText(13, connect, x - 13, 135, 10, 0.72)
-        Plate(13, x + 124, 135, 20, 20, 0.01)
-        UiText(14, "ui_m", x + 124, 135, 7, 0.36)
+        UiText(13, connect, x, 135, 10, 0.72)
         play_y := 69
         if world.Session.attract {
             Plate(1, x, 46, 320, 108, 0.006)
             UiText(2, "ui_game", x - 107, 79, 8, 0.32)
-            names := ["ui_journey", "ui_endless", "ui_sprint", "ui_duet"]
-            for i in 0..3 {
-                button_x := x - 73 + i % 2 * 146
-                button_y := 47 - i / 2 * 36
-                Plate(4 + i, button_x, button_y, 140, 28, ButtonShade(i + 2, world.Session.selected_mode == i))
-                UiText(18 + i, get(names, i), button_x + 9, button_y, 9, 0.72)
-                Plate(9 + i, button_x - 52, button_y, 18, 18, 0.01)
-                UiText(22 + i, format_text("digit_{}", i + 1), button_x - 52, button_y, 7, 0.36)
-            }
+            UiText(18, "ui_journey", x, 40, 16, 0.72)
             DrawOptions(x)
             play_y = -86
             if options_open {
@@ -280,10 +260,8 @@ behavior Hud {
         if hover_choice == 0 {
             shade = 0.85
         }
-        Plate(8, x, play_y, 320, 44, shade)
-        UiText(12, "ui_play", x - 8, play_y, 13, 0.007)
-        Plate(14, x + 120, play_y, 48, 22, 0.54)
-        UiText(15, "ui_enter", x + 120, play_y, 7, 0.04)
+        Plate(4, x, play_y, 320, 44, shade)
+        UiText(12, "ui_play", x, play_y, 13, 0.007)
     }
 
     function ReadPointer() {
@@ -317,27 +295,20 @@ behavior Hud {
             choice = 1
         }
         if world.Session.attract {
-            for i in 0..3 {
-                button_x := x - 73 + i % 2 * 146
-                button_y := 47 - i / 2 * 36
-                if abs(point.x - button_x) < 70 && abs(point.y - button_y) < 14 {
-                    choice = i + 2
-                }
-            }
             if abs(point.x - x) < 160 && abs(point.y + 36) < 20 {
-                choice = 6
+                choice = 2
             }
             if options_open {
                 for i in 0..2 {
                     if abs(point.x - x - 62) < 80 && abs(point.y + 80 + i * 38) < 14 {
-                        choice = i + 7
+                        choice = i + 3
                     }
                 }
                 if abs(point.x - x + 7) < 13 && abs(point.y + 194) < 13 {
-                    choice = 10
+                    choice = 6
                 }
                 if abs(point.x - x - 124) < 13 && abs(point.y + 194) < 13 {
-                    choice = 11
+                    choice = 7
                 }
             }
         }
@@ -348,17 +319,13 @@ behavior Hud {
         if !input.Select.pressed {
             return
         }
-        if choice == 6 {
+        if choice == 2 {
             options_open = !options_open
             options_changed = true
             return
         }
-        if choice >= 7 {
-            world.Session.setting_request = choice - 6
-            return
-        }
-        if choice >= 2 {
-            world.Session.mode_request = choice - 1
+        if choice >= 3 {
+            world.Session.setting_request = choice - 2
             return
         }
         world.Session.audio_request = 3
@@ -387,11 +354,7 @@ behavior Hud {
     function DrawResult() {
         panel.Geometry3D.width = 580
         panel.Geometry3D.height = 360
-        title := "game_over"
-        if world.Session.won {
-            title = "complete"
-        }
-        ModalLabel(11, title, 0, 124, 24)
+        ModalLabel(11, "complete", 0, 124, 24)
         if world.Session.mode == 2 {
             ModalLabel(64, "elapsed", -140, 58, 11)
             Time(66, world.Session.elapsed, -140, 20, 22)
@@ -528,7 +491,6 @@ behavior Hud {
         audio_quiet = world.Session.audio_quiet
         pointer_choice = hover_choice
         screen = world.Session.screen
-        selected_mode = world.Session.selected_mode
         world_serial = world.ReactionQueue.serial
     }
 
@@ -618,7 +580,7 @@ behavior Hud {
         refresh += dt
         changed := ReadSettings(dt) || options_changed
         options_changed = false
-        changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial || selected_mode != world.Session.selected_mode
+        changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
         if refresh < 0.1 && !changed {
             if (world.Session.entering || world.Session.journey) && !world.Session.attract {
                 Reveal()

@@ -4,7 +4,7 @@ kind "particle"
 source "CosmicVortex.glsl"
 entry "vortex"
 update "advect"
-(array)includes "CosmicCommon.glsl"
+(array)includes "CosmicCommon.glsl" "ParticleFlow.glsl"
 parameters {
     Energy type="float" default=0.0
     Bass type="float" default=0.0

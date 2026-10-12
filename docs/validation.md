@@ -1,10 +1,78 @@
 # Validation record
 
+## Trance-like reactions, menu recovery and antialiasing — October 11, 2026
+
+The second reference pass revisited all nine overview sheets before 9:00,
+then inspected 90 action frames from 0:20–1:05 and 30 close-ups from
+29.5–32.4 seconds. No later footage informed the changes. Compact contact
+sheets, browser captures and logs remain in ignored `.chibi/trance-pass`;
+the downloaded movie, loose frames and comparison projects were removed.
+
+The main menu now offers only Journey and accepts pointer controls. A loss
+releases the full-size blocks and returns directly to that menu, retaining
+the reached chapter and audio choice. The camera eases back and can reverse
+smoothly when Play is clicked during its return. Move and rotation wakes,
+drop beams, persistent foreground/receding plumes, clear grains and scenery
+share changing forces. Landing illumination cools across nearby faces for a
+second. The well absorbs hard drops with a damped spring; the ghost has one
+continuous outside contour.
+
+The music fix restores attacks from midrange and treble and removes a second
+beat envelope. Full 60-second PCM replays through the production analyzer
+and authored response completed in 12.844 seconds under the production
+60-second deadline. Visible attacks
+changed from 31/42/48 to 61/59/70 across the three scores; average energy
+stayed unchanged. These counts do not establish accurate beat tracking. The
+interval estimator still has low confidence with missed or syncopated attacks.
+No new shader, FFT or beat-tracking dependency was added.
+
+Independent review found and corrected camera interruption and particle birth
+timing issues. The selected game group (`--menu`, `--loss`, `--rules`,
+`--motion`, `--vfx`, `--music-response`, `--music-field`, `--consumer`) passed
+17 case executions and 521 dispatcher assertions in 46.200 seconds under one
+production 60-second deadline. These also execute authored checks, including
+112 ghost masks, nine camera-return checks and 47 music-response checks.
+New camera continuity, menu and music regressions failed their former
+implementations. Production and changed fixture assets were formatted.
+Validation reports 145 assets, zero errors and zero warnings.
+
+The clean pinned engine is `e3f1d8f817a56e297d2fbb247d73ca3b24484694`.
+It adds edge-aware FXAA after tone mapping and uses display pixel density in
+the player while preserving logical pointer coordinates. Independent review
+found no remaining renderer issue. Its final admitted checks passed:
+native 299 cases / 178,924 assertions in 11.258 seconds, language 178 / 10,518
+in 1.036 seconds, and tools 93 / 22,586 in 22.786 seconds. Focused hidden
+Cocoa/Metal checks passed for antialiasing (1.620 seconds), particle depth
+(0.755 seconds), and viewport/UI alpha (0.684 seconds). The old renderer
+failed both new fractional-edge checks. An earlier offscreen-driver attempt
+could not initialize on macOS and is not counted as passed. Formatting passed.
+
+Matching native and web exports completed from the pinned SDK/player.
+Local browser play covered pointer Play, move, rotate, repeated hard drops,
+overlapping wakes, pause and the direct return to the menu after top-out.
+WebGL 2 fallback was exercised through a disposable shell that withheld
+WebGPU; the actual fallback logged GLES 3.0 and rendered the same effects.
+The temporary shell was removed. No product console errors were observed.
+At normal 2560 × 1440 rendering (1280 × 720 CSS), two-second warmups followed
+by 2.5-second samples measured WebGPU at 58.80 FPS, 16.7 ms median and 17.6 ms
+p95, and WebGL at 56.32 FPS, 16.7 ms median and 25.0 ms p95. These are short
+local observations, not sustained or cross-device guarantees. The earlier
+player's canvas dimensions did not establish its internal 3D target density;
+these measurements do not claim equal-work performance against that version.
+Public revision, checksums and play are checked after publication.
+
+The game-wide aggregate and full/quarantined engine, render and Studio suites
+were not run or reconstructed. Completed external capture and human listening
+are not established. Grains receive light and glow; pooled action lights
+illuminate the surrounding blocks. Individual grains do not each become a
+light source, and shared forces do not simulate pairwise particle collisions.
+No disposable executable or project clone remains from this pass.
+
 ## Nine-minute visual polish — October 11, 2026
 
 This pass inspected only 0:00–9:00 of the supplied recording. Nine contact
 sheets retain 180 frames at three-second intervals, with a separate clear
-detail sheet. [The study](tetris-effect-study.md#nine-minute-polish-pass)
+detail sheet. [The study](tetris-effect-study.md)
 records the observations and adaptations. The downloaded movie and loose
 frames were removed; contact sheets, browser captures and logs remain in
 ignored `.chibi/reference-polish`.

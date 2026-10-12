@@ -51,7 +51,7 @@ behavior AttractChecks {
                 Check(board.BoardState.pieces > 0 && board.BoardState.drop_serial > 0, "attract play genuinely drops and locks pieces")
                 Check(board.BoardState.score > 0, "attract play uses ordinary board scoring")
                 Check(world.Session.run == 0 && world.Session.elapsed == 0, "real demo play never advances player progress")
-                Check(world.Session.selected_mode == 2 && world.Session.mode == 0, "mode choice leaves the demonstration in a single well")
+                Check(world.Session.mode == 0, "mode key leaves Journey selected")
                 world.Session.audio_source = 1
                 world.Session.audio_ready = true
                 recovery_serial = board.ReactionQueue.serial
@@ -100,10 +100,10 @@ behavior AttractChecks {
             }
             case 332 {
                 Check(!world.Session.attract && world.Session.entering && world.Session.run == 1, "fresh run starts during the final reveal")
-                Check(world.Session.mode == 2 && world.Session.goal == 40, "Play honors the selected sprint mode")
+                Check(world.Session.mode == 0 && world.Session.goal == 12, "Play enters Journey")
                 Check(world.Session.hud_alpha > 0 && world.Session.hud_alpha < 1, "HUD materializes gradually")
-                opacity := LabelOpacity("content/meshes/text/elapsed.mesh")
-                Check(opacity > 0 && opacity < 1, "visible sprint text has partial material opacity during the reveal")
+                opacity := LabelOpacity("content/meshes/text/score.mesh")
+                Check(opacity > 0 && opacity < 1, "visible score text has partial material opacity during the reveal")
                 Check(world.Session.elapsed == 0 && board.BoardState.pieces == 0 && board.BoardState.score == 0, "reveal keeps the new board and timer still")
             }
             case 347 {
@@ -116,7 +116,7 @@ behavior AttractChecks {
                 Check(camera.Camera.width == 700, "completed single-board intro uses its readable portrait framing")
                 Check(board.BoardState.pieces == 0 && board.BoardState.lines == 0, "demo stack and score do not leak into the player run")
                 Check(world.Session.audio_source == 1, "external source survives the entire handoff")
-                Check(LabelOpacity("content/meshes/text/elapsed.mesh") == 1, "finished handoff shows the actual sprint timer mesh")
+                Check(LabelOpacity("content/meshes/text/score.mesh") == 1, "finished handoff shows the actual score mesh")
                 Check(LabelOpacity("content/meshes/text/ui_play.mesh") < 0 && LabelOpacity("content/meshes/text/ui_sprint.mesh") < 0, "opening action meshes disappear after Play")
                 self.TestReport.done = true
             }

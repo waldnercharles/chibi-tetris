@@ -2,9 +2,19 @@
 behavior CameraMotion {
     world: entity
     time := 0
+    was_attract := true
+    was_entering := false
+    intro_pan := -240
+    intro_width := 1208.8889
+    return_time := 1
+    return_pan := -240
+    return_width := 1208.8889
+    pan_value := -240
+    width_value := 1208.8889
 
     on Begin {
         world = get_global_variable("World")
+        was_attract = world.Session.attract
     }
 
     on Tick(dt) {
@@ -21,14 +31,35 @@ behavior CameraMotion {
             pan = -240
             width = 1208.8889
         }
+        if world.Session.entering && !was_entering {
+            intro_pan = pan_value
+            intro_width = width_value
+        }
+        was_entering = world.Session.entering
         if world.Session.entering && world.Session.attract && !world.Session.reduced_motion {
             progress := clamp((world.Session.intro_time - 0.2) / 2.45, 0, 1)
             eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
-            pan = -240 * (1 - eased)
-            if world.Session.selected_mode != 3 {
-                width = 1208.8889 + (700 - 1208.8889) * eased
-            }
+            pan = intro_pan * (1 - eased)
+            width = intro_width + (700 - intro_width) * eased
         }
+        if world.Session.attract && !was_attract {
+            return_time = 0
+            return_pan = pan_value
+            return_width = width_value
+        }
+        was_attract = world.Session.attract
+        if world.Session.attract && !world.Session.entering && return_time < 0.9 {
+            return_time = min(0.9, return_time + min(dt, 0.05))
+            if world.Session.reduced_motion {
+                return_time = 0.9
+            }
+            progress := return_time / 0.9
+            eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
+            pan = return_pan + (pan - return_pan) * eased
+            width = return_width + (width - return_width) * eased
+        }
+        pan_value = pan
+        width_value = width
         self.Camera.width = width
         x := 90
         y := 50

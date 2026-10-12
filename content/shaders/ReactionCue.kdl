@@ -3,7 +3,8 @@ name "ReactionParticles.Cue"
 kind "particle"
 source "ReactionCue.glsl"
 entry "cue"
-(array)includes "ReactionCommon.glsl"
+update "advect"
+(array)includes "ReactionCommon.glsl" "ParticleFlow.glsl"
 parameters {
     Pattern type="float" default=0.0
     Direction type="float" default=0.0
@@ -39,6 +40,42 @@ parameters {
     Current {
         type "vec3"
         (array)default 0.0 0.0 0.0
+    }
+    Source0 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source1 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source2 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Source3 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive0 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive1 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive2 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Drive3 {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Eye {
+        type "vec3"
+        (array)default 90.0 50.0 1080.0
     }
     Delay type="float" default=0.0
     Fade type="float" default=1.0

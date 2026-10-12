@@ -48,6 +48,35 @@ library Pieces {
         return (x, y)
     }
 
+    // Four ghost cells share one silhouette. Packed Z stores top + 2 * bottom.
+    function ExposedEdges(kind: int, rotation: int, block: int) -> (edges: CF_V3) {
+        cell := Cell(kind, rotation, block)
+        left := 1
+        right := 1
+        top := 1
+        bottom := 1
+        for other in 0..3 {
+            neighbor := Cell(kind, rotation, other)
+            if neighbor.y == cell.y {
+                if neighbor.x == cell.x - 1 {
+                    left = 0
+                }
+                if neighbor.x == cell.x + 1 {
+                    right = 0
+                }
+            }
+            if neighbor.x == cell.x {
+                if neighbor.y == cell.y - 1 {
+                    top = 0
+                }
+                if neighbor.y == cell.y + 1 {
+                    bottom = 0
+                }
+            }
+        }
+        return vec3(left, right, top + 2 * bottom)
+    }
+
     // Five ordered SRS tests, including the unshifted rotation. The I uses
     // its own table. These are mathematical offsets, not copied game code.
     function Kick(kind: int, from: int, direction: int, test: int) -> (x: int, y: int) {

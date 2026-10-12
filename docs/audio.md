@@ -30,11 +30,11 @@ The game uses the SDK's two-second crossfade when changing arrangements. Incomin
 
 ## Music reaction and capture
 
-Each launch offers two in-world actions beside a live demonstration: **Enter Play** starts the selected mode; **M Connect audio** opens the browser's sharing chooser directly. Click either label or use its key. Play keeps a connected external source or chooses the bundled score when no external source is ready. There are no provider launch buttons or account credentials in the game.
+Each launch offers two in-world pointer actions beside a live demonstration: **Play** starts Journey; **Connect audio** opens the browser's sharing chooser directly. The menu has no hotkeys. Play keeps a connected external source or chooses the bundled score when no external source is ready. There are no provider launch buttons or account credentials in the game.
 
-Play music in a separate browser tab, press M, select that tab in the sharing picker and enable its audio option. A desktop Chromium browser is the practical starting point for tab audio. Window or system audio is also usable when the browser and operating system offer it. Source selection always needs a user gesture and permission; the game cannot select a tab on your behalf. [Screen Capture API](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
+Play music in a separate browser tab, click **Connect audio**, select that tab in the sharing picker and enable its audio option. A desktop Chromium browser is the practical starting point for tab audio. Window or system audio is also usable when the browser and operating system offer it. Source selection always needs a user gesture and permission; the game cannot select a tab on your behalf. [Screen Capture API](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
 
-A connected stream remains on the opening screen until you press Play, including during a quiet passage. The HUD distinguishes connection from measured sound: **Audio connected** or **Connected · quiet**. An unavailable, cancelled or ended capture retains **Play** and **Connect audio** for fallback or retry. Pressing Enter when no stream is ready explicitly chooses the bundled score; capture failure does not silently change the source. Reconnecting during an existing run preserves the board and returns to its previous play or pause state after explicit Play.
+A connected stream remains on the opening screen until you click Play, including during a quiet passage. The HUD distinguishes connection from measured sound: **Audio connected** or **Connected · quiet**. An unavailable, cancelled or ended capture retains **Play** and **Connect audio** for fallback or retry. Clicking Play when no stream is ready explicitly chooses the bundled score; capture failure does not silently change the source. Reconnecting during an existing run preserves the board and returns to its previous play or pause state after explicit Play.
 
 During play, pause or a completed run, M reconnects while preserving the board, elapsed time and return screen. A paused run remains paused after connection. The source measures actual samples; level, frequency bands and transients drive the scene and cosmetic piece motion. Logical falling, input and lock timing stay predictable. External music stays audible in its own player; the game does not play a duplicate, save or upload the capture. Browser sharing requires a video track, but only audio is consumed.
 
@@ -48,7 +48,7 @@ For example, with Background Music installed on macOS:
 CHIBI_AUDIO_INPUT="Background Music" dist/Stillwater.app/Contents/MacOS/Stillwater
 ```
 
-Route the external music player's audio through that virtual device, then press **M Connect audio**. Selecting a device alone does not route audio into it. Other loopback devices need their corresponding system or player routing. Configure monitoring or a multi-output route if the virtual device otherwise makes your speakers silent; Stillwater does not monitor captured audio. On Linux, PulseAudio monitor inputs also require `SDL_AUDIO_INCLUDE_MONITORS=1` before launch. An unavailable device leaves **Connect audio** and **Enter Play** available.
+Route the external music player's audio through that virtual device, then click **Connect audio**. Selecting a device alone does not route audio into it. Other loopback devices need their corresponding system or player routing. Configure monitoring or a multi-output route if the virtual device otherwise makes your speakers silent; Stillwater does not monitor captured audio. On Linux, PulseAudio monitor inputs also require `SDL_AUDIO_INCLUDE_MONITORS=1` before launch. An unavailable device leaves **Connect audio** and **Play** available.
 
 Stillwater does not implement Spotify sign-in or the Web Playback SDK. Spotify's [Developer Policy](https://developer.spotify.com/policy) excludes games and synchronization of sound recordings with visual media. Its [Web Playback SDK](https://developer.spotify.com/documentation/web-playback-sdk/reference) repeats the synchronization restriction and requires Premium for playback. Spotify also removed new-app access to [Audio Features and Audio Analysis](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api), so those endpoints are not a beat-data source for this game. This is an engineering choice based on the published platform rules, not a claim that every use of user-selected audio capture is permitted by every music service.
 
@@ -57,6 +57,27 @@ Spotify's newer [Soloist client](https://developer.spotify.com/documentation/sol
 These sources were checked on October 11, 2026. Build and platform verification, including unverified external routing, are recorded in [validation](validation.md).
 
 ## Feedback
+
+The visual response uses the same PCM analyzer for native and browser audio.
+It measures RMS level, three filtered frequency bands and onset strength. The
+authored response normalizes quiet input and detects rises in all three bands.
+A single beat envelope avoids attenuating attacks through repeated smoothing;
+the environment then eases the visible motion and light. Silence does not
+generate substitute beats.
+
+Full 60-second PCM replays at the default master/music gain compared the
+previous response with this revision. Visible pulses changed from 31 to 61 in
+Shore, 42 to 59 in Current, and 48 to 70 in Aurora. Peak beat strength changed
+from 0.67 to 1.0; average energy remained unchanged. These are detected musical
+attacks, not a count of the score's 96 beats. The simple interval estimator
+still has low confidence with missed or syncopated attacks. It does not provide
+a reliable synchronized beat clock.
+
+The proposed [Beat-and-Tempo-Tracking](https://github.com/michaelkrzyzaniak/Beat-and-Tempo-Tracking)
+library supplies a fuller tracker, while
+[KissFFT](https://github.com/mborgerding/kissfft) supplies the FFT primitive.
+Neither is included in this pass: the observed defects were missing band
+attacks and excessive smoothing in the authored response.
 
 Effects use the same felt, glass, pluck, bass, and air voices as the score. The move and rotate sounds are quiet pitched touches. Lock has a wooden body; hard drop adds a low impact. Clears widen from a small chord to a rising D minor 7 arpeggio. Hold descends, rescue rises after an intake of air, completion settles on F major 6, and top-out falls gently to D.
 

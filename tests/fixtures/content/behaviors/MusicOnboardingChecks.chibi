@@ -58,24 +58,24 @@ behavior MusicOnboardingChecks {
                 Check(board.BoardState.pieces > 0 && world.Session.attract, "capture waiting keeps the real demonstration playing")
                 Check(world.Session.audio_source == 1 && !world.Session.audio_ready, "capture waiting never silently falls back to score")
             }
-            case 290 {
-                Check(world.Session.screen == 1 && world.Session.audio_ready && world.Session.run == 1 && world.Session.mode == 0, "Enter completes the clear handoff while capture is pending")
+            case 355 {
+                Check(world.Session.screen == 1 && world.Session.audio_ready && world.Session.run == 1 && world.Session.mode == 0, "Play completes the clear handoff while capture is pending")
                 Check(world.Session.audio_source == 0, "explicit score clears the external source selection")
-                Check(world.Session.elapsed > 0, "timer begins only after the explicit score choice")
             }
-            case 297 {
+            case 362 {
+                Check(world.Session.elapsed > 0, "timer begins after the explicit score choice and reveal")
                 waiting_run = world.Session.run
                 waiting_elapsed = world.Session.elapsed
                 waiting_row = board.BoardState.row
             }
-            case 303 {
+            case 368 {
                 Check(world.Session.screen == 0 && !world.Session.audio_ready && world.Session.audio_source == 1 && world.Session.audio_status == 1, "M from pause directly requests audio capture")
                 Check(world.Session.audio_return_screen == 2, "source selection remembers the paused screen")
                 Check(world.Session.run == waiting_run && world.Session.elapsed == waiting_elapsed, "reconnecting preserves the run and paused timer")
                 Check(board.BoardState.row == waiting_row, "reconnecting preserves the paused falling piece")
                 world.Session.audio_request = 1
             }
-            case 307 {
+            case 372 {
                 Check(world.Session.screen == 2 && world.Session.audio_ready, "explicit fallback returns to the existing pause")
                 Check(world.Session.run == waiting_run && world.Session.elapsed == waiting_elapsed, "reconnection does not reset or resume a paused run")
                 self.TestReport.done = true

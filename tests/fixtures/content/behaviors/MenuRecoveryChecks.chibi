@@ -1,0 +1,74 @@
+// Supply a reached chapter and host readiness, then drive the production menu.
+behavior MenuRecoveryChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+    source: int = 0
+    elapsed := 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        source = cast<int>(read_saved_number("test_source", 0).Number)
+    }
+
+    on Tick {
+        match (frame) {
+            case 2 {
+                world.Session.audio_source = source
+                world.Session.audio_ready = true
+            }
+            case 20 {
+                board.BoardState.score = 450
+                board.BoardState.topout = true
+            }
+            case 24 {
+                elapsed = world.Session.elapsed
+                Check(world.Session.screen == 4, "quiet loss still has a bounded departure")
+            }
+            case 52 {
+                Check(world.Session.screen == 0 && world.Session.attract, "quiet loss returns directly to the main menu")
+                Check(world.Session.stage == 3 && world.Session.mode == 0, "menu retains the reached Journey chapter")
+                Check(world.Session.run == 1 && world.Session.elapsed == elapsed, "returning to the menu does not restart or advance play")
+                Check(world.Session.audio_source == source && world.Session.audio_ready, "menu preserves the selected ready audio source")
+                Check(read_saved_number("journey", 0).Number == 450, "loss saves the completed score before returning")
+            }
+            case 55 {
+                send_event<"Restart">(world)
+                send_event<"Resume">(world)
+                send_event<"ChapterNext">(world)
+            }
+            case 65 {
+                Check(world.Session.screen == 0 && !world.Session.entering && world.Session.run == 1, "menu ignores Enter and gameplay commands after loss")
+            }
+            case 75 {
+                Check(world.Session.entering && world.Session.attract && world.Session.run == 1, "pointer Play begins the explicit menu departure")
+                Check(world.Session.audio_source == source, "pointer Play retains the chosen audio source")
+            }
+            case 106 {
+                Check(world.Session.screen == 1 && !world.Session.entering && world.Session.run == 2, "pointer Play creates exactly one new run")
+                Check(world.Session.stage == 3 && world.Session.mode == 0, "new Journey begins at the retained chapter")
+                Check(world.Session.audio_source == source && world.Session.audio_ready, "audio choice survives the complete return and replay")
+            }
+            case 112 {
+                Check(world.Session.screen == 2, "keyboard pause remains available during play")
+            }
+            case 117 {
+                Check(world.Session.screen == 1, "keyboard Enter still resumes pause")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

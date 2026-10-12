@@ -1,6 +1,9 @@
 version 1
 name "AttractRecoveryChecks"
+presentation "3d"
 (array)entities {
+    - name="Camera" prototype="Camera"
+    - name="Hud" prototype="Hud"
     - name="World" prototype="World"
     - {
         name "Board1"

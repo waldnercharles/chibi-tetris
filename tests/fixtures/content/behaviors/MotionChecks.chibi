@@ -135,7 +135,7 @@ behavior MotionChecks {
                 initial_column = board.BoardState.column
                 tiles := find_entities_with_component("Geometry3D")
                 for item in tiles {
-                    if item.Geometry3D.primitive == 8 && !item.RenderState.hidden && item.Transform3D.position.x < 0 {
+                    if item.Geometry3D.width == 24 && item.Geometry3D.height == 24 && abs(item.Geometry3D.depth - 0.2) < 0.001 && !item.RenderState.hidden && item.Transform3D.position.x < 0 {
                         ghost = item
                         ghost_position = item.Transform3D.position
                         break
@@ -310,6 +310,8 @@ behavior MotionChecks {
                         break
                     }
                 }
+                Check(board.Transform3D.position.y < -1 && board.Transform3D.position.y > -5, "hard-drop weight sinks the well a few pixels without delaying placement")
+                Check(board.Transform3D.position.z < -16, "hard-drop weight also settles slightly into depth")
                 Check(landing_tile != self && board.BoardState.pieces == 1, "hard drop places the captured piece immediately before its contact response")
                 if landing_tile != self {
                     Check(landing_tile.Transform3D.scale.z < 1 && landing_tile.Material.emission_intensity > 0.04, "newly settled cells compress and brighten at contact")
@@ -323,6 +325,7 @@ behavior MotionChecks {
                 world.Session.reduced_motion = true
             }
             case 188 {
+                Check(board.Transform3D.position.y == 0 && board.Transform3D.position.z == -16, "reduced motion restores the well without residual displacement")
                 settled = Settled()
                 settled_position = settled.Transform3D.position
                 settled_color = settled.Material.scene
@@ -334,6 +337,7 @@ behavior MotionChecks {
                 world.VisualState.beat = 1
             }
             case 207 {
+                Check(abs(board.Transform3D.position.y) < 0.001, "the well settles completely before a later music response")
                 Check(settled.Material.emission_intensity > settled_emission + 0.01, "music changes an already settled block without a stage or grid change")
                 Check(cast<number>(settled.Material.scene & 255) > cast<number>(settled_color & 255), "bass changes the settled coat opacity above its solid core")
                 Check((settled.Material.scene & 4294967040) == (settled_color & 4294967040), "music keeps the settled piece hue")

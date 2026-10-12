@@ -2,7 +2,7 @@
 component MusicDynamics {
     reference: number
     level_mean: number
-    bass_mean: number
+    bands_mean: CF_V3
     previous_onset: number
     previous_flux: number
     pulse: number

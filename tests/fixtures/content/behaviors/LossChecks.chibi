@@ -1,4 +1,4 @@
-// Real board top-out must release occupied cells before its result is shown.
+// Real board top-out releases occupied cells before returning to the menu.
 behavior LossChecks {
     world: entity
     board: entity
@@ -130,22 +130,28 @@ behavior LossChecks {
             Check(length(tiles) > 20, "real legal drops leave an occupied stack at top-out")
         }
         if started >= 0 {
-            RowRecords(board, 0)
-            if duet {
-                RowRecords(partner, 1)
+            if world.Session.screen == 4 {
+                RowRecords(board, 0)
+                if duet {
+                    RowRecords(partner, 1)
+                }
             }
             age := frame - started
             if age == 2 {
                 elapsed = world.Session.elapsed
                 field_time = vortex.ParticleField3D.time
-                Check(world.Session.screen == 4, "loss defers the result while the stack begins its release")
+                Check(world.Session.screen == 4, "loss waits for the stack departure before returning to the menu")
                 Check(VisibleTiles() == length(tiles), "loss preserves the occupied board before the fracture wave")
                 CheckPreviews()
+            }
+            if age == 20 {
+                Check(board.BoardState.score == score && board.BoardState.pieces == pieces, "departure preserves score and ignores gameplay input")
+                Check(world.Session.elapsed == elapsed, "departure keeps the player clock frozen")
             }
             if age == 20 && quiet {
                 Check(VisibleTiles() == 0, "quiet loss retires the board without outward travel")
                 Check(ReleaseFields() == 0, "quiet loss emits no drifting release fields")
-                Check(world.Session.screen == 4, "quiet board settles before results appear")
+                Check(world.Session.screen == 4, "quiet board settles before returning to the menu")
                 CheckPreviews()
             }
             if age == 55 && !quiet {
@@ -174,7 +180,7 @@ behavior LossChecks {
                     Check(tile.Material.scene == get(colors, i), "each released block retains its original piece color")
                 }
                 Check(ReleaseFields() > 0, "quiet ember trails accompany the colored block bodies")
-                Check(world.Session.screen == 4, "results wait for the loss choreography")
+                Check(world.Session.screen == 4, "the menu waits for the loss choreography")
                 CheckPreviews()
             }
             if age == 148 && !quiet {
@@ -184,33 +190,24 @@ behavior LossChecks {
                 }
             }
             if age == 230 && !quiet {
-                Check(VisibleTiles() == 0, "released bodies retire smoothly after their upward flight")
-                Check(world.Session.elapsed == elapsed, "decorative retirement after results keeps the game clock frozen")
-            }
-            if !quiet && age == 235 || quiet && age == 34 {
-                world.Session.audio_request = 2
-            }
-            if !quiet && age == 237 || quiet && age == 36 {
-                Check(world.Session.screen == 0 && VisibleTiles() == 0, "audio selection hides the retired loss board")
-            }
-            if !quiet && age == 239 || quiet && age == 38 {
-                world.Session.audio_request = 1
-            }
-            if !quiet && age == 242 || quiet && age == 41 {
-                Check(world.Session.screen == 3 && world.Session.run == run, "returning from audio selection preserves the completed run")
-                Check(VisibleTiles() == 0, "returning from audio selection never resurrects retired blocks")
-                Check(board.BoardState.score == score && world.Session.elapsed == elapsed, "audio selection preserves the frozen result")
+                Check(world.Session.screen == 0 && world.Session.attract && !world.Session.entering, "the returned menu waits for explicit pointer Play")
+                Check(world.Session.elapsed == elapsed && world.Session.run == run, "menu demo never advances the completed run")
+                Check(!board.BoardState.topout, "the menu demo recovers from the lost board")
             }
             if age == 182 || quiet && age == 28 {
-                Check(world.Session.screen == 3 && !world.Session.won, "loss eventually reveals the preserved result")
-                Check(VisiblePreviews() == 0, "Hold and Next hide once the result appears")
+                Check(world.Session.screen == 0 && world.Session.attract && !world.Session.won, "loss returns directly to the Journey menu")
+                Check(VisiblePreviews() == 0, "Hold and Next hide in the menu")
                 Check(world.Session.elapsed == elapsed, "loss animation never advances the game clock")
-                Check(board.BoardState.score == score && board.BoardState.pieces == pieces, "loss preserves score and ignores gameplay input")
+                best := "journey"
+                if duet {
+                    best = "duet"
+                }
+                Check(read_saved_number(best, 0).Number >= score && world.Session.run == run, "loss records the score without starting another player run")
                 Check(board.ReactionQueue.dropped == 0, "row release fits the immutable event queue")
                 if !quiet {
                     Check(released > 0 && ReleaseFields() == released, "each occupied row owns one quiet continuing ember field")
                     Check(world.VisualState.cue_dropped == 0, "both occupied boards fit the fixed field pool without losing cells")
-                    Check(ReleaseFields() > 0, "dim fragment tails continue after the result appears")
+                    Check(ReleaseFields() > 0, "dim fragment tails continue after returning to the menu")
                 }
                 self.TestReport.done = true
             }

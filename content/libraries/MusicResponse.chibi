@@ -78,19 +78,25 @@ library MusicResponse {
         // Compare actual rises to a short background envelope. Steady levels,
         // low noise and the decay of the host's onset envelope cannot retrigger.
         level_rise := max(0, level - world.MusicDynamics.level_mean)
-        bass_rise := max(0, bands.x - world.MusicDynamics.bass_mean)
-        flux := max(level_rise, bass_rise * 1.6) / reference
+        band_rise := max(vec3(0, 0, 0), bands - world.MusicDynamics.bands_mean)
+        // A snare or bright pluck can replace other sound at the same RMS.
+        // Keep all measured bands in the attack signal instead of requiring bass.
+        spectral_rise := max(band_rise.x * 1.6, max(band_rise.y * 1.9, band_rise.z * 2.8))
+        flux := max(level_rise, spectral_rise) / reference
         host_rise := onset > 0.035 && onset > world.MusicDynamics.previous_onset + 0.015
-        band_rise := flux > 0.16 && world.MusicDynamics.previous_flux <= 0.16 && max(level_rise, bass_rise) > 0.003
+        measured_rise := max(level_rise, max(band_rise.x, max(band_rise.y, band_rise.z)))
+        band_onset := flux > 0.16 && world.MusicDynamics.previous_flux <= 0.16 && measured_rise > 0.003
         world.MusicDynamics.pulse_age = min(8, world.MusicDynamics.pulse_age + delta)
-        world.MusicDynamics.pulse *= exp(-delta * 7)
-        if gate > 0.35 && world.MusicDynamics.pulse_age >= 0.24 && (host_rise || band_rise) {
+        world.MusicDynamics.pulse *= exp(-delta * 10)
+        if gate > 0.35 && world.MusicDynamics.pulse_age >= 0.24 && (host_rise || band_onset) {
             Pulse(world, clamp(0.5 + flux * 0.7 + onset, 0, 1) * gate)
         }
-        world.VisualState.beat = Envelope(world.VisualState.beat, world.MusicDynamics.pulse, delta)
+        // The environment smooths the visible attack and release. Cascading
+        // another envelope here hid attacks and never rearmed fast rhythms.
+        world.VisualState.beat = world.MusicDynamics.pulse
         background := 1 - exp(-delta * 5)
         world.MusicDynamics.level_mean += (level - world.MusicDynamics.level_mean) * background
-        world.MusicDynamics.bass_mean += (bands.x - world.MusicDynamics.bass_mean) * background
+        world.MusicDynamics.bands_mean += (bands - world.MusicDynamics.bands_mean) * background
         world.MusicDynamics.previous_onset = onset
         world.MusicDynamics.previous_flux = flux
 

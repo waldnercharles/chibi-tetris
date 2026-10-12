@@ -13,6 +13,9 @@ behavior RulesChecks {
     on Begin {
         grid := Rules.Empty()
         Check(length(grid) == 220, "22-row field")
+        // Authored silhouettes in spawn orientation, one four-bit L/R/T/B
+        // mask per cell. Rotating those outlines must preserve shared edges.
+        outlines: int[] = [13, 12, 12, 14, 5, 6, 9, 10, 7, 13, 8, 14, 5, 14, 13, 10, 13, 6, 9, 14, 7, 9, 12, 14, 7, 13, 12, 10]
         for kind in 1..7 {
             for rotation in 0..3 {
                 cells: int[] = []
@@ -25,6 +28,16 @@ behavior RulesChecks {
                     initial := Pieces.Cell(kind, 0, block)
                     wrapped := Pieces.Cell(kind, 4, block)
                     Check(initial.x == wrapped.x && initial.y == wrapped.y, "four-turn cycle")
+                    mask := get(outlines, (kind - 1) * 4 + block)
+                    if kind != 2 {
+                        turn: int = 0
+                        while turn < rotation {
+                            mask = (mask & 8) >> 3 | (mask & 4) >> 1 | (mask & 1) << 2 | (mask & 2) << 2
+                            turn += 1
+                        }
+                    }
+                    edges := Pieces.ExposedEdges(kind, rotation, block)
+                    Check(edges.x == cast<number>(mask & 1) && edges.y == cast<number>(mask >> 1 & 1) && edges.z == cast<number>(mask >> 2 & 3), "ghost silhouette preserves exterior edges and hides every shared cell edge")
                 }
                 cw := Rules.Rotate(grid, kind, rotation, 3, 5, 1)
                 Check(cw.success && cw.kick == 0 && cw.facing == (rotation + 1) % 4, "clockwise transition")

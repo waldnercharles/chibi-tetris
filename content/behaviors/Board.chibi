@@ -58,6 +58,8 @@ behavior Board {
     move_lean := 0
     turn_drive := 0
     turn_lean := 0
+    well_sink := 0
+    well_velocity := 0
     contact_tiles: entity[] = []
     contact_drives: number[] = []
     contact_flashes: number[] = []
@@ -143,6 +145,8 @@ behavior Board {
             ReactionRules.Initialize(self, world.Session.run)
         }
         seen_run = world.Session.run
+        well_sink = 0
+        well_velocity = 0
         ClearContacts()
         grid = Rules.Empty()
         loss_started = false
@@ -330,6 +334,9 @@ behavior Board {
         row = landing
         self.BoardState.drop_serial += 1
         self.BoardState.drop_distance = distance
+        if !world.Session.reduced_motion && world.Session.effects > 0 {
+            well_velocity = max(-135, well_velocity - 82 - cast<number>(min(distance, 20)) * 1.2)
+        }
         Impact()
         play_sound("hard_drop", 0.35)
         Lock()
@@ -657,8 +664,10 @@ behavior Board {
         tile.Material.scene = color
         tile.Material.emission_color = color
         if ghost {
-            tile.Geometry3D.primitive = 8
-            tile.Geometry3D.depth = 1.2
+            tile.Geometry3D.primitive = 0
+            tile.Geometry3D.width = 24
+            tile.Geometry3D.height = 24
+            tile.Geometry3D.depth = 0.2
             tile.Transform3D.position = { x: x, y: 8 - y, z: -7 }
             tile.Material.scene = (color & 4294967040) | 112
             tile.Material.emission_intensity = 0.2
@@ -797,6 +806,26 @@ behavior Board {
         }
     }
 
+    // The well absorbs the impact while the logical cells and landing marker
+    // retain their coordinates. Exact critical damping keeps overlap smooth.
+    function AdvanceWell(seconds: number) {
+        if world.Session.screen == 2 || world.Session.screen == 3 {
+            return
+        }
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            well_sink = 0
+            well_velocity = 0
+        } else {
+            decay := exp(-seconds * 14)
+            step := (well_velocity + well_sink * 14) * seconds
+            well_sink = (well_sink + step) * decay
+            well_velocity = (well_velocity - step * 14) * decay
+        }
+        if visible {
+            self.Transform3D.position = vec3(origin + 120, well_sink, -16 + well_sink * 0.55)
+        }
+    }
+
     function PieceDepth() -> (depth: number) {
         return 3 + music_lift + action_flash * 0.6
     }
@@ -913,6 +942,7 @@ behavior Board {
                 }
                 if world.Session.ghost && ghost_row > row && ghost_row + cell.y >= 2 {
                     Tile(204 + i, x, -232 + (ghost_row + cell.y - 2) * 24 + 12, 22, Pieces.Color(current), true)
+                    set_material_parameter(get(tiles, 204 + i), "Edges", Pieces.ExposedEdges(current, rotation, i))
                 }
             }
         }
@@ -1133,6 +1163,7 @@ behavior Board {
             UpdateAppearance(min(dt, 0.1))
         }
         Render()
+        AdvanceWell(min(dt, 0.05))
         AdvanceContacts(min(dt, 0.05))
         if world.Session.screen == 4 {
             loss_started = true

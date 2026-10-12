@@ -447,7 +447,7 @@ static bool connection_depth()
         REQUIRE(depth > 0 && z + depth * .5 < 69);
         plates++;
     }
-    REQUIRE(plates >= 5 && text >= 6);
+    REQUIRE(plates >= 3 && text >= 4);
     REQUIRE(no_decorative_hud());
     return true;
 }
@@ -649,7 +649,7 @@ TEST_CASE(authored_rules)
     yyjson_mut_doc *doc = request("RulesChecks", 2);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(600));
+    REQUIRE(report(712));
     return true;
 }
 
@@ -800,15 +800,92 @@ TEST_CASE(music_choice_precedes_play)
     return true;
 }
 
+TEST_CASE(menu_ignores_keyboard_shortcuts)
+{
+    yyjson_mut_doc *doc = request("Stillwater", 45);
+    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    yyjson_mut_obj_add_str(doc, saved, "chapter", "3");
+    key(doc, 0, 0);
+    static const int shortcuts[] = {
+        KEY_ENTER, KEY_M, KEY_1, KEY_2, KEY_3, KEY_4, KEY_V,         KEY_F,
+        KEY_G,     KEY_9, KEY_0, KEY_7, KEY_8, KEY_P, KEY_BACKSPACE, KEY_SPACE,
+    };
+    for (int i = 0; i < (int)(sizeof shortcuts / sizeof *shortcuts); ++i) {
+        tap(doc, 3 + i * 2, shortcuts[i]);
+    }
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
+    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 0);
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
+    REQUIRE(yyjson_get_int(field("World", "Session", "stage")) == 3);
+    REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == 0);
+    REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_ready")));
+    REQUIRE(!yyjson_get_bool(field("World", "Session", "entering")));
+    REQUIRE(yyjson_get_int(field("World", "Session", "effects")) == 2);
+    REQUIRE(!yyjson_get_bool(field("World", "Session", "reduced_motion")));
+    REQUIRE(yyjson_get_bool(field("World", "Session", "ghost")));
+    REQUIRE(yyjson_get_num(field("World", "Session", "master")) == 0.8);
+    REQUIRE(visible_mesh("content/meshes/text/ui_journey.mesh"));
+    static const char *hidden[] = {
+        "ui_endless",
+        "ui_sprint",
+        "ui_duet",
+        "ui_enter",
+        "ui_m",
+        "ui_v",
+        "ui_f",
+        "ui_g",
+        "play_controls",
+        "settings_controls",
+        "chapter_controls",
+    };
+    for (int i = 0; i < (int)(sizeof hidden / sizeof *hidden); ++i) {
+        char mesh[128];
+        snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", hidden[i]);
+        REQUIRE(!visible_mesh(mesh));
+    }
+    return true;
+}
+
+TEST_CASE(loss_menu_retains_journey_and_audio)
+{
+    for (int source = 0; source < 2; ++source) {
+        yyjson_mut_doc *doc = request("MenuRecoveryChecks", 120);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "chapter", "3");
+        yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
+        yyjson_mut_obj_add_str(doc, saved, "test_source", source ? "1" : "0");
+        key(doc, 0, 0);
+        tap(doc, 60, KEY_ENTER);
+        click_world(doc, 70, -440, -86);
+        tap(doc, 110, KEY_P);
+        tap(doc, 114, KEY_ENTER);
+        REQUIRE(snapshot(doc));
+        REQUIRE(report(14));
+        REQUIRE(!visible_mesh("content/meshes/text/game_over.mesh"));
+    }
+    return true;
+}
+
+TEST_CASE(pointer_play_preserves_returning_camera)
+{
+    yyjson_mut_doc *doc = request("CameraRecoveryChecks", 438);
+    key(doc, 0, 0);
+    click_world(doc, 205, -440, -86);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(9));
+    return true;
+}
+
 TEST_CASE(music_connection_controls)
 {
-    yyjson_mut_doc *doc = request("MusicOnboardingChecks", 310);
+    yyjson_mut_doc *doc = request("MusicOnboardingChecks", 375);
     key(doc, 0, 0);
     tap(doc, 3, KEY_SPACE);
     tap(doc, 40, KEY_SPACE);
-    tap(doc, 130, KEY_ENTER);
-    tap(doc, 295, KEY_P);
-    tap(doc, 300, KEY_M);
+    click_world(doc, 130, -440, -86);
+    tap(doc, 360, KEY_P);
+    tap(doc, 365, KEY_M);
     REQUIRE(snapshot(doc));
     REQUIRE(report(24));
     return true;
@@ -863,7 +940,7 @@ TEST_CASE(attract_play_handoff)
     yyjson_mut_doc *doc = request("AttractChecks", 385);
     key(doc, 0, 0);
     tap(doc, 100, KEY_3);
-    tap(doc, 140, KEY_ENTER);
+    click_world(doc, 140, -440, -86);
     tap(doc, 337, KEY_SPACE);
     REQUIRE(snapshot(doc));
     REQUIRE(report(31));
@@ -877,13 +954,13 @@ TEST_CASE(attract_reduced_motion)
     yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
     key(doc, 0, 0);
     click_world(doc, 6, -367, 11);
-    tap(doc, 12, KEY_ENTER);
+    click_world(doc, 12, -440, -86);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_bool(field("World", "Session", "reduced_motion")));
     REQUIRE(!yyjson_get_bool(field("World", "Session", "attract")));
     REQUIRE(!yyjson_get_bool(field("World", "Session", "entering")));
     REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 1);
-    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
     REQUIRE(yyjson_get_num(field("World", "Session", "hud_alpha")) == 1);
     REQUIRE(
         yyjson_get_num(yyjson_obj_get(field("Camera", "Transform3D", "position"), "x")) == 90
@@ -896,8 +973,8 @@ TEST_CASE(attract_audio_failure_recovery)
 {
     yyjson_mut_doc *doc = request("AttractRecoveryChecks", 253);
     key(doc, 0, 0);
-    tap(doc, 5, KEY_ENTER);
-    tap(doc, 20, KEY_ENTER);
+    click_world(doc, 5, -440, -86);
+    click_world(doc, 20, -440, -86);
     REQUIRE(snapshot(doc));
     REQUIRE(report(10));
     return true;
@@ -935,12 +1012,12 @@ TEST_CASE(score_choice_and_mode_keys)
     yyjson_val *cue = yyjson_arr_get(snapshot_entities(), 0);
     REQUIRE(yyjson_get_int(entity_field(cue, "ParticleField3D", "count")) == 0);
 
-    doc = request("Stillwater", 180);
+    doc = request("Stillwater", 250);
     key(doc, 0, 0);
-    tap(doc, 1, KEY_ENTER);
-    tap(doc, 163, KEY_SPACE);
-    tap(doc, 166, KEY_P);
-    tap(doc, 169, KEY_ENTER);
+    click_world(doc, 6, -440, -86);
+    tap(doc, 230, KEY_SPACE);
+    tap(doc, 234, KEY_P);
+    tap(doc, 238, KEY_ENTER);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 0);
@@ -958,12 +1035,12 @@ TEST_CASE(score_choice_and_mode_keys)
     REQUIRE(yyjson_get_num(field("Vortex", "ParticleField3D", "time")) > 0);
     REQUIRE(yyjson_get_int(field("World", "ReactionQueue", "dropped")) == 0);
     REQUIRE(yyjson_get_int(field("Board1", "ReactionQueue", "dropped")) == 0);
-    doc = request("Stillwater", 180);
+    doc = request("Stillwater", 250);
     key(doc, 0, 0);
-    tap(doc, 1, KEY_ENTER);
-    tap(doc, 163, KEY_2);
-    tap(doc, 166, KEY_3);
-    tap(doc, 169, KEY_4);
+    click_world(doc, 6, -440, -86);
+    tap(doc, 230, KEY_2);
+    tap(doc, 234, KEY_3);
+    tap(doc, 238, KEY_4);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 3);
@@ -974,12 +1051,12 @@ TEST_CASE(score_choice_and_mode_keys)
     REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == entities);
     static const char *quiet_settings[] = { "effects", "reduced_motion" };
     for (int i = 0; i < 2; ++i) {
-        doc = request("Stillwater", 180);
+        doc = request("Stillwater", 250);
         yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
         yyjson_mut_obj_add_str(doc, saved, quiet_settings[i], i == 0 ? "0" : "1");
         key(doc, 0, 0);
-        tap(doc, 1, KEY_ENTER);
-        tap(doc, 163, KEY_SPACE);
+        click_world(doc, 6, -440, -86);
+        tap(doc, 230, KEY_SPACE);
         REQUIRE(snapshot(doc));
         result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
         REQUIRE(yyjson_get_int(yyjson_obj_get(result, "particle_count")) == 0);
@@ -1183,7 +1260,11 @@ TEST_CASE(audio_source_status_labels)
         if (capture) {
             tap(doc, 3, KEY_M);
         }
-        tap(doc, 16, KEY_M);
+        if (capture) {
+            click_world(doc, 16, 0, 135);
+        } else {
+            tap(doc, 16, KEY_M);
+        }
         REQUIRE(snapshot(doc));
         REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
         REQUIRE(!yyjson_get_bool(field("World", "Session", "audio_ready")));
@@ -1444,15 +1525,20 @@ TEST_CASE(occupied_stack_releases_on_loss)
         }
         REQUIRE(snapshot(doc));
         REQUIRE(report(quiet ? 10 : 14));
-        REQUIRE(visible_mesh("content/meshes/text/game_over.mesh"));
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
+        REQUIRE(yyjson_get_bool(field("World", "Session", "attract")));
+        REQUIRE(visible_mesh("content/meshes/text/ui_journey.mesh"));
+        REQUIRE(visible_mesh("content/meshes/text/ui_play.mesh"));
+        REQUIRE(!visible_mesh("content/meshes/text/game_over.mesh"));
     }
-    yyjson_mut_doc *doc = request("LossChecks", 252);
+    yyjson_mut_doc *doc = request("LossChecks", 525);
     key(doc, 0, 0);
     tap(doc, 10, KEY_C);
     for (int frame = 12; frame <= 60; frame += 2) {
         tap(doc, frame, KEY_SPACE);
     }
-    tap(doc, 244, KEY_ENTER);
+    tap(doc, 290, KEY_ENTER);
+    click_world(doc, 300, -440, -86);
     REQUIRE(snapshot(doc));
     REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
     REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 2);
@@ -1523,7 +1609,7 @@ TEST_CASE(authored_music_response)
     yyjson_mut_doc *doc = request("MusicResponseChecks", 1);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(41));
+    REQUIRE(report(47));
     return true;
 }
 
@@ -1553,6 +1639,9 @@ int main(int argc, char **argv)
     bool onboarding = !strcmp(selection, "--onboarding");
     bool attract = !strcmp(selection, "--attract");
     bool ui = !strcmp(selection, "--ui");
+    bool menu = !strcmp(selection, "--menu");
+    bool menu_camera = !strcmp(selection, "--menu-camera");
+    bool rules = !strcmp(selection, "--rules");
     bool previews = !strcmp(selection, "--previews");
     bool motion = !strcmp(selection, "--motion");
     bool stage = !strcmp(selection, "--stage");
@@ -1561,12 +1650,14 @@ int main(int argc, char **argv)
     bool music_response = !strcmp(selection, "--music-response");
     bool music_field = !strcmp(selection, "--music-field");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
-        !(all || reactions || consumer || hud || onboarding || attract || ui || previews ||
-          motion || stage || vfx || loss || music_response || music_field)) {
+        !(all || reactions || consumer || hud || onboarding || attract || ui ||
+          menu || menu_camera || rules || previews || motion || stage || vfx ||
+          loss || music_response || music_field)) {
         fprintf(
             stderr,
             "Usage: %s "
-            "--all|--reactions|--consumer|--hud|--onboarding|--attract|--ui|--"
+            "--all|--rules|--reactions|--consumer|--hud|--onboarding|--attract|"
+            "--ui|--menu|--menu-camera|--"
             "previews|--motion|--stage|--vfx|--loss|--music-response|--music-"
             "field "
             "/path/to/chibi_ctl /path/to/game\n",
@@ -1587,8 +1678,9 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(ordered_clear_reactions);
         RUN_TEST_CASE(topout_and_rescue);
     }
-    if (all || ui) {
+    if (all || ui || menu) {
         RUN_TEST_CASE(compact_opening_pointer_controls);
+        RUN_TEST_CASE(menu_ignores_keyboard_shortcuts);
         if (ui) {
             RUN_TEST_CASE(audio_source_status_labels);
         }
@@ -1604,12 +1696,20 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(music_connection_controls);
         RUN_TEST_CASE(music_choices_use_world_space_pointer);
     }
-    if (all) {
+    if (all || rules) {
         RUN_TEST_CASE(authored_rules);
+    }
+    if (all) {
         RUN_TEST_CASE(live_keyboard_boards);
         RUN_TEST_CASE(live_controller_boards);
         RUN_TEST_CASE(lock_reset_limit);
         RUN_TEST_CASE(score_choice_and_mode_keys);
+    }
+    if (all || loss || menu) {
+        RUN_TEST_CASE(loss_menu_retains_journey_and_audio);
+    }
+    if (all || menu || menu_camera) {
+        RUN_TEST_CASE(pointer_play_preserves_returning_camera);
     }
     if (all || loss) {
         RUN_TEST_CASE(journey_settings_and_reopen);
