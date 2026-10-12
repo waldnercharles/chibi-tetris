@@ -72,6 +72,16 @@ behavior Board {
     contact_tiles: entity[] = []
     contact_drives: number[] = []
     contact_flashes: number[] = []
+    clear_tiles: entity[] = []
+    clear_origins: CF_V3[] = []
+    clear_offsets: CF_V3[] = []
+    clear_finishes: CF_V3[] = []
+    clear_ages: number[] = []
+    clear_waits: number[] = []
+    clear_strengths: number[] = []
+    clear_quiet: bool[] = []
+    clear_quiet_from: CF_V2[] = []
+    clear_active: int = 0
     demo_piece: int = -1
     demo_candidate: int = 0
     demo_column: int = 3
@@ -82,6 +92,7 @@ behavior Board {
     loss_started := false
     loss_finished := false
     loss_row: int = 2
+    loss_seed := 0
 
     on Begin {
         world = get_global_variable("World")
@@ -98,6 +109,20 @@ behavior Board {
             piece_targets = array_add(piece_targets, vec3(0, 0, 0))
             ripple_sources = array_add(ripple_sources, vec3(0, 0, 1.4))
             ripple_strengths = array_add(ripple_strengths, 0)
+        }
+        // Resume on the next frame before exceeding the bounded spawn initializer.
+        await delay(0.001)
+        for i in 0..79 {
+            tile := await spawn(ClearBlock)
+            clear_tiles = array_add(clear_tiles, tile)
+            clear_origins = array_add(clear_origins, vec3(0, 0, 0))
+            clear_offsets = array_add(clear_offsets, vec3(0, 0, 0))
+            clear_finishes = array_add(clear_finishes, vec3(0, 0, 0))
+            clear_ages = array_add(clear_ages, -1)
+            clear_waits = array_add(clear_waits, 0)
+            clear_strengths = array_add(clear_strengths, 0)
+            clear_quiet = array_add(clear_quiet, false)
+            clear_quiet_from = array_add(clear_quiet_from, vec2(1, 0))
         }
         self.BoardState.ready = true
     }
@@ -165,6 +190,8 @@ behavior Board {
         well_velocity = 0
         ClearRipples()
         ClearContacts()
+        ClearBodies()
+        self.BoardState.clear_visual_dropped = 0
         grid = Rules.Empty()
         loss_started = false
         loss_finished = false
@@ -307,6 +334,7 @@ behavior Board {
             if self.BoardState.combo > 0 {
                 Emit(10, 1, 0, self.BoardState.combo, mask)
             }
+            CaptureClear(clear_rows)
             Rules.Collapse(grid, clear_rows)
             match (count) {
                 case 1 {
@@ -425,6 +453,7 @@ behavior Board {
     }
 
     function BeginDeparture() {
+        loss_seed = cast<number>(world.Session.run) * 47 + cast<number>(self.ReactionQueue.serial) * 13
         // Preserve the falling piece as an ordinary body in the release.
         if !self.BoardState.topout {
             Rules.Place(grid, current, rotation, column, row)
@@ -664,6 +693,141 @@ behavior Board {
         set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
     }
 
+    function ClearBodies() {
+        if clear_active == 0 {
+            return
+        }
+        for i in 0..79 {
+            tile := get(clear_tiles, i)
+            tile.RenderState.hidden = true
+            clear_ages[i] = -1
+        }
+        clear_active = 0
+    }
+
+    function ClearSample(seed: number) -> (sample: number) {
+        return fract(sin(seed * 12.9898) * 43758.5453)
+    }
+
+    function CaptureClear(rows: int[]) {
+        needed: int = 0
+        for cleared in rows {
+            if cleared >= 2 {
+                needed += 10
+            }
+        }
+        if needed > 80 - clear_active {
+            self.BoardState.clear_visual_dropped += 1
+            return
+        }
+        // Reserve a whole clear; occupied slots always finish their own release.
+        identity := cast<number>(self.ReactionQueue.serial) + cast<number>(world.Session.run) * 1009 + self.BoardState.index * 271
+        quiet := world.Session.reduced_motion || world.Session.effects == 0
+        slot: int = 0
+        for cleared in rows {
+            if cleared < 2 {
+                continue
+            }
+            for column in 0..9 {
+                while get(clear_ages, slot) >= 0 {
+                    slot += 1
+                }
+                tile := get(clear_tiles, slot)
+                kind := get(grid, cleared * 10 + column)
+                color := Pieces.Color(kind)
+                seed := identity + cleared * 13 + column * 7
+                position := vec3(origin + column * 24 + 12, 276 - cleared * 24 + well_sink, 0.75)
+                offset := vec3((cast<number>(column) - 4.5) * 6 + (ClearSample(seed) - 0.5) * 24,
+                18 + ClearSample(seed + 3) * 30, 24 + ClearSample(seed + 9) * 28)
+                clear_origins[slot] = position
+                clear_offsets[slot] = offset
+                clear_finishes[slot] = vec3(block_roughness, block_metallic, block_emission)
+                clear_ages[slot] = 0
+                clear_waits[slot] = 0.16 + ClearSample(seed + 17) * 0.06
+                clear_strengths[slot] = (0.75 + ClearSample(seed + 23) * 0.35) * impact_gain
+                clear_quiet[slot] = quiet
+                clear_quiet_from[slot] = vec2(1, 0)
+                tile.Geometry3D = { width: 22, height: 22, depth: 22 * block_depth }
+                tile.Transform3D.position = position
+                tile.Transform3D.scale = vec3(1, 1, 1)
+                tile.Material.scene = color
+                tile.Material.emission_color = color
+                tile.Material.emission_intensity = block_emission
+                tile.RenderState.hidden = false
+                set_material_parameter(tile, "Tint", ColorTint(color))
+                set_material_parameter(tile, "Finish", get(clear_finishes, slot))
+                set_material_parameter(tile, "Coat", block_opacity)
+                set_material_parameter(tile, "Opacity", 1)
+                set_material_parameter(tile, "Impact", 0)
+                clear_active += 1
+                slot += 1
+            }
+        }
+    }
+
+    function AdvanceClearBodies(seconds: number) {
+        if clear_active == 0 || world.Session.screen == 2 {
+            return
+        }
+        for i in 0..79 {
+            age := get(clear_ages, i)
+            if age < 0 {
+                continue
+            }
+            age += seconds
+            clear_ages[i] = age
+            tile := get(clear_tiles, i)
+            quiet := get(clear_quiet, i)
+            progress := clamp((age - get(clear_waits, i)) / 0.64, 0, 1)
+            if !quiet && (world.Session.reduced_motion || world.Session.effects == 0) {
+                // Fade the last rendered pose and glow from their current values.
+                clear_origins[i] = tile.Transform3D.position
+                clear_quiet[i] = true
+                quiet = true
+                clear_quiet_from[i] = vec2(cast<number>(tile.Material.scene & 255) / 255, (tile.Material.emission_intensity - get(clear_finishes, i).z) / 0.24)
+                age = 0
+                clear_ages[i] = 0
+            }
+            if quiet {
+                progress = clamp(age / 0.24, 0, 1)
+            }
+            if progress == 1 {
+                tile.RenderState.hidden = true
+                clear_ages[i] = -1
+                clear_active -= 1
+                continue
+            }
+            eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
+            glow := 0
+            if !quiet {
+                tile.Transform3D.position = get(clear_origins, i) + get(clear_offsets, i) * eased
+                glow = sin(progress * 3.14159265) * get(clear_strengths, i)
+            }
+            opacity := 1 - eased
+            if quiet {
+                from := get(clear_quiet_from, i)
+                opacity *= from.x
+                glow = from.y * (1 - eased)
+            }
+            finish := get(clear_finishes, i)
+            finish.z += glow * 0.24
+            tile.Material.scene = (tile.Material.scene & 4294967040) | cast<uint>(cast<int>(round(opacity * 255)))
+            tile.Material.emission_intensity = finish.z
+            set_material_parameter(tile, "Opacity", opacity)
+            set_material_parameter(tile, "Finish", finish)
+            set_material_parameter(tile, "Impact", glow * 0.65)
+        }
+    }
+
+    function ColorTint(color: uint) -> (tint: CF_V3) {
+        rgba := cast<number>(color)
+        red := floor(rgba / 16777216)
+        green := floor(rgba / 65536) - red * 256
+        blue := floor(rgba / 256) - floor(rgba / 65536) * 256
+        brightness := 0.4 + 0.6 * (rgba - floor(rgba / 256) * 256) / 255
+        return vec3(red / 255, green / 255, blue / 255) * brightness
+    }
+
     function Tile(slot: int, x: number, y: number, size: number, color: uint, ghost: bool) {
         tile := get(tiles, slot)
         depth := size * block_depth
@@ -703,14 +867,8 @@ behavior Board {
             return
         }
         tile.MeshAsset.source = "content/meshes/Block.mesh"
-        rgba := cast<number>(color)
-        red := floor(rgba / 16777216)
-        green := floor(rgba / 65536) - red * 256
-        blue := floor(rgba / 256) - floor(rgba / 65536) * 256
         // A spent hold preview dims its hue while retaining a solid body.
-        brightness := 0.4 + 0.6 * (rgba - floor(rgba / 256) * 256) / 255
-        tint := vec3(red / 255, green / 255, blue / 255) * brightness
-        set_material_parameter(tile, "Tint", tint)
+        set_material_parameter(tile, "Tint", ColorTint(color))
         set_material_parameter(tile, "Impact", 0)
         Finish(tile, slot >= 200 && slot < 204)
     }
@@ -1180,7 +1338,7 @@ behavior Board {
             }
             start := 0.7 + cast<number>(i / 10) * 0.0125
             flight := max(0, age - start)
-            index := cast<number>(i + self.BoardState.index * 200)
+            index := cast<number>(i + self.BoardState.index * 200) + loss_seed
             base := vec3(origin + i % 10 * 24 + 12, 228 - i / 10 * 24 + well_sink, 0)
             radial := vec3((base.x - origin - 120) / 120, (base.y - well_sink) / 240, 0)
             radial = radial * (1 / sqrt(radial.x * radial.x + radial.y * radial.y))
@@ -1216,6 +1374,7 @@ behavior Board {
             show = false
         }
         if !show {
+            ClearBodies()
             if visible {
                 for (i in 0..231) {
                     Hide(i)
@@ -1267,6 +1426,9 @@ behavior Board {
             return
         }
         restarted := seen_run != world.Session.run
+        if old_mode != -1 && old_mode != world.Session.mode {
+            ClearBodies()
+        }
         if restarted {
             Reset()
         }
@@ -1322,7 +1484,9 @@ behavior Board {
         AdvanceWell(min(dt, 0.05))
         AdvanceContacts(min(dt, 0.05))
         AdvanceRipples(min(dt, 0.05))
-        if world.Session.screen == 4 {
+        AdvanceClearBodies(min(dt, 0.05))
+        if world.Session.screen == 4 && !loss_started {
+            loss_seed = cast<number>(world.Session.run) * 47 + cast<number>(self.ReactionQueue.serial) * 13
             loss_started = true
         }
         if loss_started {

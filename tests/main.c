@@ -634,13 +634,13 @@ static bool report(int minimum_checks)
     yyjson_val *checks = field("Report", "TestReport", "checks");
     yyjson_val *failures = field("Report", "TestReport", "failures");
     REQUIRE(yyjson_is_bool(done) && yyjson_get_bool(done));
-    REQUIRE(yyjson_is_num(checks) && yyjson_get_int(checks) >= minimum_checks);
     REQUIRE(yyjson_is_num(failures));
     if (yyjson_get_int(failures)) {
         const char *message = yyjson_get_str(field("Report", "TestReport", "first_failure"));
         fprintf(stderr, "%d authored checks failed. First: %s\n", yyjson_get_int(failures), message);
     }
     REQUIRE(yyjson_get_int(failures) == 0);
+    REQUIRE(yyjson_is_num(checks) && yyjson_get_int(checks) >= minimum_checks);
     return true;
 }
 
@@ -694,7 +694,7 @@ static bool board_scenario(bool controllers)
     REQUIRE(snapshot(doc));
     REQUIRE(report(30));
     yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
-    REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == 632);
+    REQUIRE(yyjson_get_int(yyjson_obj_get(result, "live_entities")) == 790);
     return true;
 }
 
@@ -1394,10 +1394,8 @@ TEST_CASE(ordered_player_reactions)
     return true;
 }
 
-TEST_CASE(ordered_clear_reactions)
+static void clear_route(yyjson_mut_doc *doc, int offset)
 {
-    yyjson_mut_doc *doc = request("ClearReactionChecks", 58);
-    key(doc, 0, 0);
     static const int route[][2] = {
         { 2, KEY_RIGHT },  { 4, KEY_RIGHT },  { 6, KEY_RIGHT },
         { 8, KEY_RIGHT },  { 10, KEY_SPACE }, { 13, KEY_LEFT },
@@ -1409,10 +1407,34 @@ TEST_CASE(ordered_clear_reactions)
         { 50, KEY_LEFT },  { 52, KEY_LEFT },  { 54, KEY_SPACE }
     };
     for (size_t i = 0; i < sizeof route / sizeof *route; i++) {
-        tap(doc, route[i][0], route[i][1]);
+        tap(doc, offset + route[i][0], route[i][1]);
     }
+}
+
+TEST_CASE(ordered_clear_reactions)
+{
+    yyjson_mut_doc *doc = request("ClearReactionChecks", 58);
+    key(doc, 0, 0);
+    clear_route(doc, 0);
     REQUIRE(snapshot(doc));
     REQUIRE(report(60));
+    return true;
+}
+
+TEST_CASE(retained_clear_cells)
+{
+    for (int variant = 0; variant < 2; variant++) {
+        yyjson_mut_doc *doc = request("ClearChecks", 290);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "test_quiet", variant ? "1" : "0");
+        yyjson_mut_obj_add_str(doc, saved, "test_mode", variant ? "3" : "1");
+        key(doc, 0, 0);
+        clear_route(doc, 0);
+        clear_route(doc, 140);
+        clear_route(doc, 230);
+        REQUIRE(snapshot(doc));
+        REQUIRE(report(variant ? 36 : 39));
+    }
     return true;
 }
 
@@ -1490,7 +1512,7 @@ TEST_CASE(layered_world_space_reactions)
     yyjson_mut_doc *doc = request("VfxChecks", 1147);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(216));
+    REQUIRE(report(223));
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 5);
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
     return true;
@@ -1658,6 +1680,7 @@ int main(int argc, char **argv)
     bool motion = !strcmp(selection, "--motion");
     bool stage = !strcmp(selection, "--stage");
     bool vfx = !strcmp(selection, "--vfx");
+    bool clear = !strcmp(selection, "--clear");
     bool loss = !strcmp(selection, "--loss");
     bool music_response = !strcmp(selection, "--music-response");
     bool music_field = !strcmp(selection, "--music-field");
@@ -1665,13 +1688,14 @@ int main(int argc, char **argv)
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
         !(all || reactions || consumer || hud || onboarding || attract || ui ||
           menu || menu_camera || rules || previews || motion || stage || vfx ||
-          loss || music_response || music_field || music_character)) {
+          clear || loss || music_response || music_field || music_character)) {
         fprintf(
             stderr,
             "Usage: %s "
             "--all|--rules|--reactions|--consumer|--hud|--onboarding|--attract|"
             "--ui|--menu|--menu-camera|--"
-            "previews|--motion|--stage|--vfx|--loss|--music-response|--music-"
+            "previews|--motion|--stage|--vfx|--clear|--loss|--music-response|--"
+            "music-"
             "field|--music-character "
             "/path/to/chibi_ctl /path/to/game\n",
             argv[0]
@@ -1688,8 +1712,15 @@ int main(int argc, char **argv)
     if (all || reactions) {
         RUN_TEST_CASE(ordered_player_reactions);
         RUN_TEST_CASE(ordered_session_reactions);
-        RUN_TEST_CASE(ordered_clear_reactions);
         RUN_TEST_CASE(topout_and_rescue);
+    }
+    if (all || reactions || clear) {
+        RUN_TEST_CASE(ordered_clear_reactions);
+    }
+    if (all || clear) {
+        RUN_TEST_CASE(retained_clear_cells);
+        RUN_TEST_CASE(live_keyboard_boards);
+        RUN_TEST_CASE(live_controller_boards);
     }
     if (all || ui || menu) {
         RUN_TEST_CASE(compact_opening_pointer_controls);
@@ -1713,8 +1744,6 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(authored_rules);
     }
     if (all) {
-        RUN_TEST_CASE(live_keyboard_boards);
-        RUN_TEST_CASE(live_controller_boards);
         RUN_TEST_CASE(lock_reset_limit);
         RUN_TEST_CASE(score_choice_and_mode_keys);
     }

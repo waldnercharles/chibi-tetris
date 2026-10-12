@@ -414,6 +414,7 @@ behavior Environment {
     // The immutable row mask survives board collapse. Each row starts at its
     // captured block front, and owns independent clocks, fragments and light.
     function ClearRow(center: number, row: int, amount: int, front: number) {
+        NextIdentity()
         row_y := 276 - row * 24
         cue_point0 = vec3(0, 0, 0)
         cue_point1 = cue_point0
@@ -593,6 +594,7 @@ behavior Environment {
         }
         if kind == 15 || kind == 16 || kind == 17 || kind == 19 {
             Cue(4, -140, -228, 1, 0, 0.3, 0.3, 0.2)
+            NextIdentity()
             Cue(4, 140, -228, -1, 0, 0.3, 0.3, 0)
             Push(0.7, 0.3)
             return

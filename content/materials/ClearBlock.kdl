@@ -1,0 +1,140 @@
+version 3
+name "ClearBlock"
+domain "material"
+id_counter 7000
+description "Retained clear cells use the original beveled silhouette and shared finish. Coat blends the charcoal body into one transparent surface so the whole cell fades without leaving an opaque core."
+(array)graphs {
+    - {
+        kind "event"
+        name ""
+        (array)nodes {
+            - id=100 type="Shader Surface Output"
+            - {
+                id 200
+                type "Shader Parameter"
+                reference_id 1
+                reference_name "Tint"
+                outputs {
+                    Value {
+                        type "struct"
+                        type_name "ShaderVec3"
+                        default x=0.41960785 y=0.73333335 z=0.7921569
+                    }
+                }
+            }
+            - {
+                id 300
+                type "Shader Parameter"
+                reference_id 2
+                reference_name "Finish"
+                outputs {
+                    Value {
+                        type "struct"
+                        type_name "ShaderVec3"
+                        default x=0.54 y=0.06 z=0.025
+                    }
+                }
+            }
+            - {
+                id 400
+                type "Behavior Expression"
+                reference_name "Tint.xyz * (0.16 + Edge * 0.22 + Impact * 0.12) * Coat + vec3(0.035, 0.055, 0.07) * (1 - Coat)"
+                inputs {
+                    Tint id=401 type="struct" type_name="ShaderVec3"
+                    Edge id=403 type="float"
+                    Impact id=404 type="float"
+                    Coat id=405 type="float"
+                }
+                outputs {
+                    Result id=402 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 500
+                type "Behavior Expression"
+                reference_name "Tint.xyz * (Finish.z * 0.35 + Edge * (0.55 + Finish.z * 0.65)) + vec3(0.22, 0.78, 0.96) * Impact * (0.24 + Edge * 1.35)"
+                inputs {
+                    Tint id=501 type="struct" type_name="ShaderVec3"
+                    Finish id=502 type="struct" type_name="ShaderVec3"
+                    Edge id=504 type="float"
+                    Impact id=505 type="float"
+                }
+                outputs {
+                    Result id=503 type="struct" type_name="ShaderVec3"
+                }
+            }
+            - {
+                id 600
+                type "Behavior Expression"
+                reference_name "Finish.x"
+                inputs {
+                    Finish id=601 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=602 type="float"
+                }
+            }
+            - {
+                id 700
+                type "Behavior Expression"
+                reference_name "Finish.y"
+                inputs {
+                    Finish id=701 type="struct" type_name="ShaderVec3"
+                }
+                outputs {
+                    Result id=702 type="float"
+                }
+            }
+            - {
+                id 800
+                type "Shader Parameter"
+                reference_id 3
+                reference_name "Opacity"
+                outputs Value=1.0
+            }
+            - id=900 type="Shader UV"
+            - {
+                id 910
+                type "Behavior Expression"
+                reference_name "smoothstep(0.84, 0.96, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))"
+                inputs {
+                    UV id=911 type="struct" type_name="ShaderVec2"
+                }
+                outputs {
+                    Result id=912 type="float"
+                }
+            }
+            - id=920 type="Shader Parameter" reference_id=4 reference_name="Impact"
+            - {
+                id 930
+                type "Shader Parameter"
+                reference_id 5
+                reference_name "Coat"
+                outputs Value=0.9
+            }
+        }
+        (array)edges {
+            - from="200.Value" to="400.Tint"
+            - from="200.Value" to="500.Tint"
+            - from="300.Value" to="500.Finish"
+            - from="300.Value" to="600.Finish"
+            - from="300.Value" to="700.Finish"
+            - from="400.Result" to="100.Base Color"
+            - from="500.Result" to="100.Emission"
+            - from="600.Result" to="100.Roughness"
+            - from="700.Result" to="100.Metallic"
+            - from="800.Value" to="100.Opacity"
+            - from="900.UV" to="910.UV"
+            - from="910.Result" to="400.Edge"
+            - from="910.Result" to="500.Edge"
+            - from="920.Value" to="400.Impact"
+            - from="920.Value" to="500.Impact"
+            - from="930.Value" to="400.Coat"
+        }
+    }
+    - id=1000 kind="function" math_expression="Tint.xyz * (0.16 + Edge * 0.22 + Impact * 0.12) * Coat + vec3(0.035, 0.055, 0.07) * (1 - Coat)" expression_mode=1 entry_id=1100
+    - id=2000 kind="function" math_expression="Tint.xyz * (Finish.z * 0.35 + Edge * (0.55 + Finish.z * 0.65)) + vec3(0.22, 0.78, 0.96) * Impact * (0.24 + Edge * 1.35)" expression_mode=1 entry_id=2100
+    - id=3000 kind="function" math_expression="Finish.x" expression_mode=1 entry_id=3100
+    - id=4000 kind="function" math_expression="Finish.y" expression_mode=1 entry_id=4100
+    - id=5000 kind="function" math_expression="smoothstep(0.84, 0.96, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=5100
+}

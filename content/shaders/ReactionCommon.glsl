@@ -21,6 +21,18 @@ vec3 reaction_event(float seed)
     return particle_samples((uint(seed) >> 4u) + 997u);
 }
 
+// Independent event channels vary the whole school, not its identity per frame.
+vec3 reaction_profile(float seed, uint channel)
+{
+    return particle_samples((uint(seed) >> 4u) ^ particle_hash(channel));
+}
+
+float reaction_heading(vec3 velocity)
+{
+    if (dot(velocity.xy, velocity.xy) < 0.0001) return 0.0;
+    return atan(velocity.y, velocity.x);
+}
+
 float reaction_population(float index, float seed, vec3 event)
 {
     // Density is independent of birth time and position along a drop column.
@@ -47,7 +59,8 @@ vec3 reaction_launch(vec3 velocity, vec2 direction, vec3 random, vec3 event, vec
     vec2 cross_axis = vec2(-axis.y, axis.x);
     float speed = max(length(velocity.xy), 1.0);
     vec2 radial = vec2(random.x - 0.5, random.y - 0.5);
-    radial = normalize(axis * 0.85 + radial * 1.5);
+    radial = axis * 0.85 + radial * 1.5;
+    radial /= max(length(radial), 0.001);
     vec3 pulse = vec3(radial * speed * 1.25, velocity.z * 1.45);
     float coil = sin(random.x * 6.283185 + event.z * 6.283185);
     vec3 ribbon = vec3((axis + cross_axis * coil * 0.16) * speed, velocity.z * 0.62);
@@ -59,17 +72,31 @@ vec3 reaction_launch(vec3 velocity, vec2 direction, vec3 random, vec3 event, vec
     vec3 shaped = velocity * (1.0 - min(1.0, total)) +
         pulse * weights.x + ribbon * weights.y + filament * weights.z;
     float complexity = clamp((total - 1.35) * 0.8, 0.0, 0.7);
-    return shaped + cosmic_curl(random * 11.0, event.z * 7.0) * speed * complexity;
+    shaped += cosmic_curl(random * 11.0, event.z * 7.0) * speed * complexity;
+    float angle = (event.x - 0.5) * 0.8;
+    shaped.xy = mat2(cos(angle), sin(angle), -sin(angle), cos(angle)) * shaped.xy;
+    return shaped * vec3(0.66 + event.y * 0.86, 0.72 + event.z * 0.68, 0.62 + event.z * 0.86);
 }
 
-ChibiParticle reaction_illuminate(ChibiParticle particle, ChibiParameters u, vec3 random)
+ChibiParticle reaction_illuminate(ChibiParticle particle, ChibiParameters u, vec3 random, float seed)
 {
+    vec3 style = reaction_profile(seed, 421u);
+    vec3 shade = reaction_profile(seed, 1579u);
+    float hue = shade.x * 3.0;
+    vec3 palette = mix(vec3(0.14, 1.0, 1.18), vec3(0.3, 0.6, 1.35), min(hue, 1.0));
+    if (hue > 1.0) palette = mix(vec3(0.3, 0.6, 1.35), vec3(0.72, 0.43, 1.24), min(hue - 1.0, 1.0));
+    if (hue > 2.0) palette = mix(vec3(0.72, 0.43, 1.24), vec3(1.12, 1.0, 0.72), hue - 2.0);
+    float peak = max(particle.color.r, max(particle.color.g, particle.color.b));
+    float tint_amount = u.Pattern == 7.0 ? 0.08 : 0.30 + shade.y * 0.2;
+    particle.color.rgb = mix(particle.color.rgb, palette * peak, tint_amount) * (0.72 + style.z * 0.72);
+    particle.color.a *= 0.70 + shade.z * 0.5;
+    particle.size *= 0.68 + style.y * 0.80;
     vec3 character = clamp(u.Character, 0.0, 1.0) * (1.0 - u.Timing.z);
     float beam = 1.0 - step(0.5, abs(u.Pattern - 8.0));
     float fine = 1.0 - smoothstep(0.88, 0.96, random.z);
     float streak = smoothstep(0.78, 0.95, random.x) * fine;
-    float thread = (character.y * 2.8 + character.z * 1.7) * streak * (1.0 - beam);
-    particle.scale *= vec3(1.0 + thread, 1.0 / (1.0 + thread * 0.45), 1.0);
+    float elongation = (character.y * 2.8 + character.z * 1.7) * streak * (1.0 - beam);
+    particle.scale *= vec3(1.0 + elongation, 1.0 / (1.0 + elongation * 0.45), 1.0);
     particle.size *= 1.0 + character.x * 0.26 - character.z * 0.28;
     vec3 tint = vec3(1.0) + character.x * vec3(0.12, 0.02, -0.04)
         + character.y * vec3(-0.12, 0.10, 0.15) + character.z * vec3(0.12, 0.08, 0.20);
@@ -122,11 +149,12 @@ ChibiParticleState reaction_advect(ChibiParticleState state, ChibiParticleInput 
     vec3 current = cosmic_curl(world * (0.004 + event.y * 0.003 + character.z * 0.006), u.Current.x);
     // An event keeps its broad initial arc while the live common current bends
     // it. Neighboring schools still exchange the same four input forces.
-    float swirl = (event.x - 0.5) * 2.0;
+    vec3 motion = reaction_profile(p.seed, 773u);
+    float swirl = (motion.x < 0.5 ? -1.0 : 1.0) * (0.4 + motion.y * 1.2);
     vec3 bend = vec3(-state.velocity.y, state.velocity.x, state.velocity.x * 0.2);
     state.velocity += bend * swirl * seconds * (0.62 + character.y * 1.5) *
         exp(-max(0.0, p.time - birth) * (0.65 - character.y * 0.42));
-    vec3 target = current * (45.0 + u.Current.z * 30.0 + complexity * 115.0) + vec3(u.Current.y * 28.0, 20.0, -8.0);
+    vec3 target = current * (45.0 + u.Current.z * 30.0 + complexity * 115.0) + vec3(u.Current.y * 28.0 + (motion.z - 0.5) * 60.0, 5.0 + motion.y * 35.0, -8.0);
     state.velocity += (target - state.velocity) * (1.0 - exp(-seconds * response * (1.0 - character.y * 0.55 + character.z * 0.5)));
     float force_response = u.Pattern == 13.0 ? 1.3 : 2.4;
     state.velocity += reaction_force(state.position, u) * seconds * force_response;

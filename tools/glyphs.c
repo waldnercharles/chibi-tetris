@@ -12,6 +12,7 @@
  *   -lchibi_support -Wl,-dead_strip -lm -o build/glyphs
  * ./build/glyphs
  * ./build/glyphs --block
+ * ./build/glyphs --clear-block
  * ./build/glyphs --preview build/glyphs.svg
  * rm build/glyphs
  * On Linux, replace -Wl,-dead_strip with -Wl,--gc-sections.
@@ -600,7 +601,7 @@ static void closed(const render_mesh_asset *mesh, float bevel)
     assert(fabsf(volume - expected_volume) < .0001f);
 }
 
-static void block(const char *name, float bevel)
+static void block(const char *name, float bevel, bool opaque_core)
 {
     const float inner = .5f - bevel;
     render_mesh_asset mesh = { 0 };
@@ -657,13 +658,15 @@ static void block(const char *name, float bevel)
     // opaque body writes depth beneath its music-reactive translucent coat.
     const int outer_vertices = acount(mesh.vertices);
     const int outer_indices = acount(mesh.indices);
-    for (int i = 0; i < outer_vertices; i++) {
-        render_mesh_surface_vertex vertex = mesh.vertices[i];
-        vertex.position = cf_mul_v3_f(vertex.position, .985f);
-        apush(mesh.vertices, vertex);
-    }
-    for (int i = 0; i < outer_indices; i++) {
-        apush(mesh.indices, mesh.indices[i] + outer_vertices);
+    if (opaque_core) {
+        for (int i = 0; i < outer_vertices; i++) {
+            render_mesh_surface_vertex vertex = mesh.vertices[i];
+            vertex.position = cf_mul_v3_f(vertex.position, .985f);
+            apush(mesh.vertices, vertex);
+        }
+        for (int i = 0; i < outer_indices; i++) {
+            apush(mesh.indices, mesh.indices[i] + outer_vertices);
+        }
     }
     render_mesh_group coat = { .first = 0,
                                .count = outer_indices,
@@ -672,22 +675,30 @@ static void block(const char *name, float bevel)
                                .path = xstrdup("coat"),
                                .material = xstrdup(""),
                                .material_scope = xstrdup("") };
-    render_mesh_group core = { .first = outer_indices,
-                               .count = outer_indices,
-                               .asset = xstrdup(""),
-                               .name = xstrdup("core"),
-                               .path = xstrdup("core"),
-                               .material = xstrdup("BlockCore"),
-                               .material_scope = xstrdup("") };
     apush(mesh.groups, coat);
-    apush(mesh.groups, core);
+    if (opaque_core) {
+        render_mesh_group core = { .first = outer_indices,
+                                   .count = outer_indices,
+                                   .asset = xstrdup(""),
+                                   .name = xstrdup("core"),
+                                   .path = xstrdup("core"),
+                                   .material = xstrdup("BlockCore"),
+                                   .material_scope = xstrdup("") };
+        apush(mesh.groups, core);
+    }
     verify(&mesh);
     char path[512];
     int count = snprintf(path, sizeof path, "content/meshes/%s.mesh", name);
     assert(count > 0 && (size_t)count < sizeof path);
     write_mesh(&mesh, path);
     render_mesh_asset_free(&mesh);
-    printf("%-20s 1.000000 x 1.000000 x 1.000000  88 triangles, opaque core + coat, bevel %.2f\n", name, bevel);
+    printf(
+        "%-20s 1.000000 x 1.000000 x 1.000000  %d triangles, %s, bevel %.2f\n",
+        name,
+        opaque_core ? 88 : 44,
+        opaque_core ? "opaque core + coat" : "fadeable silhouette",
+        bevel
+    );
 }
 
 static void directory(const char *path)
@@ -758,13 +769,15 @@ static void free_fonts()
 
 int main(int argc, char **argv)
 {
-    if (argc >= 2 && !strcmp(argv[1], "--block")) {
+    if (argc >= 2 &&
+        (!strcmp(argv[1], "--block") || !strcmp(argv[1], "--clear-block"))) {
         assert(argc <= 3);
         if (argc == 3) {
             assert(!chdir(argv[2]));
         }
         directory("content/meshes");
-        block("Block", .04f);
+        bool core = !strcmp(argv[1], "--block");
+        block(core ? "Block" : "ClearBlock", .04f, core);
         return 0;
     }
     if ((argc == 3 || argc == 4) && !strcmp(argv[1], "--preview")) {

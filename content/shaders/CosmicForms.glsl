@@ -47,7 +47,10 @@ ChibiParticleState cosmic_birth(ChibiParticleInput p, ChibiParameters u, vec3 id
     vec3 center, extent, axis;
     cosmic_volume(cohort, u, center, extent, axis);
     vec4 weights = cosmic_stage_weights(u.Style);
-    vec3 random = cosmic_random(p.index + 31.0, p.seed + 19.0, u.Variation + 51.0);
+    // Sample time only when a grain is born. A later frame never changes its
+    // live identity; the bounded salt gives its next life a different route.
+    float birth = mod(floor(p.time * 4.0), 65536.0);
+    vec3 random = cosmic_random(p.index + 31.0, p.seed + 19.0, u.Variation + 51.0 + birth * 3.0);
     vec3 ball = cosmic_ball(random);
     // Short core routes coexist with long outer routes. Their density comes
     // from volume and residence time, never a sampled curve's endpoints.
@@ -60,7 +63,7 @@ ChibiParticleState cosmic_birth(ChibiParticleInput p, ChibiParameters u, vec3 id
     vec3 shape = pulse * weights.x + stream * weights.y + sheet * weights.z + cloud * weights.w;
     ChibiParticleState state;
     state.position = center + shape * extent;
-    state.velocity = cosmic_curl(state.position * 0.0017, u.Flow) * 45.0;
+    state.velocity = cosmic_curl(state.position * 0.0017, u.Flow) * (22.0 + random.y * 58.0);
     state.age = 0.0;
     if (p.reset) {
         state.age = cosmic_random(p.index, p.seed + 613.0, u.Variation + 997.0).y * cosmic_life(identity);

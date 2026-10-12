@@ -9,6 +9,7 @@ component BoardState {
     combo: int
     last_clear: int
     clear_serial: int
+    clear_visual_dropped: int
     ready: bool
     current: int
     held: int

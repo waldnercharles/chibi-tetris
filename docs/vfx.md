@@ -5,6 +5,15 @@ fields and eight point lights holds the reactions. No grain creates an entity
 or runs a behavior, and a live field is never moved to a newer event. The main
 131,072-grain cloud and 16,384-grain scenery field remain separate populations.
 
+Every action receives a fresh captured identity, including identical repeated
+inputs and reuse of the same field entity. Separate hash channels vary the
+whole event's sweep, fan direction, signed curl, depth, palette, size, brightness
+and opacity; per-grain samples vary the members within that school. Layers of
+one event retain a common broad shape. Each cleared row and each paired menu
+confirmation receives its own identity. These samples stay fixed during a
+particle's life. Ambient grains sample a new birth route when they respawn,
+without moving or reseeding grains that are still alive.
+
 ## Player actions
 
 | Action or layer | Instances | Field life | Motion |
@@ -86,7 +95,16 @@ coordinates. Bloom and emitted brightness remain separate from antialiasing.
 Every original row in the recorded mask receives four layers. The origin is
 the board center in X, `276 - 24 * row` in Y and the captured front in Z. It
 never reads the next piece position or the compacted grid. Four cleared rows
-create 10,624 instances across sixteen fields.
+create 10,624 instances across sixteen fields. Before logical collapse, the
+board also captures the visible cleared cells into a fixed pool of 80 meshes
+per board. They hold at full size for 160–220 ms, then separate and fade over
+640 ms. Position and opacity follow a quintic easing curve; size stays unchanged.
+Their dedicated mesh has no permanently opaque inner group,
+so the whole silhouette can disappear continuously. Logical scoring, collapse
+and the next piece remain immediate. Reduced motion and effects-off use a
+stationary fade of at most 240 ms. Changing either setting mid-clear freezes
+the current pose and fades its remaining opacity and highlight. Pause freezes
+all clear-cell clocks; new runs and layout changes retire the old copies.
 
 | Layer | Instances per row | Delay / field life | Treatment |
 | --- | ---: | --- | --- |
@@ -99,9 +117,12 @@ create 10,624 instances across sixteen fields.
 The release captures the current song response for its lifetime. Tempo
 confidence blends a default half-second period toward the measured interval;
 energy and bass modestly extend the tail. Later beats can bend the current
-without abruptly changing a field's retirement time. The bright opening cools
-over 550 ms. Fracture, embers and fan use source-alpha additive blending with
-depth testing and no depth writes. Heavy fragments use opaque depth-tested
+without abruptly changing a field's retirement time. The swept birth varies
+between left-to-right, right-to-left and an offset center. Grains gather near
+the row for 130–230 ms, then gain outward momentum
+over 220–400 ms. A restrained highlight rises during that expansion and
+cools into the longer trail. Fracture, embers and fan use source-alpha additive
+blending with depth testing and no depth writes. Heavy fragments use opaque depth-tested
 geometry. Grain size and opacity retire continuously.
 
 ## Departure and menu recovery
@@ -138,8 +159,10 @@ The largest field contains 2,048 instances, giving a 196,608-instance upper
 bound for the fixed reaction pool. Ordinary events use far fewer. When full,
 the consumer increments `VisualState.cue_dropped` and leaves living fields
 unchanged. `cue_overwrites` stays zero. Medium quality halves ordinary counts;
-quiet settings use eight grains and short lifetimes. Neither field nor light
-entity counts grow during play.
+quiet settings use eight grains and short lifetimes. Field, light and clear-cell
+entity counts remain fixed during play. Clear cells reserve a whole clear
+before writing any slot; a full pool preserves
+existing releases and increments `BoardState.clear_visual_dropped`.
 
 Authored fixtures exercise captured positions, exposed edges, birth/delay and
 retirement, clear row masks, pause, quiet controls, pool saturation, new-run

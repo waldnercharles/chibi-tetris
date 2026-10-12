@@ -1,0 +1,235 @@
+// Real keyboard placements clear rows 20 and 21. Cosmetic copies must outlive
+// the immediate scoring collapse without occupying cells in the live board.
+behavior ClearChecks {
+    world: entity
+    board: entity
+    cells: entity[] = []
+    first: entity[] = []
+    first_positions: CF_V3[] = []
+    paused_positions: CF_V3[] = []
+    paused_colors: uint[] = []
+    frame: int = 0
+    seen_clear: int = 0
+    previous_sink := 0
+    quiet := false
+    first_path: CF_V3 = { x: 0, y: 0, z: 0 }
+    repeated_start: CF_V3 = { x: 0, y: 0, z: 0 }
+    toggle_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    toggle_alpha := 0
+    toggle_glow := 0
+    toggle_cell: entity
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function Same(a: CF_V3, b: CF_V3) -> (equal: bool) {
+        return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z) < 0.001
+    }
+
+    function Visible() -> (count: int) {
+        count = 0
+        for tile in cells {
+            if !tile.RenderState.hidden {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function LiveCells() -> (count: int) {
+        count = 0
+        for tile in find_entities_with_component("MeshAsset") {
+            if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 && tile.Transform3D.position.z == 0 {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function FullSize(tile: entity) -> (full: bool) {
+        return tile.Geometry3D.width == 22 && tile.Geometry3D.height == 22 && abs(tile.Geometry3D.depth - 13.2) < 0.001 && Same(tile.Transform3D.scale, vec3(1, 1, 1))
+    }
+
+    function Capture() {
+        row := 20
+        if board.BoardState.clear_serial == 2 {
+            row = 21
+        }
+        x := -108
+        if world.Session.mode == 3 {
+            x = -362
+        }
+        mask: int = 0
+        full := true
+        hue := true
+        for tile in cells {
+            position := tile.Transform3D.position
+            if tile.RenderState.hidden || abs(position.y - (276 - row * 24 + previous_sink)) > 0.001 || position.z != 0.75 {
+                continue
+            }
+            column := cast<int>(round((position.x - x) / 24))
+            if column >= 0 && column < 10 {
+                mask = mask | 1 << column
+            }
+            full = full && FullSize(tile) && tile.Shader.material == "ClearBlock"
+            hue = hue && (tile.Material.scene & 4294967040) == (Pieces.Color(1) & 4294967040)
+            if frame > 140 && frame < 220 && board.BoardState.clear_serial == 1 && length(first) > 0 && tile == get(first, 0) {
+                repeated_start = position
+            }
+            if frame < 60 && board.BoardState.clear_serial == 1 {
+                first = array_add(first, tile)
+                first_positions = array_add(first_positions, position)
+            }
+        }
+        Check(mask == 1023, "capture contains every original column including freshly locked cells")
+        Check(full && hue, "retained cells keep the original full-size beveled silhouette and shared hue")
+        Check(LiveCells() == board.BoardState.pieces * 4 - board.BoardState.lines * 10, "scoring and the live stack collapse immediately while copies remain")
+        Check(board.BoardState.clear_visual_dropped == 0, "ordinary overlapping clears stay within the fixed pool")
+        seen_clear = board.BoardState.clear_serial
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        quiet = read_saved_number("test_quiet", 0).Number == 1
+        world.Session.mode = cast<int>(read_saved_number("test_mode", 1).Number)
+        world.Session.reduced_motion = quiet
+        world.Session.effects = 2
+        if quiet {
+            world.Session.effects = 0
+        }
+        toggle_cell = self
+    }
+
+    on Tick {
+        if frame == 2 {
+            for tile in find_entities_with_component("MeshAsset") {
+                if tile.MeshAsset.source == "content/meshes/ClearBlock.mesh" {
+                    cells = array_add(cells, tile)
+                }
+            }
+            Check(length(cells) == 80 && Visible() == 0, "each board preallocates exactly eighty hidden clear cells")
+        }
+        if board.BoardState.clear_serial > seen_clear {
+            Capture()
+        }
+        match (frame) {
+            case 50 {
+                held := length(first) == 10
+                for i in 0..length(first) - 1 {
+                    tile := get(first, i)
+                    held = held && !tile.RenderState.hidden && FullSize(tile) && Same(tile.Transform3D.position, get(first_positions, i))
+                    if !quiet {
+                        held = held && (tile.Material.scene & 255) == 255
+                    }
+                }
+                Check(held, "the first clear holds every recognizable cell at its original position")
+            }
+            case 56 {
+                Check(Visible() == 20 && board.BoardState.lines == 2 && board.BoardState.pieces == 6 && board.BoardState.combo == 1, "two consecutive clears overlap without delaying scoring or the next piece")
+                for tile in cells {
+                    paused_positions = array_add(paused_positions, tile.Transform3D.position)
+                    paused_colors = array_add(paused_colors, tile.Material.scene)
+                }
+                world.Session.screen = 2
+            }
+            case 70 {
+                frozen := Visible() == 20
+                for i in 0..length(cells) - 1 {
+                    tile := get(cells, i)
+                    frozen = frozen && Same(tile.Transform3D.position, get(paused_positions, i)) && tile.Material.scene == get(paused_colors, i)
+                }
+                Check(frozen, "pause freezes clear positions opacity and lifetimes")
+                world.Session.screen = 1
+            }
+            case 84 {
+                if quiet {
+                    stationary := true
+                    for i in 0..length(first) - 1 {
+                        stationary = stationary && Same(get(first, i).Transform3D.position, get(first_positions, i))
+                    }
+                    Check(stationary && Visible() <= 10, "quiet clears fade briefly at their original positions")
+                } else {
+                    released := length(first) == 10
+                    for i in 0..length(first) - 1 {
+                        tile := get(first, i)
+                        released = released && !tile.RenderState.hidden && FullSize(tile) && !Same(tile.Transform3D.position, get(first_positions, i)) && cast<number>(tile.Material.scene & 255) < 240 && cast<number>(tile.Material.scene & 255) > 0 && tile.Material.emission_intensity > 0.025
+                    }
+                    Check(released, "held cells separate glow and fade without shrinking")
+                    if length(first) > 0 {
+                        first_path = get(first, 0).Transform3D.position - get(first_positions, 0)
+                        toggle_cell = get(first, 0)
+                        toggle_position = toggle_cell.Transform3D.position
+                        toggle_alpha = cast<number>(toggle_cell.Material.scene & 255)
+                        toggle_glow = toggle_cell.Material.emission_intensity
+                    }
+                    world.Session.effects = 0
+                }
+            }
+            case 85 {
+                if !quiet && toggle_cell != self {
+                    alpha := cast<number>(toggle_cell.Material.scene & 255)
+                    Check(Same(toggle_cell.Transform3D.position, toggle_position) && alpha <= toggle_alpha && toggle_alpha - alpha < 20 && abs(toggle_cell.Material.emission_intensity - toggle_glow) < 0.001, "turning effects off preserves the current pose opacity and glow")
+                }
+            }
+            case 90 {
+                if !quiet && toggle_cell != self {
+                    Check(Same(toggle_cell.Transform3D.position, toggle_position) && toggle_cell.Material.emission_intensity < toggle_glow && toggle_cell.Material.emission_intensity > 0.025, "quiet retirement cools the captured highlight while stationary")
+                }
+            }
+            case 110 {
+                Check(Visible() == 0, "quiet retirement completes without residual opaque cell cores")
+            }
+            case 130 {
+                Check(length(cells) == 80 && Visible() == 0, "finished clear effects reuse the same bounded pool")
+            }
+            case 140 {
+                world.Session.run += 1
+                world.Session.effects = 2
+                if quiet {
+                    world.Session.effects = 0
+                }
+                seen_clear = 0
+            }
+            case 196 {
+                Check(Visible() == 20 && board.BoardState.lines == 2, "new runs can reuse all retired clear slots")
+            }
+            case 210 {
+                if !quiet && length(first) > 0 {
+                    repeated_path := get(first, 0).Transform3D.position - repeated_start
+                    Check(!Same(first_path, repeated_path), "repeated identical clears choose a new captured release path")
+                }
+                world.Session.run += 1
+                seen_clear = 0
+            }
+            case 212 {
+                Check(Visible() == 0 && board.BoardState.lines == 0, "new run cleanup retires overlapping copies immediately")
+            }
+            case 230 {
+                world.Session.run += 1
+                seen_clear = 0
+            }
+            case 280 {
+                Check(Visible() >= 10, "another run produces a fresh retained clear")
+            }
+            case 286 {
+                Check(Visible() == 20, "mode switch begins with two visible retained rows")
+                world.Session.mode = 3 - (world.Session.mode - 1)
+            }
+            case 288 {
+                Check(Visible() == 0, "changing board layout retires copies at the old origin")
+                self.TestReport.done = true
+            }
+        }
+        previous_sink = board.Transform3D.position.y
+        frame += 1
+    }
+}

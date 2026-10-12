@@ -24,10 +24,20 @@ behavior VfxChecks {
     slow_energy: entity
     charged_tail: entity
     sparse_tail: entity
+    sparse_first: entity
+    sparse_second: entity
+    session_left: entity
+    session_right: entity
+    pool_fields: entity[]
+    pool_seeds: int[]
     old_age := 0
     light_release := 0
     first_move_seed: int = 0
     first_turn_seed: int = 0
+    drop_seed: int = 0
+    duet_seed: int = 0
+    session_left_seed: int = 0
+    session_right_seed: int = 0
     frame: int = 0
 
     function Check(condition: bool, message: string) {
@@ -118,16 +128,19 @@ behavior VfxChecks {
     }
 
     function LayerAt(x: number, y: number, count: int) -> (found: entity) {
+        found = world
+        youngest := 1000000
         fields := find_entities_with_component("ParticleField3D")
         for field in fields {
             if field != vortex && field != stars && field.ParticleField3D.count == count {
                 position := field.Transform3D.position
-                if abs(position.x - x) < 0.01 && abs(position.y - y) < 0.01 {
-                    return field
+                if abs(position.x - x) < 0.01 && abs(position.y - y) < 0.01 && field.ParticleField3D.time < youngest {
+                    found = field
+                    youngest = field.ParticleField3D.time
                 }
             }
         }
-        return world
+        return found
     }
 
     function Clear(mask: int, amount: int) {
@@ -193,6 +206,16 @@ behavior VfxChecks {
                     Check(light.PointLight.intensity > 0.1, "hard-drop contact lights the landing on the placement frame")
                 }
             }
+            case 12 {
+                Record(first, 1, 1, -110, 120, 1)
+                Record(first, 2, 1, 80, 96, 0)
+            }
+            case 14 {
+                repeated_move := LayerAt(-110, 120, 48)
+                repeated_turn := LayerAt(80, 96, 96)
+                Check(repeated_move != world && repeated_move != shifting && repeated_move.ParticleField3D.seed != first_move_seed, "identical movement at the same origin starts a fresh population before pool reuse")
+                Check(repeated_turn != world && repeated_turn != turning && repeated_turn.ParticleField3D.seed != first_turn_seed, "identical rotation at the same origin starts a fresh population before pool reuse")
+            }
             case 17 {
                 if light != world {
                     Check(light.PointLight.intensity > 0.1, "contact illumination continues while the brief wash has already finished")
@@ -243,6 +266,12 @@ behavior VfxChecks {
             }
             case 42 {
                 Check(ActiveCues() == 96, "all fixed pool slots can carry independent live cues")
+                for field in find_entities_with_component("ParticleField3D") {
+                    if field != vortex && field != stars {
+                        pool_fields = array_add(pool_fields, field)
+                        pool_seeds = array_add(pool_seeds, field.ParticleField3D.seed)
+                    }
+                }
                 oldest = CueAt(1000, 1000)
                 Check(oldest != world, "oldest saturated cue remains present")
                 if oldest != world {
@@ -277,6 +306,14 @@ behavior VfxChecks {
                 if turn != world && quiet_drop != world {
                     Check(turn.ParticleField3D.count == 8 && quiet_drop.ParticleField3D.count == 8, "quiet confirmations keep the minimum count")
                 }
+                reused: int = 0
+                for i in 0..length(pool_fields) - 1 {
+                    field := get(pool_fields, i)
+                    if (field == turn || field == quiet_drop) && field.ParticleField3D.seed != get(pool_seeds, i) {
+                        reused += 1
+                    }
+                }
+                Check(reused == 2, "reusing the same retired field entities gives quiet confirmations fresh identities")
                 lights := find_entities_with_component("PointLight")
                 for candidate in lights {
                     Check(candidate.PointLight.intensity == 0, "quiet input never creates a new reaction light")
@@ -299,6 +336,31 @@ behavior VfxChecks {
                     total += count
                 }
                 Check(total == 10624, "a four-line clear reserves its larger finite celebration budget")
+                distinct := true
+                row_seeds: int[] = []
+                layer_counts: int[] = [320, 96, 2048, 192]
+                for row in 18..21 {
+                    row_seed: int = -1
+                    for count in layer_counts {
+                        field := LayerAt(-254, 276 - row * 24, count)
+                        if field == world {
+                            distinct = false
+                            continue
+                        }
+                        identity := field.ParticleField3D.seed / 16
+                        if row_seed >= 0 && identity != row_seed {
+                            distinct = false
+                        }
+                        row_seed = identity
+                    }
+                    for previous in row_seeds {
+                        if previous == row_seed {
+                            distinct = false
+                        }
+                    }
+                    row_seeds = array_add(row_seeds, row_seed)
+                }
+                Check(distinct, "each cleared row has a distinct identity shared coherently by its four layers")
                 Check(CueAt(999, 777) == world, "clear layers never follow the newly spawned piece origin")
                 lights := find_entities_with_component("PointLight")
                 row_lights: int = 0
@@ -340,10 +402,18 @@ behavior VfxChecks {
                 Check(ActiveCues() == 8, "nonadjacent clear rows receive independent layers in Solo")
                 Check(RowInstances(0, 228) == 1328 && RowInstances(0, -204) == 1328, "reduced effects halves every clear layer without moving its row")
                 Check(CueAt(0, -228) == world, "the row mask never fills an uncleared neighboring row")
-                world.Session.effects = 0
+                sparse_first = LayerAt(0, 228, 1024)
+                sparse_second = LayerAt(0, -204, 1024)
+                Clear(1 << 2 | 1 << 20, 2)
             }
             case 164 {
-                Check(ActiveCues() == 8, "effects-off releases existing sparse tails continuously")
+                repeated_first := LayerAt(0, 228, 1024)
+                repeated_second := LayerAt(0, -204, 1024)
+                Check(repeated_first != world && repeated_second != world && repeated_first != sparse_first && repeated_second != sparse_second && repeated_first.ParticleField3D.seed != sparse_first.ParticleField3D.seed && repeated_second.ParticleField3D.seed != sparse_second.ParticleField3D.seed, "identical clear rows at unchanged quality and music start fresh populations")
+                world.Session.effects = 0
+            }
+            case 166 {
+                Check(ActiveCues() == 16, "effects-off releases both overlapping sparse clears continuously")
             }
             case 168 {
                 Check(ActiveCues() == 0, "effects-off finishes retirement before field reuse")
@@ -386,8 +456,15 @@ behavior VfxChecks {
             case 248 {
                 Check(ActiveCues() == 0, "both natural landing layers finish before their fields are reused")
                 Check(world.VisualState.cue_dropped == 1 && world.VisualState.cue_overwrites == 0, "long ordinary tails stay within the fixed pool")
+                ReactionRules.Emit(world, 15, 1, 0, 0, 1, 0, 0)
             }
             case 250 {
+                session_left = LayerAt(-140, -228, 96)
+                session_right = LayerAt(140, -228, 96)
+                if session_left != world && session_right != world {
+                    session_left_seed = session_left.ParticleField3D.seed
+                    session_right_seed = session_right.ParticleField3D.seed
+                }
                 world.Session.mode = 1
                 world.VisualState.beat_confidence = 1
                 world.VisualState.beat_period = 0.3
@@ -398,6 +475,9 @@ behavior VfxChecks {
             case 252 {
                 fast_tail = LayerAt(0, -228, 2048)
                 Check(fast_tail != world && RowInstances(0, -228) == 2656, "fast quiet music starts a full bounded clear")
+            }
+            case 254 {
+                Check(session_left != world && session_right != world && session_left_seed % 16 == 4 && session_right_seed % 16 == 4 && session_left_seed != session_right_seed && session_left.ParticleField3D.seed == session_left_seed && session_right.ParticleField3D.seed == session_right_seed && session_left.ParticleField3D.count == 96 && session_right.ParticleField3D.count == 96, "paired session confirmations keep distinct stable identities for the same pattern")
             }
             case 280 {
                 world.VisualState.beat_period = 0.9
@@ -517,6 +597,8 @@ behavior VfxChecks {
                 if drop_tail != world && duet_tail != world {
                     drop_age = drop_tail.ParticleField3D.time
                     duet_age = duet_tail.ParticleField3D.time
+                    drop_seed = drop_tail.ParticleField3D.seed
+                    duet_seed = duet_tail.ParticleField3D.seed
                 }
                 world.Session.screen = 2
             }
@@ -524,6 +606,7 @@ behavior VfxChecks {
                 if drop_tail != world && duet_tail != world {
                     Check(drop_tail.ParticleField3D.time == drop_age && duet_tail.ParticleField3D.time == duet_age, "pause retains both drop clocks and their particle shapes")
                 }
+                Check(drop_tail != world && duet_tail != world && drop_tail.ParticleField3D.seed == drop_seed && duet_tail.ParticleField3D.seed == duet_seed, "pause retains both particle identities without reseeding their shapes")
                 world.Session.screen = 1
                 Record(first, 6, 0, 10, 10, 8)
             }

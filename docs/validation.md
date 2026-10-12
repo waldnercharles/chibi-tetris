@@ -1,5 +1,51 @@
 # Validation record
 
+## Varied particle births and retained clears — October 12, 2026
+
+Every reaction now captures independent shape and appearance variation; each
+cleared row and paired menu confirmation gets a distinct identity. Ambient
+grains choose a new route at rebirth. Existing grains retain their samples.
+Cleared blocks remain full size for 160–220 ms, then drift and fade over 640 ms
+while their particles gather, expand and cool into longer trails. The fixed
+80-cell pool per board preserves overlapping releases. Quiet settings fade
+stationary cells, including continuous retirement after a setting change.
+
+Independent reviews covered event identities, shader state, retained-cell
+ownership, initialization, pause, pool reuse and session/layout cleanup.
+The new row-identity regression failed against the former Environment. The
+retained-cell fixture also failed against the former Board. Final production
+validation and the selected `--clear`, `--vfx` and `--loss` cases passed under
+one shared 60-second deadline: 12 cases / 462 dispatcher assertions in 58.818 s,
+including 39 normal-clear, 36 quiet-clear and 223 VFX authored checks. Validation
+reported 148 assets, zero errors and zero warnings. No engine source or package
+pin changed; full and quarantined suites were not run.
+
+Native rendering exposed an existing Metal-reserved shader variable name in
+the active reaction path. Renaming it allowed the final hidden Cocoa/Metal
+preview to pass in 3.769 s: 640 × 360, 60 CPU steps, two GPU warmup frames and
+one saved frame, with 159,872 particles and 901 entities. Its 10.439 ms saved
+frame is a capture observation, not a native performance guarantee. Native
+and browser exports passed with the clean pinned SDK and browser player.
+
+Browser captures exercised actual consecutive clears in a controlled-seed
+scene, including the held silhouette, outward drift, fading and differing
+successive trails. Production play covered pointer launch, repeated movement,
+rotation, hold, hard drop, pause and direct loss-to-menu recovery. Both WebGPU and the actual GLES 3.0 fallback
+compiled the changed shaders without product console errors.
+
+At the normal 2560 × 1440 canvas (1280 × 720 CSS), two-second warmups followed
+by 2.5-second samples measured WebGPU at 58.80 FPS, 16.7 ms median and 25.0 ms
+p95; WebGL measured 57.92 FPS, 16.7 ms median and 24.8 ms p95. The initial
+WebGPU sample was 34.42 FPS while the comparison scene also rendered; the
+single-game measurement followed closing that scene. These short samples do
+not establish sustained or cross-device performance. Public revision, asset
+hashes and browser play are verified separately after the source commit.
+
+Compact captures, a contact sheet, requests and logs remain in ignored
+`.chibi/clear-variation`. Disposable project copies and probe binaries are
+removed after validation. The work uses an isolated game checkout and matching
+clean engine checkout to preserve concurrent Phone work in the original trees.
+
 ## Sound-driven forms and organic flow — October 12, 2026
 
 The clean engine pin is `1b6fddf7f4c42f7c632916c2d33c0bdad0aaa205`.

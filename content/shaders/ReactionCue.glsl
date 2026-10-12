@@ -1,10 +1,10 @@
 #include "ReactionCommon.glsl"
 
-float cue_birth(int pattern, float life, float quantile)
+float cue_birth(int pattern, float life, float quantile, vec3 event)
 {
-    if (pattern == 13) return quantile * 0.06;
-    if (pattern == 4 || pattern == 8) return quantile * 0.006;
-    return reaction_birth(min(life * 0.12, 0.045), quantile);
+    if (pattern == 13) return quantile * (0.03 + event.z * 0.11);
+    if (pattern == 4 || pattern == 8) return quantile * (0.002 + event.z * 0.014);
+    return reaction_birth(min(life * 0.18, 0.02 + event.y * 0.07), quantile);
 }
 
 vec3 cue_point(float index, ChibiParameters u)
@@ -39,12 +39,12 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
     vec3 random = reaction_random(p.index, p.seed);
     vec3 event = reaction_event(p.seed);
     float quantile = reaction_quantile(p.index, p.seed);
-    float birth = u.Timing.x + cue_birth(pattern, u.Life, quantile);
+    float birth = u.Timing.x + cue_birth(pattern, u.Life, quantile, event);
     if (p.reset) {
         vec3 point = cue_point(p.index, u);
         vec2 normal = cue_normal(random);
         vec2 tangent = vec2(-normal.y, normal.x);
-        state.position = point + vec3(normal * 10.7 + tangent * (random.x - 0.5) * 21.0, 0.6);
+        state.position = point + vec3(normal * 10.7 + tangent * ((random.x - 0.5) * 14.0 + (event.y - 0.5) * 7.0), 0.6);
         float depth = mix(-150.0 - random.y * 190.0, 240.0 + random.y * 180.0, step(0.72, random.z));
         if (pattern == 1) {
             state.position = point + vec3(-u.Action.x * (10.7 + u.Action.y * 24.0 * quantile),
@@ -87,9 +87,9 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
 // The visible tail cools slowly while the short beam has already disappeared.
 ChibiParticle drop_wake(ChibiParticleInput p, ChibiParameters u, vec3 random, float quantile)
 {
-    float birth = cue_birth(13, u.Life, quantile);
-    float elapsed = max(0.0, p.time - u.Timing.x - birth);
     vec3 event = reaction_event(p.seed);
+    float birth = cue_birth(13, u.Life, quantile, event);
+    float elapsed = max(0.0, p.time - u.Timing.x - birth);
     float duration = reaction_duration(u.Life, random, event, clamp(u.Character, 0.0, 1.0), birth);
     float envelope = smoothstep(0.0, 0.065, elapsed) *
         (1.0 - smoothstep(duration * 0.52, duration, elapsed)) * u.Timing.y * reaction_population(p.index, p.seed, event);
@@ -104,9 +104,9 @@ ChibiParticle drop_wake(ChibiParticleInput p, ChibiParameters u, vec3 random, fl
         envelope * (0.44 + random.z * 0.34));
     float streak = (1.0 - coarse) * step(0.62, random.x);
     result.scale = vec3(1.0 + streak * (0.7 + hot * 2.0), 0.90, 0.90);
-    result.rotation = vec3(0.0, 0.0, atan(p.velocity.y, p.velocity.x));
+    result.rotation = vec3(0.0, 0.0, reaction_heading(p.velocity));
     result.lighting = 0.2;
-    return reaction_illuminate(result, u, random);
+    return reaction_illuminate(result, u, random, p.seed);
 }
 
 float cue_neighbor(vec3 point, vec3 cell, vec2 normal)
@@ -137,7 +137,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     int pattern = int(u.Pattern + 0.5);
     if (pattern == 13) return drop_wake(p, u, random, quantile);
     float age = max(0.0, p.time - u.Timing.x);
-    float birth = cue_birth(pattern, u.Life, quantile);
+    float birth = cue_birth(pattern, u.Life, quantile, event);
     float duration = reaction_duration(u.Life, random, event, clamp(u.Character, 0.0, 1.0), birth);
     float elapsed = max(0.0, age - birth);
     float phase = clamp(elapsed / max(duration, 0.001), 0.0, 1.0);
@@ -146,8 +146,9 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     float motion = elapsed * (1.0 - u.Timing.z);
     vec3 character = clamp(u.Character, 0.0, 1.0);
     float spread = (0.65 + event.y * 0.8) * (1.0 + character.x * 0.45 + character.z * 0.25);
-    float drag = reaction_drag(3.6, motion);
-    float gravity_time = (motion - drag) / 3.6;
+    float drag_rate = 2.5 + event.z * 2.2;
+    float drag = reaction_drag(drag_rate, motion);
+    float gravity_time = (motion - drag) / drag_rate;
     float fleck = step(0.76, random.z);
     float mist = 1.0 - step(0.28, random.z);
     float side = floor(random.y * 4.0);
@@ -156,7 +157,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     if (side == 2.0) normal = vec2(-1.0, 0.0);
     if (side == 3.0) normal = vec2(0.0, -1.0);
     vec2 tangent = vec2(-normal.y, normal.x);
-    vec3 edge = vec3(normal * 10.7 + tangent * (random.x - 0.5) * 21.0, 0.6);
+    vec3 edge = vec3(normal * 10.7 + tangent * ((random.x - 0.5) * 14.0 + (event.y - 0.5) * 7.0), 0.6);
     vec3 position = point + edge;
     float exposed = cue_exposed(point, normal, u);
     float stretch = 1.0;
@@ -164,7 +165,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     float lighting = 0.18;
 
     if (pattern == 0) {
-        position += vec3((random.x - 0.5) * 100.0, 25.0 + random.y * 55.0,
+        position += vec3((random.x - 0.5) * 100.0 + (event.x - 0.5) * 70.0, 15.0 + random.y * 55.0 + event.z * 25.0,
                          (random.z - 0.5) * 12.0) * drag * spread;
         position.y -= motion * motion * 110.0;
     }
@@ -179,7 +180,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
         float travel = u.Action.y * 24.0;
         position = point + vec3((random.x - 0.5) * 19.0,
             10.7 - travel * (1.0 - quantile), 0.6);
-        position += vec3((random.y - 0.5) * 10.0, -18.0 - random.z * 12.0,
+        position += vec3((random.y - 0.5) * 10.0 + (event.x - 0.5) * 20.0, -14.0 - random.z * 12.0 - event.y * 10.0,
             2.0 + random.x * 6.0) * drag * spread;
         stretch = 1.3 + fleck * 1.6;
         orientation = 1.5707963;
@@ -205,7 +206,8 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
         stretch = 1.0 + fleck * 1.4;
     }
     if (pattern == 6) {
-        position += (center - point) * drag * 0.65 + vec3(0.0, 12.0, 8.0) * drag * spread;
+        position += (center - point) * drag * (0.35 + event.y * 0.75)
+            + vec3((event.x - 0.5) * 50.0, 4.0 + event.z * 20.0, 2.0 + event.y * 10.0) * drag * spread;
     }
     if (pattern == 7) {
         // Travel carries the rejected action kind: wall, down, or perimeter.
@@ -214,7 +216,8 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
         tangent = vec2(-normal.y, normal.x);
         exposed = cue_exposed(point, normal, u);
         position = point + vec3(normal * 10.7 + tangent * (random.x - 0.5) * 20.0, 0.7);
-        position += vec3(-normal * 12.0 * drag * spread, 3.0 * drag);
+        position += vec3((-normal * (8.0 + event.y * 9.0) + tangent * (event.x - 0.5) * 16.0)
+            * drag * spread, (2.0 + event.z * 4.0) * drag);
         orientation = atan(tangent.y, tangent.x);
         stretch = 1.4;
     }
@@ -234,7 +237,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
 
     if (pattern == 1 || pattern == 2) {
         position = p.position;
-        orientation = atan(p.velocity.y, p.velocity.x);
+        orientation = reaction_heading(p.velocity);
         stretch = 1.2 + fleck * 1.4;
         envelope = smoothstep(0.0, 0.025, elapsed) *
             (1.0 - smoothstep(duration * 0.28, duration, elapsed)) * u.Timing.y;
@@ -261,5 +264,5 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
         result.scale = vec3(stretch, 1.3 + random.x, 1.8 + random.y * 1.8);
     }
     result.lighting = lighting * (1.0 - u.Timing.z);
-    return reaction_illuminate(result, u, random);
+    return reaction_illuminate(result, u, random, p.seed);
 }
