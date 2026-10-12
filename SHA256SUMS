@@ -1,11 +1,13 @@
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./.nojekyll
-ad4a60745d68a9f1fcdb2b10a86e45ead8390bea21e40c614f3588889ae30141  ./LICENSES.md
-12c570697ea188d33ec1d7a3a18a1d5adf06ab1acb6167830b61e60508d6df16  ./chibi-player.js
-2a754c2d5935f73e8cc6f7f544f0289bcd722e7170f156c869bff2b0cbe15b79  ./chibi-player.wasm
+48c766d92132113620f424ba29a39b1dbc7b8c317963bf66cdf044df947de7a2  ./LICENSES.md
+885122adb42d50429e1e433c425471bcf85f5d78846163f277a8687742f5a0dc  ./chibi-player.js
+8f5fc040a899d20b3fc053fb2b561038fb4d79de31f8a5bb582fdcf40dfc3a55  ./chibi-player.wasm
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./data/.chibi-export
-5e87fd035dcb6ef033e124bfc3c9ce8355bbf20ecee35b5567a375a99ae83496  ./data/engine/engine.json
+2eb4fb05d1d626d131d852d2e9413c3986fdf05203e5c1105db617fe7ecf69bf  ./data/engine/engine.json
 68a3e676d7e94093b102d5cba0d4e04af812040d6f230c3db67a6664574e43d2  ./data/engine/licenses/box2d/LICENSE
 da5e31a26bf3cfd5ba5c96d6823e480128c81e76c107ef9d3ee5d94789184b90  ./data/engine/licenses/box3d/LICENSE
+74400a6ea5b29562c7b128ff1ae0921e8f39af5c56f65e569c3bc8d69fefe829  ./data/engine/licenses/btt/LICENSE
+3c05e6f051414515c864cc3eb9df80b1eebde53ce82ebf5fa382df2a51147f62  ./data/engine/licenses/btt/README.chibi.md
 d009372b564221f6956013d19f664db49c4b436d3e94293a15daf473eef3d1bf  ./data/engine/licenses/ckdl/COPYING
 263c4af7102f891b07cd9015681d855aef5a63fb5693fa1cd805ea74da47da88  ./data/engine/licenses/cute-math/LICENSE
 97f35b302b361680ec1e891e95d2d52097bb95abff361434916d99dc1305f127  ./data/engine/licenses/desktop/SDL3__Headers/LICENSE.txt
@@ -121,8 +123,8 @@ f3da2c3042535405efad97fcb8ef7352fec06835453601f4e96721848b5e051b  ./data/engine/
 e0e649ce6e804f9dea46f4f11a425d123466b119b02de61854f1c4f25f7df67f  ./data/engine/shaders/surface_material.shd
 36ccdd8718e501ed00ffb0bdd51e3cfef6cc71ac1e9976d1fcd56379a7a0042c  ./data/engine/shaders/tonemap.shd
 04aa8aae1a788393b8626a110de449dcb720b8e2bdd75c0b7292442709e5ea34  ./data/engine/shaders/unlit.shd
-3f22988ae20fcc8603993d082c1a62477e2c54e9afe9d4db0f3b979c93469a1e  ./data/game.chibip
-15f2b3ace936e03552aa5c905d734567ca243f059f110974c1e7424996ea12ef  ./deployment.json
+6968f8e9dcea8c639f3e6da6434816f1bbce3b7b8c8dc507bb30ab1a73e0806d  ./data/game.chibip
+76556c9c3667ce12564955dc1f1ac1eba77a845cf59ae16b7a86963083dbc27a  ./deployment.json
 232edcc120a7a14319f6be42f6d5092ba47e6e867320db15631e851f60a1fa4a  ./dev/chibi-default.js
 66cc3d3fffe4018bef3c11f5e167d7df1cd1a0046807e4d579a851d751c2e9dd  ./dev/chibi-studio.data
 3b2d4783a9fe79bbf56cb7e663b5392dd62665944f21bf46dcf62e130e5b3749  ./dev/chibi-studio.html
@@ -132,5 +134,5 @@ e0e649ce6e804f9dea46f4f11a425d123466b119b02de61854f1c4f25f7df67f  ./data/engine/
 b84bc75c99379251c24ee2622ddc9dd729cdf895a1340e5571994a0d8d8f7c5b  ./dev/project.json
 5c52b93ba8482fd885dc26f1b8debc33853d661dce9219f6d1e8cd287a2c10f6  ./dev/project.zip
 f9a3c029e71b9842e7cb983b913d1e7aa7aedc8e4fe6673140aacf89962ff3c6  ./dev/studio.json
-3a6a2942035b2077985565ea6c05ed17f1004aa4afdc76cc750c7ce441d4b2a9  ./files.json
+e5b1065089147cf2b077e7e8a9465083726b91ad2a773f83edaefc0960a1d403  ./files.json
 5f567eaac486efd580facafcb01af212a2805c4b9fbd5ae0cf687fb33dc79062  ./index.html
