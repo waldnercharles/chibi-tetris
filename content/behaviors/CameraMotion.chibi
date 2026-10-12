@@ -20,8 +20,34 @@ behavior CameraMotion {
         was_attract = world.Session.attract
     }
 
+    function PhoneCamera() {
+        width := 1208.8889
+        height := 680
+        center := 0
+        fov := 0.61086524
+        if world.PhoneState.portrait && world.Session.mode != 3 {
+            width = 440
+            height = 960
+            center = -30
+            fov = 0.83644866
+        }
+        self.Camera.width = width
+        self.Camera.height = height
+        self.Camera.fov = fov
+        self.Transform3D.position = vec3(0, center, 1080)
+        self.Transform3D.rotation = { x: 0, y: 0, z: 0, w: 1 }
+        pan_value = 0
+        width_value = width
+        fov_value = fov
+    }
+
     on Tick(dt) {
         moving := !world.Session.reduced_motion && world.Session.effects > 0
+        if world.PhoneState.enabled {
+            PhoneCamera()
+            return
+        }
+        self.Camera.height = 680
         if world.Session.screen == 2 {
             return
         }

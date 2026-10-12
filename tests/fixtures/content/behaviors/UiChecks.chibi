@@ -61,15 +61,18 @@ behavior UiChecks {
 
     function TextAbovePanels() -> (ordered: bool) {
         surfaces := find_entities_with_component("Shader")
+        plates: entity[] = []
+        for surface in surfaces {
+            if surface.Shader.material == "UiPlate" && !surface.RenderState.hidden {
+                plates = array_add(plates, surface)
+            }
+        }
         for label in surfaces {
             if label.Shader.material != "UiInk" || label.RenderState.hidden {
                 continue
             }
             position := label.Transform3D.position
-            for plate in surfaces {
-                if plate.Shader.material != "UiPlate" || plate.RenderState.hidden {
-                    continue
-                }
+            for plate in plates {
                 center := plate.Transform3D.position
                 if abs(position.x - center.x) < plate.Geometry3D.width * 0.5 && abs(position.y - center.y) < plate.Geometry3D.height * 0.5 && CameraNear(position) <= CameraNear(center) + 1 {
                     return false
@@ -88,7 +91,7 @@ behavior UiChecks {
         match (frame) {
             case 4 {
                 Check(VisibleLabel("content/meshes/text/ui_audio.mesh") && VisibleLabel("content/meshes/text/ui_play.mesh"), "opening actions have compact labelled panels")
-                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 5, "game options start collapsed")
+                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 6, "game options start collapsed")
                 opacity := LabelOpacity("content/meshes/text/ui_play.mesh")
                 Check(opacity > 0 && opacity < 1, "opening controls fade into view")
                 Check(TextAbovePanels(), "opening headings sort in front of their translucent panels")
@@ -102,7 +105,7 @@ behavior UiChecks {
             }
             case 17 {
                 Check(VisibleLabel("content/meshes/text/ui_effects.mesh") && VisibleLabel("content/meshes/text/ui_volume.mesh"), "options disclosure reveals grouped settings")
-                Check(VisiblePlates() == 10, "expanded controls have their own visible button geometry")
+                Check(VisiblePlates() == 11, "expanded controls have their own visible button geometry")
                 opacity := LabelOpacity("content/meshes/text/ui_effects.mesh")
                 Check(opacity > 0 && opacity < 1, "settings fade in while their pointer controls are already active")
                 Check(OptionsHeight() > 40 && OptionsHeight() < 200, "options layout unfolds between its closed and expanded bounds")
@@ -127,7 +130,7 @@ behavior UiChecks {
                 Check(TextAbovePanels(), "settled option names and values sort in front of every containing panel")
             }
             case 41 {
-                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 5, "collapse removes the settings geometry and text")
+                Check(!VisibleLabel("content/meshes/text/ui_effects.mesh") && VisiblePlates() == 6, "collapse removes the settings geometry and text")
             }
             case 45 {
                 Check(world.Session.reduced_motion && world.Session.effects == 0 && !world.Session.ghost, "collapsed setting hitboxes are inactive")

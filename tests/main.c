@@ -223,7 +223,7 @@ static void tap(yyjson_mut_doc *doc, int frame, int code)
     key(doc, frame + 1, 0);
 }
 
-static void click_world(yyjson_mut_doc *doc, int frame, double x, double y)
+static void pointer_world(yyjson_mut_doc *doc, int frame, double x, double y)
 {
     yyjson_mut_val *input = sample_input(doc, frame);
     yyjson_mut_val *controls = yyjson_mut_obj_add_arr(doc, input, "controls");
@@ -237,7 +237,62 @@ static void click_world(yyjson_mut_doc *doc, int frame, double x, double y)
     yyjson_mut_obj_add_real(doc, direction, "x", 0);
     yyjson_mut_obj_add_real(doc, direction, "y", 0);
     yyjson_mut_obj_add_real(doc, direction, "z", -1);
+}
+
+static void click_world(yyjson_mut_doc *doc, int frame, double x, double y)
+{
+    pointer_world(doc, frame, x, y);
     key(doc, frame + 1, 0);
+}
+
+static void device_sample(
+    yyjson_mut_doc *doc,
+    yyjson_mut_val *input,
+    int width,
+    int height,
+    bool active,
+    int status,
+    double tilt,
+    bool haptics
+)
+{
+    yyjson_mut_val *device = yyjson_mut_obj_add_obj(doc, input, "device");
+    yyjson_mut_obj_add_int(doc, device, "width", width);
+    yyjson_mut_obj_add_int(doc, device, "height", height);
+    yyjson_mut_obj_add_bool(doc, device, "touch", true);
+    yyjson_mut_obj_add_bool(doc, device, "active", active);
+    yyjson_mut_obj_add_int(doc, device, "motion_status", status);
+    yyjson_mut_obj_add_bool(doc, device, "haptics", haptics);
+    yyjson_mut_val *angles = yyjson_mut_obj_add_obj(doc, device, "tilt");
+    yyjson_mut_obj_add_real(doc, angles, "x", tilt);
+    yyjson_mut_obj_add_real(doc, angles, "y", 0);
+}
+
+static void phone_timeline(yyjson_mut_doc *doc, int fallback)
+{
+    yyjson_mut_val *timeline = yyjson_mut_obj_get(yyjson_mut_doc_get_root(doc), "input_timeline");
+    size_t i, count;
+    yyjson_mut_val *sample;
+    yyjson_mut_arr_foreach(timeline, i, count, sample)
+    {
+        int frame = yyjson_mut_get_int(yyjson_mut_obj_get(sample, "frame"));
+        yyjson_mut_val *input = yyjson_mut_obj_get(sample, "input");
+        if (fallback) {
+            device_sample(doc, input, 390, 844, true, fallback, 0, false);
+            continue;
+        }
+        int status = frame < 8 || frame >= 115 ? 0 : frame < 12 ? 1 : 2;
+        device_sample(
+            doc,
+            input,
+            frame < 150 ? 390 : 844,
+            frame < 150 ? 844 : 390,
+            frame < 134 || frame >= 140,
+            status,
+            frame >= 52 && frame < 60 ? -18 : 0,
+            true
+        );
+    }
 }
 
 static bool snapshot(yyjson_mut_doc *doc)
@@ -802,7 +857,7 @@ TEST_CASE(music_choice_precedes_play)
 
 TEST_CASE(menu_ignores_keyboard_shortcuts)
 {
-    yyjson_mut_doc *doc = request("Stillwater", 45);
+    yyjson_mut_doc *doc = request("MenuShortcutChecks", 45);
     yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
     yyjson_mut_obj_add_str(doc, saved, "chapter", "3");
     key(doc, 0, 0);
@@ -825,25 +880,7 @@ TEST_CASE(menu_ignores_keyboard_shortcuts)
     REQUIRE(!yyjson_get_bool(field("World", "Session", "reduced_motion")));
     REQUIRE(yyjson_get_bool(field("World", "Session", "ghost")));
     REQUIRE(yyjson_get_num(field("World", "Session", "master")) == 0.8);
-    REQUIRE(visible_mesh("content/meshes/text/ui_journey.mesh"));
-    static const char *hidden[] = {
-        "ui_endless",
-        "ui_sprint",
-        "ui_duet",
-        "ui_enter",
-        "ui_m",
-        "ui_v",
-        "ui_f",
-        "ui_g",
-        "play_controls",
-        "settings_controls",
-        "chapter_controls",
-    };
-    for (int i = 0; i < (int)(sizeof hidden / sizeof *hidden); ++i) {
-        char mesh[128];
-        snprintf(mesh, sizeof mesh, "content/meshes/text/%s.mesh", hidden[i]);
-        REQUIRE(!visible_mesh(mesh));
-    }
+    REQUIRE(report(12));
     return true;
 }
 
@@ -1634,6 +1671,139 @@ TEST_CASE(musical_character_and_sections)
     return true;
 }
 
+TEST_CASE(phone_control_rules)
+{
+    yyjson_mut_doc *doc = request("PhoneRulesChecks", 2);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(49));
+    return true;
+}
+
+TEST_CASE(phone_device_and_touch_play)
+{
+    yyjson_mut_doc *doc = request("PhoneChecks", 228);
+    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
+    key(doc, 0, 0);
+    click_world(doc, 6, -95, -332);
+    key(doc, 8, 0);
+    click_world(doc, 10, 0, -404);
+    key(doc, 12, 0);
+    click_world(doc, 16, 0, -86);
+    key(doc, 52, 0);
+    key(doc, 60, 0);
+    click_world(doc, 70, 120, -292);
+    click_world(doc, 74, 120, -358);
+    click_world(doc, 78, -120, -358);
+    click_world(doc, 82, 0, -292);
+    click_world(doc, 86, -120, -424);
+    click_world(doc, 90, -120, -424);
+    click_world(doc, 94, 0, -358);
+    click_world(doc, 100, 0, -424);
+    click_world(doc, 104, 0, -358);
+    click_world(doc, 110, -95, -85);
+    click_world(doc, 114, 95, -85);
+    click_world(doc, 118, -95, 40);
+    pointer_world(doc, 122, -120, -292);
+    pointer_world(doc, 124, 0, -358);
+    key(doc, 128, 0);
+    key(doc, 134, 0);
+    key(doc, 140, 0);
+    click_world(doc, 142, -95, 40);
+    key(doc, 150, 0);
+    click_world(doc, 158, 400, -60);
+    click_world(doc, 162, 95, 40);
+    phone_timeline(doc, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(29));
+    return true;
+}
+
+TEST_CASE(phone_expanded_options)
+{
+    yyjson_mut_doc *doc = request("PhoneMenuChecks", 102);
+    key(doc, 0, 0);
+    click_world(doc, 6, 0, -26);
+    click_world(doc, 22, 62, -64);
+    click_world(doc, 28, 62, -124);
+    click_world(doc, 34, 62, -184);
+    click_world(doc, 40, -15, -242);
+    click_world(doc, 46, 126, -242);
+    click_world(doc, 52, 0, -26);
+    click_world(doc, 58, 62, -146);
+    click_world(doc, 64, 0, -26);
+    click_world(doc, 68, 0, -318);
+    phone_timeline(doc, 3);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(20));
+    return true;
+}
+
+TEST_CASE(phone_sprint_timers)
+{
+    yyjson_mut_doc *doc = request("HudChecks", 18);
+    yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+    yyjson_mut_obj_add_str(doc, saved, "sprint", "123.4");
+    key(doc, 0, 0);
+    tap(doc, 3, KEY_3);
+    phone_timeline(doc, 3);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_bool(field("World", "PhoneState", "portrait")));
+    REQUIRE(yyjson_get_int(field("World", "Session", "mode")) == 2);
+    REQUIRE(visible_mesh("content/meshes/text/elapsed.mesh"));
+    REQUIRE(visible_mesh("content/meshes/text/best.mesh"));
+    REQUIRE(!visible_mesh("content/meshes/text/no_best.mesh"));
+    REQUIRE(number_meshes(375, 1, "2:03.4"));
+    char timer[17];
+    REQUIRE(read_number_meshes(375, -1, timer));
+    int minutes, seconds, tenths, end = 0;
+    REQUIRE(sscanf(timer, "%d:%d.%d%n", &minutes, &seconds, &tenths, &end) == 3);
+    REQUIRE(timer[end] == 0 && minutes == 0 && seconds == 0 && tenths >= 0 && tenths < 10);
+    double current = yyjson_get_num(field("World", "Session", "elapsed"));
+    REQUIRE(current >= tenths * .1 && current - tenths * .1 < .2);
+    doc = request("CompletionChecks", 25);
+    key(doc, 0, 0);
+    phone_timeline(doc, 3);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 3);
+    REQUIRE(visible_mesh("content/meshes/text/elapsed.mesh"));
+    REQUIRE(visible_mesh("content/meshes/text/best.mesh"));
+    int finished = (int)(yyjson_get_num(field("World", "Session", "elapsed")) * 10);
+    char expected[17];
+    snprintf(expected, sizeof expected, "%d:%02d.%d", finished / 600, finished / 10 % 60, finished % 10);
+    REQUIRE(number_meshes(100, -1, expected));
+    REQUIRE(number_meshes(100, 1, expected));
+    return true;
+}
+
+TEST_CASE(phone_permission_fallback)
+{
+    for (int status = 3; status <= 4; status++) {
+        yyjson_mut_doc *doc = request("PhoneFallback", 5);
+        key(doc, 0, 0);
+        phone_timeline(doc, status);
+        REQUIRE(snapshot(doc));
+        REQUIRE(yyjson_get_bool(field("World", "PhoneState", "enabled")));
+        REQUIRE(yyjson_get_int(field("World", "PhoneState", "motion_status")) == status);
+        REQUIRE(report(2));
+        doc = request("PhoneFallback", 50);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
+        key(doc, 0, 0);
+        click_world(doc, 6, 0, -86);
+        click_world(doc, 40, 0, -358);
+        click_world(doc, 46, 0, -424);
+        phone_timeline(doc, status);
+        REQUIRE(snapshot(doc));
+        REQUIRE(yyjson_get_int(field("Board2", "BoardState", "pieces")) == 0);
+        REQUIRE(yyjson_get_int(field("Board1", "BoardState", "pieces")) == 1);
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 2);
+        REQUIRE(!yyjson_get_bool(field("World", "PhoneState", "haptics")));
+    }
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     const char *selection = getenv("STILLWATER_REACTIONS") ? "--reactions" : "--all";
@@ -1662,17 +1832,18 @@ int main(int argc, char **argv)
     bool music_response = !strcmp(selection, "--music-response");
     bool music_field = !strcmp(selection, "--music-field");
     bool music_character = !strcmp(selection, "--music-character");
+    bool phone = !strcmp(selection, "--phone");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
         !(all || reactions || consumer || hud || onboarding || attract || ui ||
           menu || menu_camera || rules || previews || motion || stage || vfx ||
-          loss || music_response || music_field || music_character)) {
+          loss || music_response || music_field || music_character || phone)) {
         fprintf(
             stderr,
             "Usage: %s "
             "--all|--rules|--reactions|--consumer|--hud|--onboarding|--attract|"
             "--ui|--menu|--menu-camera|--"
             "previews|--motion|--stage|--vfx|--loss|--music-response|--music-"
-            "field|--music-character "
+            "field|--music-character|--phone "
             "/path/to/chibi_ctl /path/to/game\n",
             argv[0]
         );
@@ -1682,6 +1853,13 @@ int main(int argc, char **argv)
     signal(SIGALRM, timeout_handler);
     alarm(58);
     prepare();
+    if (all || phone) {
+        RUN_TEST_CASE(phone_control_rules);
+        RUN_TEST_CASE(phone_device_and_touch_play);
+        RUN_TEST_CASE(phone_permission_fallback);
+        RUN_TEST_CASE(phone_expanded_options);
+        RUN_TEST_CASE(phone_sprint_timers);
+    }
     if (all || consumer || reactions) {
         RUN_TEST_CASE(authored_environment_consumer);
     }

@@ -1,0 +1,4 @@
+name "TextPhoneHapticsOff"
+components {
+    MeshAsset source="content/meshes/text/phone_haptics_off.mesh"
+}

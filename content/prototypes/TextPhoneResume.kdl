@@ -1,0 +1,4 @@
+name "TextPhoneResume"
+components {
+    MeshAsset source="content/meshes/text/phone_resume.mesh"
+}

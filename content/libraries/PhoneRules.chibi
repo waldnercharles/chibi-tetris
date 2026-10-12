@@ -1,0 +1,102 @@
+// Layout, tilt thresholds and accepted-action feedback are independent of device APIs.
+library PhoneRules {
+    function Layout(width: number, height: number, touch: bool, override: int)
+    -> (enabled: bool, portrait: bool) {
+        enabled = touch || width > 0 && width < 700
+        if override != 0 {
+            enabled = override > 0
+        }
+        return (enabled, enabled && height > width)
+    }
+
+    function Direction(angle: number, previous: int) -> (direction: int) {
+        if angle >= 9 {
+            return 1
+        }
+        if angle <= -9 {
+            return -1
+        }
+        if previous == 1 && angle > 5 {
+            return 1
+        }
+        if previous == -1 && angle < -5 {
+            return -1
+        }
+        return 0
+    }
+
+    function Filter(value: number, angle: number, seconds: number) -> (filtered: number) {
+        return value + (angle - value) * (1 - exp(-min(max(seconds, 0), 0.1) * 14))
+    }
+
+    function Playable(screen: int, entering: bool, journey: bool, active: bool) -> (allowed: bool) {
+        return screen == 1 && !entering && !journey && active
+    }
+
+    // 0 left, 1 right, 2 CCW, 3 CW, 4 soft, 5 drop, 6 hold,
+    // 7 pause/resume, 8 restart, 9 enable/recenter, 10 off, 11 haptics.
+    function Bounds(button: int, portrait: bool, screen: int) -> (center: CF_V2, size: CF_V2) {
+        column := get([0, 2, 0, 2, 1, 1, 0, 1, 2], min(button, 8))
+        row := get([0, 0, 1, 1, 0, 1, 2, 2, 2], min(button, 8))
+        center = vec2(300 + column * 116, 140 - row * 100)
+        size = vec2(112, 90)
+        if portrait {
+            center = vec2(-120 + column * 120, -292 - row * 66)
+            size = vec2(112, 58)
+        }
+        if screen != 1 && (button == 7 || button == 8) {
+            center = vec2(-95 + (button - 7) * 190, 40)
+            size = vec2(178, 60)
+        }
+        if button >= 9 {
+            y := -85
+            if screen == 0 {
+                y = -332
+            }
+            center = vec2(-95 + (button - 9) * 190, y)
+            size = vec2(178, 58)
+            if button == 11 {
+                center = vec2(0, y - 72)
+                size = vec2(368, 58)
+            }
+            if !portrait && screen == 0 {
+                center = vec2(400, 108 - (button - 9) * 86)
+                size = vec2(280, 66)
+            }
+        }
+        return (center, size)
+    }
+
+    function Hit(button: int, point: CF_V2, portrait: bool, screen: int) -> (inside: bool) {
+        bounds := Bounds(button, portrait, screen)
+        delta := point - bounds.center
+        return abs(delta.x) <= bounds.size.x * 0.5 && abs(delta.y) <= bounds.size.y * 0.5
+    }
+
+    function Haptic(kind: int, result: int) -> (milliseconds: int) {
+        if result != 1 {
+            return 0
+        }
+        match (kind) {
+            case 1 {
+                return 8
+            }
+            case 2 {
+                return 12
+            }
+            case 6 {
+                return 28
+            }
+            case 7 {
+                return 18
+            }
+            case 8 {
+                return 18
+            }
+            case 9 {
+                return 35
+            }
+        }
+        return 0
+    }
+}

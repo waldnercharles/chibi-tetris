@@ -1,0 +1,305 @@
+// Reachable mesh controls use the same pointer ray as the in-world menu.
+behavior Phone {
+    labels: entity[] = []
+    plates: entity[] = []
+    captured: int = -1
+    last_screen: int = -1
+    last_direction: int = 0
+    filtered := 0
+    tilt_direction: int = 0
+    ready := false
+    shown_screen: int = -1
+    shown_enabled := false
+    shown_portrait := false
+    shown_entering := false
+    shown_journey := false
+    shown_attract := false
+    shown_options := false
+    shown_motion: int = -1
+    shown_haptics := false
+    shown_haptics_available := false
+    shown_capture: int = -1
+
+    on Begin {
+        for i in 0..14 {
+            label := await spawn(HudText)
+            plate := await spawn(UiPlate)
+            labels = array_add(labels, label)
+            plates = array_add(plates, plate)
+        }
+        self.PhoneState.button = -1
+        ready = true
+    }
+
+    function Label(slot: int, text: string, center: CF_V2, size: number) {
+        label := get(labels, slot)
+        label.MeshAsset.source = format_text("content/meshes/text/{}.mesh", text)
+        label.Transform3D.position = vec3(center.x, center.y, 92)
+        label.Transform3D.scale = vec3(size, size, size)
+        label.Material.scene = 0xdbe4e7ff
+        label.Material.emission_intensity = 0.16
+        set_material_parameter(label, "Shade", 0.8)
+        set_material_parameter(label, "Opacity", 1)
+        label.RenderState.hidden = false
+    }
+
+    function Button(slot: int, text: string, center: CF_V2, size: CF_V2) {
+        plate := get(plates, slot)
+        plate.Transform3D.position = vec3(center.x, center.y, 88)
+        plate.Geometry3D.width = size.x
+        plate.Geometry3D.height = size.y
+        shade := 0.025
+        if captured == slot {
+            shade = 0.09
+        }
+        set_material_parameter(plate, "Shade", shade)
+        set_material_parameter(plate, "Opacity", 1)
+        plate.RenderState.hidden = false
+        text_size := 20
+        if self.PhoneState.portrait {
+            text_size = 16
+        }
+        Label(slot, text, center, text_size)
+    }
+
+    function Visible(button: int) -> (visible: bool) {
+        if self.Session.entering || self.Session.journey || self.Session.screen == 4 {
+            return false
+        }
+        if self.Session.screen == 1 {
+            return button < 9
+        }
+        if self.Session.screen == 0 {
+            return button >= 9 && !self.PhoneState.options_open
+        }
+        return button >= 7
+    }
+
+    function NeedsDraw() -> (changed: bool) {
+        return shown_screen != self.Session.screen || shown_enabled != self.PhoneState.enabled || shown_portrait != self.PhoneState.portrait || shown_entering != self.Session.entering || shown_journey != self.Session.journey || shown_attract != self.Session.attract || shown_options != self.PhoneState.options_open || shown_motion != self.PhoneState.motion_status || shown_haptics != self.PhoneState.haptics || shown_haptics_available != self.PhoneState.haptics_available || shown_capture != captured
+    }
+
+    function Draw() {
+        shown_screen = self.Session.screen
+        shown_enabled = self.PhoneState.enabled
+        shown_portrait = self.PhoneState.portrait
+        shown_entering = self.Session.entering
+        shown_journey = self.Session.journey
+        shown_attract = self.Session.attract
+        shown_options = self.PhoneState.options_open
+        shown_motion = self.PhoneState.motion_status
+        shown_haptics = self.PhoneState.haptics
+        shown_haptics_available = self.PhoneState.haptics_available
+        shown_capture = captured
+        for label in labels {
+            label.RenderState.hidden = true
+        }
+        for plate in plates {
+            plate.RenderState.hidden = true
+        }
+        if self.Session.screen == 0 && !self.Session.entering {
+            position := vec2(-440, -308)
+            if !self.Session.attract {
+                position = vec2(0, -260)
+            }
+            if self.PhoneState.enabled {
+                position = ViewPosition()
+            }
+            Button(13, "phone_view", position, vec2(190, 36))
+        }
+        if !self.PhoneState.enabled {
+            return
+        }
+        names := ["phone_left", "phone_right", "phone_ccw", "phone_cw", "phone_soft", "phone_drop", "hold", "phone_pause", "phone_restart", "phone_enable", "phone_off", "phone_haptics_off"]
+        for i in 0..11 {
+            if !Visible(i) {
+                continue
+            }
+            text := get(names, i)
+            if i == 7 && self.Session.screen != 1 {
+                text = "phone_resume"
+            }
+            if i == 9 && self.PhoneState.motion_status == 2 {
+                text = "phone_recenter"
+            }
+            if i == 11 && self.PhoneState.haptics {
+                text = "phone_haptics_on"
+            }
+            if i == 11 && !self.PhoneState.haptics_available {
+                text = "phone_haptics_unavailable"
+            }
+            bounds := PhoneRules.Bounds(i, self.PhoneState.portrait, self.Session.screen)
+            Button(i, text, bounds.center, bounds.size)
+        }
+        if self.Session.screen != 1 && self.Session.screen != 4 && !self.Session.entering && !self.PhoneState.options_open {
+            status := get(["phone_tilt_hint", "phone_tilt_waiting", "phone_tilt_ready", "phone_tilt_unavailable", "phone_tilt_denied"], self.PhoneState.motion_status)
+            y := -220
+            if self.Session.screen == 0 {
+                y = -282
+            }
+            position := vec2(0, y)
+            if self.Session.screen == 0 && !self.PhoneState.portrait {
+                position = vec2(400, -175)
+            }
+            Label(12, status, position, 9)
+        }
+    }
+
+    function ViewPosition() -> (position: CF_V2) {
+        if self.PhoneState.portrait {
+            return vec2(0, 374)
+        }
+        return vec2(400, 208)
+    }
+
+    function ToggleView() {
+        self.PhoneState.override = 1
+        if self.PhoneState.enabled {
+            self.PhoneState.override = -1
+        }
+        captured = -1
+    }
+
+    function Press(button: int) {
+        match (button) {
+            case 2 {
+                self.PhoneState.button = 2
+            }
+            case 3 {
+                self.PhoneState.button = 3
+            }
+            case 5 {
+                self.PhoneState.button = 5
+            }
+            case 6 {
+                self.PhoneState.button = 6
+            }
+            case 7 {
+                self.PhoneState.pause_request = true
+            }
+            case 8 {
+                self.PhoneState.restart_request = true
+            }
+            case 9 {
+                filtered = 0
+                tilt_direction = 0
+                if self.PhoneState.motion_status == 2 {
+                    recenter_device_motion()
+                } else {
+                    request_device_motion()
+                }
+            }
+            case 10 {
+                disable_device_motion()
+                filtered = 0
+                tilt_direction = 0
+            }
+            case 11 {
+                if self.PhoneState.haptics_available {
+                    self.PhoneState.haptics = !self.PhoneState.haptics
+                    if self.PhoneState.haptics {
+                        vibrate_device(18)
+                    }
+                }
+            }
+        }
+    }
+
+    function Pointer() {
+        if !input.Select.held && !input.Select.pressed || self.Session.screen != last_screen || !self.PhoneState.active {
+            captured = -1
+        }
+        if !self.PhoneState.active {
+            return
+        }
+        ray := get_pointer_ray()
+        if !ray.Active || abs(ray.Direction.z) < 0.0001 {
+            captured = -1
+            return
+        }
+        distance := (88 - ray.Origin.z) / ray.Direction.z
+        if distance < 0 {
+            return
+        }
+        location := ray.Origin + ray.Direction * distance
+        point := vec2(location.x, location.y)
+        if self.Session.screen == 0 && !self.Session.entering && input.Select.pressed {
+            center := vec2(-440, -308)
+            if !self.Session.attract {
+                center = vec2(0, -260)
+            }
+            if self.PhoneState.enabled {
+                center = ViewPosition()
+            }
+            if abs(point.x - center.x) <= 95 && abs(point.y - center.y) <= 18 {
+                ToggleView()
+                return
+            }
+        }
+        if !self.PhoneState.enabled {
+            return
+        }
+        if input.Select.pressed {
+            captured = -1
+            for i in 0..11 {
+                if Visible(i) && PhoneRules.Hit(i, point, self.PhoneState.portrait, self.Session.screen) {
+                    captured = i
+                    Press(i)
+                    break
+                }
+            }
+        }
+        if captured < 0 || !input.Select.held && !input.Select.pressed || !PhoneRules.Playable(self.Session.screen, self.Session.entering, self.Session.journey, self.PhoneState.active) {
+            return
+        }
+        if !PhoneRules.Hit(captured, point, self.PhoneState.portrait, self.Session.screen) {
+            return
+        }
+        if captured == 0 {
+            self.PhoneState.direction = -1
+        }
+        if captured == 1 {
+            self.PhoneState.direction = 1
+        }
+        self.PhoneState.soft = captured == 4
+    }
+
+    on Tick(dt) {
+        if !ready {
+            return
+        }
+        device := get_device_state()
+        self.PhoneState.width = device.Width
+        self.PhoneState.height = device.Height
+        self.PhoneState.active = device.Active
+        self.PhoneState.motion_status = device.MotionStatus
+        self.PhoneState.haptics_available = device.Haptics
+        self.PhoneState.button = -1
+        self.PhoneState.pause_request = false
+        self.PhoneState.restart_request = false
+        self.PhoneState.soft = false
+        self.PhoneState.direction = 0
+        if input.PhoneView.pressed {
+            ToggleView()
+        }
+        layout := PhoneRules.Layout(device.Width, device.Height, device.Touch, self.PhoneState.override)
+        self.PhoneState.enabled = layout.enabled
+        self.PhoneState.portrait = layout.portrait
+        playing := PhoneRules.Playable(self.Session.screen, self.Session.entering, self.Session.journey, device.Active)
+        if self.PhoneState.enabled && device.MotionStatus == 2 && playing {
+            filtered = PhoneRules.Filter(filtered, device.Tilt.x, dt)
+            tilt_direction = PhoneRules.Direction(filtered, tilt_direction)
+            self.PhoneState.direction = tilt_direction
+        } else {
+            filtered = 0
+            tilt_direction = 0
+        }
+        Pointer()
+        self.PhoneState.move_pressed = self.PhoneState.direction != 0 && self.PhoneState.direction != last_direction
+        last_direction = self.PhoneState.direction
+        last_screen = self.Session.screen
+        if NeedsDraw() {
+            Draw()
+        }
+    }
+}

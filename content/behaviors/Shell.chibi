@@ -514,6 +514,14 @@ behavior Shell {
             return
         }
         if self.Session.screen == 1 {
+            if self.PhoneState.restart_request {
+                RestartRun()
+                return
+            }
+            if self.PhoneState.enabled && !self.PhoneState.active {
+                self.Session.screen = 2
+                return
+            }
             if input.PreviousChapter.pressed {
                 ChangeChapter(-1)
             }
@@ -528,7 +536,7 @@ behavior Shell {
             }
             pad1 = controller_connected(0)
             pad2 = controller_connected(1)
-            if input.Pause.pressed || input.Pause2.pressed {
+            if input.Pause.pressed || input.Pause2.pressed || self.PhoneState.pause_request {
                 ReactionRules.Emit(self, 13, 1, 1, 2, 0, 2, 0)
                 self.Session.screen = 2
                 return
@@ -554,15 +562,15 @@ behavior Shell {
             ChangeChapter(1)
             return
         }
-        if input.Back.pressed {
+        if input.Back.pressed || self.PhoneState.restart_request {
             RestartRun()
             return
         }
-        if self.Session.screen == 2 && (input.Pause.pressed || input.Pause2.pressed || input.Confirm.pressed) {
+        if self.Session.screen == 2 && (input.Pause.pressed || input.Pause2.pressed || input.Confirm.pressed || self.PhoneState.pause_request) {
             ResumePlay()
             return
         }
-        if self.Session.screen == 3 && input.Confirm.pressed {
+        if self.Session.screen == 3 && (input.Confirm.pressed || self.PhoneState.pause_request) {
             RestartRun()
         }
     }

@@ -105,6 +105,25 @@ behavior Hud {
     }
 
     function BoardLabels(index: int, board: entity) {
+        if world.PhoneState.portrait && world.Session.mode != 3 {
+            Label(3, "hold", -155, 296, 10)
+            Label(4, "next", 25, 296, 10)
+            Label(5, "score", -100, 347, 10)
+            Label(6, "lines", 100, 347, 10)
+            Number(20, 10, board.BoardState.score, -100, 324, 19)
+            Number(30, 10, board.BoardState.lines, 100, 324, 19)
+            if world.Session.mode == 2 {
+                Label(64, "elapsed", -100, 396, 9)
+                Label(65, "best", 100, 396, 9)
+                Time(66, world.Session.elapsed, -100, 375, 15)
+                if world.Session.sprint_best > 0 {
+                    Time(77, world.Session.sprint_best, 100, 375, 15)
+                } else {
+                    Label(77, "no_best", 100, 375, 11)
+                }
+            }
+            return
+        }
         center := 0
         if world.Session.mode == 3 {
             center = -254 + index * 508
@@ -187,6 +206,9 @@ behavior Hud {
         if !world.Session.attract {
             return 69
         }
+        if world.PhoneState.portrait {
+            return -86 - OptionsLayout() * 254
+        }
         return -86 - OptionsLayout() * 164
     }
 
@@ -249,7 +271,58 @@ behavior Hud {
         }
     }
 
+    function DrawPhoneOptions(x: number) {
+        amount := OptionsLayout()
+        Plate(2, x, -26 - amount * 132, 320, 50 + amount * 264, 0.006)
+        UiText(3, "ui_options", x - 85, -26, 14, 0.62)
+        symbol := "ui_plus"
+        symbol_size := 14
+        if options_open {
+            symbol = "ui_minus"
+            symbol_size = 4
+        }
+        UiText(17, symbol, x + 133, -26, symbol_size, 0.75)
+        if options_amount <= 0 || world.Session.reduced_motion && !options_open {
+            return
+        }
+        names := ["ui_effects", "ui_motion", "ui_ghost"]
+        for i in 0..2 {
+            row := -86 - i * 60
+            UiText(26 + i * 3, get(names, i), x - 111, row, 14, 0.7)
+            value := get(["ui_off", "ui_low", "ui_full"], world.Session.effects)
+            if i == 1 {
+                value = "ui_full"
+                if world.Session.reduced_motion {
+                    value = "ui_less"
+                }
+            }
+            if i == 2 {
+                value = "ui_off"
+                if world.Session.ghost {
+                    value = "ui_on"
+                }
+            }
+            Plate(5 + i, x + 62, row, 160, 50, ButtonShade(3 + i))
+            UiText(27 + i * 3, value, x + 62, row, 14, 0.8)
+        }
+        UiText(35, "ui_volume", x - 111, -266, 14, 0.7)
+        Plate(8, x - 15, -266, 52, 52, ButtonShade(6))
+        Plate(9, x + 126, -266, 52, 52, ButtonShade(7))
+        UiText(36, "ui_minus", x - 15, -266, 4, 0.8)
+        UiText(37, "ui_plus", x + 126, -266, 14, 0.8)
+        Number(38, 3, cast<int>(round(world.Session.master * 100)), x + 53, -266, 16)
+        for i in 38..40 {
+            label := get(labels, i)
+            label.Transform3D.position.z = 90
+        }
+        UiText(41, "setting_percent", x + 82, -266, 10, 0.6)
+    }
+
     function DrawOptions(x: number) {
+        if world.PhoneState.portrait {
+            DrawPhoneOptions(x)
+            return
+        }
         amount := OptionsLayout()
         height := 40 + amount * 160
         y := -36 - amount * 80
@@ -301,7 +374,7 @@ behavior Hud {
     function DrawConnection() {
         panel.RenderState.hidden = true
         x := 0
-        if world.Session.attract {
+        if world.Session.attract && !world.PhoneState.enabled {
             x = -440
         }
         Plate(0, x, 166, 320, 116, 0.006)
@@ -328,22 +401,42 @@ behavior Hud {
             }
         }
         UiText(1, status, x, 177, 11, 0.72)
-        Plate(3, x, 135, 286, 32, ButtonShade(1))
+        connect_height := 32
+        if world.PhoneState.portrait {
+            connect_height = 54
+        }
+        Plate(3, x, 135, 286, connect_height, ButtonShade(1))
         connect := "ui_connect"
         if world.Session.audio_status >= 3 {
             connect = "ui_retry"
         }
-        UiText(13, connect, x, 135, 10, 0.72)
+        connect_size := 10
+        if world.PhoneState.portrait {
+            connect_size = 15
+        }
+        UiText(13, connect, x, 135, connect_size, 0.72)
         play_y := PlayY()
         if world.Session.attract {
-            Plate(1, x, 46, 320, 108, 0.006)
+            if world.PhoneState.portrait {
+                Plate(1, x, 54, 320, 90, 0.006)
+            } else {
+                Plate(1, x, 46, 320, 108, 0.006)
+            }
             UiText(2, "ui_game", x - 107, 79, 8, 0.32)
             UiText(18, "ui_journey", x, 40, 16, 0.72)
             DrawOptions(x)
         }
         shade := 0.72 + Ease(get(hover_amounts, 0), 1) * 0.13
-        Plate(4, x, play_y, 320, 44, shade)
-        UiText(12, "ui_play", x, play_y, 13, 0.007)
+        play_height := 44
+        if world.PhoneState.portrait {
+            play_height = 58
+        }
+        Plate(4, x, play_y, 320, play_height, shade)
+        play_size := 13
+        if world.PhoneState.portrait {
+            play_size = 17
+        }
+        UiText(12, "ui_play", x, play_y, play_size, 0.007)
     }
 
     function ReadPointer() {
@@ -362,21 +455,46 @@ behavior Hud {
         point := ray.Origin + ray.Direction * distance
         x := 0
         play_y := PlayY()
-        if world.Session.attract {
+        if world.Session.attract && !world.PhoneState.enabled {
             x = -440
         }
         choice: int = -1
-        if abs(point.x - x) < 160 && abs(point.y - play_y) < 22 {
+        play_half := 22
+        connect_half := 16
+        if world.PhoneState.portrait {
+            play_half = 29
+            connect_half = 27
+        }
+        if abs(point.x - x) < 160 && abs(point.y - play_y) < play_half {
             choice = 0
         }
-        if abs(point.x - x) < 143 && abs(point.y - 135) < 16 {
+        if abs(point.x - x) < 143 && abs(point.y - 135) < connect_half {
             choice = 1
         }
         if world.Session.attract {
-            if abs(point.x - x) < 160 && abs(point.y + 36) < 20 {
+            header_y := -36
+            header_half := 20
+            if world.PhoneState.portrait {
+                header_y = -26
+                header_half = 25
+            }
+            if abs(point.x - x) < 160 && abs(point.y - header_y) < header_half {
                 choice = 2
             }
-            if options_open {
+            if options_open && world.PhoneState.portrait {
+                for i in 0..2 {
+                    if abs(point.x - x - 62) < 80 && abs(point.y + 86 + i * 60) < 25 {
+                        choice = i + 3
+                    }
+                }
+                if abs(point.x - x + 15) < 26 && abs(point.y + 266) < 26 {
+                    choice = 6
+                }
+                if abs(point.x - x - 126) < 26 && abs(point.y + 266) < 26 {
+                    choice = 7
+                }
+            }
+            if options_open && !world.PhoneState.portrait {
                 for i in 0..2 {
                     if abs(point.x - x - 62) < 80 && abs(point.y + 80 + i * 38) < 14 {
                         choice = i + 3
@@ -415,6 +533,13 @@ behavior Hud {
     }
 
     function DrawPause() {
+        if world.PhoneState.enabled {
+            panel.Geometry3D.width = 400
+            panel.Geometry3D.height = 520
+            ModalLabel(11, "paused", 0, 160, 26)
+            ModalLabel(13, "phone_pause_hint", 0, 110, 10)
+            return
+        }
         panel.Geometry3D.width = 580
         panel.Geometry3D.height = 296
         title := "paused"
@@ -432,6 +557,31 @@ behavior Hud {
     }
 
     function DrawResult() {
+        if world.PhoneState.enabled {
+            panel.Geometry3D.width = 400
+            panel.Geometry3D.height = 520
+            ModalLabel(11, "complete", 0, 170, 26)
+            if world.Session.mode == 2 {
+                ModalLabel(3, "elapsed", -100, 130, 10)
+                ModalLabel(4, "best", 100, 130, 10)
+                Time(66, world.Session.elapsed, -100, 100, 20)
+                if world.Session.sprint_best > 0 {
+                    Time(77, world.Session.sprint_best, 100, 100, 20)
+                } else {
+                    ModalLabel(77, "no_best", 100, 100, 13)
+                }
+                for i in 66..87 {
+                    label := get(labels, i)
+                    label.Transform3D.position.z = 70
+                }
+                return
+            }
+            ModalLabel(3, "score", -100, 130, 10)
+            ModalLabel(4, "lines", 100, 130, 10)
+            Number(20, 10, board1.BoardState.score, -100, 100, 22)
+            Number(30, 10, board1.BoardState.lines, 100, 100, 22)
+            return
+        }
         panel.Geometry3D.width = 580
         panel.Geometry3D.height = 360
         ModalLabel(11, "complete", 0, 124, 24)
@@ -482,7 +632,7 @@ behavior Hud {
         for plate in plates {
             plate.RenderState.hidden = true
         }
-        timer_backing.RenderState.hidden = world.Session.mode != 2 || world.Session.screen == 0
+        timer_backing.RenderState.hidden = world.Session.mode != 2 || world.Session.screen == 0 || world.PhoneState.portrait
         panel.RenderState.hidden = world.Session.screen == 1 || world.Session.screen == 4 || world.Session.entering
         panel.Transform3D.position = vec3(0, 0, 64)
         if world.Session.screen == 0 || menu_amount > 0 || world.Session.entering && world.Session.attract {
@@ -494,7 +644,7 @@ behavior Hud {
             return
         }
         BoardLabels(0, board1)
-        if world.Session.mode == 2 {
+        if world.Session.mode == 2 && !world.PhoneState.portrait {
             Label(64, "elapsed", -205, -98, 10)
             Time(66, world.Session.elapsed, -205, -126, 20)
             Label(65, "best", -205, -167, 10)
@@ -513,7 +663,7 @@ behavior Hud {
             Label(18, "rescue", 0, -258, 9)
             Number(61, 1, world.Session.charge, 42, -258, 12)
         }
-        if world.Session.screen == 1 {
+        if world.Session.screen == 1 && !world.PhoneState.enabled {
             Label(13, "pause_hint", 0, -294, 8)
         }
         if world.Session.screen == 2 || world.Session.screen == 3 {
@@ -579,9 +729,13 @@ behavior Hud {
             x = -375
         }
         y := 267
-        if world.Session.attract {
+        if world.Session.attract && !world.PhoneState.enabled {
             x = -440
             y = -220
+        }
+        if world.PhoneState.portrait {
+            x = 0
+            y = 415
         }
         label := ""
         match (setting_kind) {
@@ -656,6 +810,7 @@ behavior Hud {
             return
         }
         ReadPointer()
+        world.PhoneState.options_open = options_open && world.PhoneState.portrait && world.Session.screen == 0
         refresh += dt
         changed := AnimateMenu(min(dt, 0.05))
         changed = ReadSettings(dt) || options_changed || changed

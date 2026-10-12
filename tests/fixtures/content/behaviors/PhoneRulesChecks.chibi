@@ -1,0 +1,49 @@
+behavior PhoneRulesChecks {
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        Check(!PhoneRules.Layout(0, 0, false, 0).enabled, "headless defaults leave desktop controls intact")
+        Check(PhoneRules.Layout(390, 844, false, 0).portrait, "a narrow viewport selects portrait without device sniffing")
+        landscape := PhoneRules.Layout(844, 390, true, 0)
+        Check(landscape.enabled && !landscape.portrait, "landscape touch retains phone controls")
+        Check(!PhoneRules.Layout(1280, 720, false, 0).enabled, "logical desktop width keeps desktop composition")
+        Check(!PhoneRules.Layout(390, 844, true, -1).enabled, "explicit desktop view overrides automatic phone mode")
+        Check(PhoneRules.Layout(1280, 720, false, 1).enabled, "explicit phone view works with a mouse")
+        Check(PhoneRules.Direction(8, 0) == 0 && PhoneRules.Direction(-8, 0) == 0, "neutral dead zone rejects small hand movements")
+        Check(PhoneRules.Direction(9, 0) == 1 && PhoneRules.Direction(-9, 0) == -1, "deliberate tilt steers in both directions")
+        Check(PhoneRules.Direction(6, 1) == 1 && PhoneRules.Direction(-6, -1) == -1, "hysteresis retains a direction near its entry threshold")
+        Check(PhoneRules.Direction(5, 1) == 0 && PhoneRules.Direction(-5, -1) == 0, "returning to center releases movement")
+        Check(PhoneRules.Direction(-12, 1) == -1 && PhoneRules.Direction(12, -1) == 1, "opposite tilt reverses without a neutral frame")
+        Check(PhoneRules.Filter(0, 20, 0) == 0 && PhoneRules.Filter(0, 20, -1) == 0, "zero or invalid elapsed time cannot move the filter")
+        filtered := PhoneRules.Filter(0, 20, 0.016)
+        Check(filtered > 0 && filtered < 20, "smoothing advances toward the sensor without overshoot")
+        Check(PhoneRules.Filter(0, 20, 10) < 20, "a resumed frame cannot bypass smoothing")
+        Check(PhoneRules.Playable(1, false, false, true), "active play accepts phone inputs")
+        Check(!PhoneRules.Playable(1, true, false, true) && !PhoneRules.Playable(1, false, true, true), "entry and chapter travel suppress steering")
+        Check(!PhoneRules.Playable(1, false, false, false), "background input is inactive")
+        for screen in 0..4 {
+            if screen != 1 {
+                Check(!PhoneRules.Playable(screen, false, false, true), "menus and results suppress gameplay inputs")
+            }
+        }
+        for i in 0..11 {
+            bounds := PhoneRules.Bounds(i, true, 1)
+            Check(PhoneRules.Hit(i, bounds.center, true, 1), "every phone control hits at its visible center")
+            Check(!PhoneRules.Hit(i, bounds.center + bounds.size, true, 1), "points outside the button do not hit")
+        }
+        Check(PhoneRules.Haptic(1, 0) == 0 && PhoneRules.Haptic(6, 0) == 0, "blocked moves and rejected drops have no haptic pulse")
+        Check(PhoneRules.Haptic(1, 1) > 0 && PhoneRules.Haptic(6, 1) > PhoneRules.Haptic(1, 1), "successful drops feel stronger than movement")
+        Check(PhoneRules.Haptic(9, 1) > PhoneRules.Haptic(2, 1), "a line clear feels stronger than a turn")
+        Check(PhoneRules.Haptic(4, 1) == 0 && PhoneRules.Haptic(18, 1) == 0, "held soft drop and unrelated events stay quiet")
+        self.TestReport.done = true
+    }
+}
