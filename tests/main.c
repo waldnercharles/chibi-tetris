@@ -891,6 +891,48 @@ TEST_CASE(music_connection_controls)
     return true;
 }
 
+TEST_CASE(retired_channel_preferences_keep_authored_mix)
+{
+    for (int legacy = 1; legacy >= 0; legacy--) {
+        yyjson_mut_doc *doc = request("Stillwater", 60);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "master", "0.4");
+        yyjson_mut_obj_add_str(doc, saved, "reduced_motion", "1");
+        if (legacy) {
+            yyjson_mut_obj_add_str(doc, saved, "music", "0");
+            yyjson_mut_obj_add_str(doc, saved, "sound", "0");
+        }
+        key(doc, 0, 0);
+        click_world(doc, 12, -440, -86);
+        tap(doc, 54, KEY_0);
+        REQUIRE(snapshot(doc));
+        REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+        REQUIRE(yyjson_get_bool(field("World", "Session", "audio_ready")));
+        REQUIRE(yyjson_get_int(field("World", "Session", "audio_source")) == 0);
+        REQUIRE(yyjson_get_num(field("World", "Session", "master")) == 0.5);
+        double music = yyjson_get_num(field("World", "Session", "music"));
+        double sound = yyjson_get_num(field("World", "Session", "sound"));
+        REQUIRE(music > 0.649 && music < 0.651);
+        REQUIRE(sound == 0.75);
+        yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
+        yyjson_val *state = yyjson_obj_get(result, "saved_state");
+        REQUIRE(yyjson_is_obj(state));
+        const char *master = yyjson_get_str(yyjson_obj_get(state, "master"));
+        REQUIRE(master && strtod(master, NULL) == 0.5);
+        static const char *channels[] = { "music", "sound" };
+        for (int i = 0; i < 2; i++) {
+            yyjson_val *channel = yyjson_obj_get(state, channels[i]);
+            if (legacy) {
+                const char *value = yyjson_get_str(channel);
+                REQUIRE(value && !strcmp(value, "0"));
+            } else {
+                REQUIRE(!channel);
+            }
+        }
+    }
+    return true;
+}
+
 TEST_CASE(music_choices_use_world_space_pointer)
 {
     static const struct
@@ -1656,8 +1698,13 @@ TEST_CASE(musical_character_and_sections)
     return true;
 }
 
+#include "publishing.h"
+
 int main(int argc, char **argv)
 {
+    if (argc == 3 && !strcmp(argv[1], "--publishing")) {
+        return publishing_main(argv[2]);
+    }
     const char *selection = getenv("STILLWATER_REACTIONS") ? "--reactions" : "--all";
     const char *controller_path = getenv("STILLWATER_CTL");
     const char *project_path = getenv("STILLWATER_PROJECT");
@@ -1671,6 +1718,7 @@ int main(int argc, char **argv)
     bool consumer = !strcmp(selection, "--consumer");
     bool hud = !strcmp(selection, "--hud");
     bool onboarding = !strcmp(selection, "--onboarding");
+    bool audio_preferences = !strcmp(selection, "--audio-preferences");
     bool attract = !strcmp(selection, "--attract");
     bool ui = !strcmp(selection, "--ui");
     bool menu = !strcmp(selection, "--menu");
@@ -1686,9 +1734,9 @@ int main(int argc, char **argv)
     bool music_field = !strcmp(selection, "--music-field");
     bool music_character = !strcmp(selection, "--music-character");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
-        !(all || reactions || consumer || hud || onboarding || attract || ui ||
-          menu || menu_camera || rules || previews || motion || stage || vfx ||
-          clear || loss || music_response || music_field || music_character)) {
+        !(all || reactions || consumer || hud || onboarding || attract || ui || menu ||
+          menu_camera || rules || previews || motion || stage || vfx || clear || loss ||
+          music_response || music_field || music_character || audio_preferences)) {
         fprintf(
             stderr,
             "Usage: %s "
@@ -1696,7 +1744,7 @@ int main(int argc, char **argv)
             "--ui|--menu|--menu-camera|--"
             "previews|--motion|--stage|--vfx|--clear|--loss|--music-response|--"
             "music-"
-            "field|--music-character "
+            "field|--music-character|--audio-preferences "
             "/path/to/chibi_ctl /path/to/game\n",
             argv[0]
         );
@@ -1739,6 +1787,9 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(music_choice_precedes_play);
         RUN_TEST_CASE(music_connection_controls);
         RUN_TEST_CASE(music_choices_use_world_space_pointer);
+    }
+    if (all || onboarding || audio_preferences) {
+        RUN_TEST_CASE(retired_channel_preferences_keep_authored_mix);
     }
     if (all || rules) {
         RUN_TEST_CASE(authored_rules);

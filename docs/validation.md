@@ -465,6 +465,52 @@ The engine's admitted aggregates passed in Release without sanitizers: native 27
 
 This record covers the 3D Stillwater revision and the matching engine and packages in [toolchain.json](../toolchain.json). Publication verifies the live release separately from local exports.
 
+## Combined engine migration
+
+The combined engine's Release controller upgraded the game from project format 22 to 23 in 0.415 seconds. Formatting completed in 9.905 seconds. Independent review confirmed that the migration changed only the project version; all 3D assets and canonical component names were preserved.
+
+The full game dispatcher passed 22 C/pico_unit cases and 1,265 assertions in 34.408 seconds. Project validation passed for 104 assets with zero errors or warnings in 5.599 seconds. Each command used the production 60-second supervisor, with dispatcher compilation separate. These initial checks used controller SHA-256 `b8ed1d3dd7e3da37a379b7725da43362a359663f83bf888a01f3f65cf950311a` from the engine integration based on `c159b6cd6`, before its final source commit and packaging.
+
+### Clean package checks
+
+The final pin is engine `c98f548a36da0b1e6c6852e1d1d0ff5da89f8089` on `main`, with clean source snapshot `7bf8571dc84cbf2684b199f68b65f3c3220fd7a0928819227ec1e7e3b296a19d`. The SDK build identity, manifest hash and five web-player file hashes are recorded in `toolchain.json`. The project uses format 23 and player-prepared format 12.
+
+Against that engine, the full dispatcher passed all 22 C/pico_unit cases and 1,265 assertions in 30.194 seconds. Formatting and validation passed together in 10.845 seconds, with no formatting changes and 104 assets, zero errors and zero warnings. The controller SHA-256 was `c03042af3d418b219d282643ffc4f853df5cc9f5236a102ba4fc7d394e8577a5`. The C dispatcher passed clang-format 22, and diff checks were clean. Each test command retained the production 60-second deadline; compilation was separate.
+
+Both native and web exports succeeded with the pinned packages. The packaged macOS application completed four hidden frames and three simulation steps at fixed dt 0.0166667 in 7.910 seconds under the same supervisor. This checks packaged startup, not sustained native performance. Public revision, asset hashes and browser play are verified after clean source publication and reported in the release handoff.
+
+### Provisional browser checks before the pacing fix
+
+The local WebGPU export passed game-score selection; Solo movement, rotation, hold, hard drop, pause and resume; and independent movement, rotation and hard drops on both Duet boards. The imported WebGPU device was active. Console inspection found no runtime errors; RmlUi emitted its existing informational messages through stderr. This verifies the score-selection flow, not acoustic output or external audio capture.
+
+At the normal 1280 × 720 CSS viewport with device pixel ratio 2, the canvas was 2560 × 1440. Each mode used 120 warmup frames followed by a 2.5-second sample:
+
+| Mode | Observed FPS | Mean frame interval | 95th percentile interval | Mean synchronous callback | 95th percentile callback |
+| --- | --- | --- | --- | --- | --- |
+| Solo | 58.8353 | 16.9966 ms | 18.4 ms | 16.7088 ms | 18.0 ms |
+| Duet | 58.8306 | 16.9980 ms | 18.3 ms | 16.7270 ms | 18.0 ms |
+
+These are provisional measurements from before the web-player pacing correction. The player still called `cf_set_target_framerate(60)` while the browser also scheduled frames. Synchronous callback elapsed time includes that pacing and CPU work; it excludes asynchronous GPU completion. Frame intervals measure browser presentation scheduling separately. Measurements after the correction follow below; public-release verification follows publication. These short samples do not establish sustained performance or a rate above the display's refresh cadence.
+
+### Browser pacing correction
+
+After removing the player's extra pacing on the web, the local browser export was measured again at 2560 × 1440 pixels in the same normal 1280 × 720 CSS viewport with device pixel ratio 2. Each sample followed 120 warmup frames and covered 2.5 seconds, with approximately 300 frame intervals:
+
+| Mode | Observed FPS | Mean synchronous callback | 95th percentile callback |
+| --- | --- | --- | --- |
+| Solo | 120.048 | 3.0787 ms | 4.5 ms |
+| Duet | 119.995 | 3.46445 ms | 5.0 ms |
+
+WebGPU remained active. Independent hard drops on both Duet boards updated each score to 38. Console inspection found no runtime errors; the remaining messages were font information. The preceding interaction checks covered score selection, Solo movement, rotation, hold, hard drop, pause and resume, and independent Duet controls.
+
+The frame-rate measurements reflect the observed browser animation cadence. Synchronous callback elapsed time covers the main-loop work and excludes asynchronous GPU completion. These bounded samples do not establish sustained performance or a rate that another display can present. The final clean package identities are recorded above; public-release verification follows publication.
+
+## Retired channel preferences
+
+The master-only volume controls now use the authored music and sound levels. Old saved channel values no longer override them or get rewritten when master volume changes. This prevents a previously muted channel from staying silent after its separate control was removed.
+
+The new C/pico_unit `--audio-preferences` case first failed against the unchanged game with engine `e9d23b04e`: after selecting the game score and raising master volume, the snapshot reported master 0.5, music 0 and sound 0. The failure completed in 1.459 seconds. After removing the retired preference reads and writes, the case passed 26 assertions in 1.968 seconds. It also checks that fresh profiles do not save hidden channel settings. Independent review found that an inherited reaction-only environment flag could broaden an explicit selector. After making explicit selectors take precedence, the same case passed alone with that flag set in 2.027 seconds. All runs used the production 60-second supervisor; compilation was separate. Asset formatting with the same controller completed in 8.538 seconds, and the C dispatcher was formatted with clang-format 22. These are simulation and saved-state checks, not a listening test or validation of the new engine package.
+
 ## Music choice and fluid-motion revision
 
 Filled Geist meshes replace the stroke lettering. Controls move into pause, results retain their scores and times, and translucent board and HUD materials fade toward their edges. The material tints the background rather than sampling a scene blur. Background particles retain their identities and brightness; smoothed music controls and integrated input impulses move their trajectories. Hard drops produce five curved strands centered on the occupied piece, followed by a spreading ripple.
@@ -572,6 +618,14 @@ The preceding browser interaction check exercised Sprint's elapsed clock and loc
 The earlier revision used M to request external audio and restored the score after a failure. The current revision instead retains the music chooser until an explicit choice succeeds. Browser capture uses a user-triggered sharing chooser; native capture uses a recognized loopback device or the exact device selected with `CHIBI_AUDIO_INPUT`. No account credentials or music-service APIs are involved. [audio.md](audio.md#music-reaction-and-capture) explains routing and source status.
 
 PCM analysis and host lifecycle checks passed. An earlier browser build reached the capture request after M. A completed external capture, acoustic output, latency, runtime mix balance and human listening review have not been verified. Audio-file measurements and provenance are recorded separately in [audio.md](audio.md).
+
+## Earlier native component-name migration
+
+The separate 2D revision `42f6736`, merged in [PR #1](https://github.com/waldnercharles/chibi-tetris/pull/1), migrated from project format 21 through 22 to 23 using engine `dd20172b7f093d41d8b4cc23ce68ca479828fca1`. Its assets and fixtures adopted native component names without the `GAME.` and `Game` prefixes, and the format-22 step removed obsolete HRC lab settings.
+
+That candidate passed project validation for 38 assets with zero errors or warnings in 13.403 seconds, Release asset formatting in 6.509 seconds, eight C/pico_unit gameplay cases with 95 assertions in 7.741 seconds, and installed-SDK compilation to a 28,300,107-byte prepared artifact in 2.016 seconds. Each check used the production 60-second supervisor; compilation of the test dispatcher was separate. The initial sanitizer-build formatter was stopped before its deadline, then the Release formatter completed. Native and browser exports were not rebuilt or played for that candidate.
+
+Those results apply to the earlier 2D revision. Validation of the combined 3D game and current engine is recorded separately when completed.
 
 ## Reproduce
 
