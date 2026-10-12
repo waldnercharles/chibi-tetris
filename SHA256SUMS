@@ -120,8 +120,8 @@ f3da2c3042535405efad97fcb8ef7352fec06835453601f4e96721848b5e051b  ./data/engine/
 e0e649ce6e804f9dea46f4f11a425d123466b119b02de61854f1c4f25f7df67f  ./data/engine/shaders/surface_material.shd
 36ccdd8718e501ed00ffb0bdd51e3cfef6cc71ac1e9976d1fcd56379a7a0042c  ./data/engine/shaders/tonemap.shd
 04aa8aae1a788393b8626a110de449dcb720b8e2bdd75c0b7292442709e5ea34  ./data/engine/shaders/unlit.shd
-2d39419d304adb76944c800226e32e3f97915747608a052ca88b107f245c5449  ./data/game.chibip
-c12b4b2778641fb6aef6687538933fad8d26b2f94c6b5e279bdfbc6634bda2d7  ./deployment.json
+dbc0f7f290dcde0635289bdbf1dbb68db1d61c0d0159e00bae4d261903039bcf  ./data/game.chibip
+c8b356c59540e6c9161554f1d255682e0ccf2ea04456380d30665f9a7329acdb  ./deployment.json
 232edcc120a7a14319f6be42f6d5092ba47e6e867320db15631e851f60a1fa4a  ./dev/chibi-default.js
 66cc3d3fffe4018bef3c11f5e167d7df1cd1a0046807e4d579a851d751c2e9dd  ./dev/chibi-studio.data
 3b2d4783a9fe79bbf56cb7e663b5392dd62665944f21bf46dcf62e130e5b3749  ./dev/chibi-studio.html
