@@ -21,20 +21,28 @@ piece's half-cell offset.
 | Hold | 48 | 720 ms | Draws slightly inward and forward through depth. |
 | Rejection | 20 | 280 ms | Marks the wall, grounded lower edge or rejected rotation perimeter. |
 | Hard-drop wash | 96 | 90 ms | Scattered across traveled cells; contracts in 60 ms and vanishes by 75 ms. |
+| Hard-drop wake | 768 | 4.8–6 s | Samples the whole traveled path, spreads beyond both board edges and drifts into the background. Captures the current wind once; fine dust includes sparse larger flecks. |
 | Contact flecks | 96 | 620 ms | Starts immediately on exposed lower cell edges. |
 | Settling dust | 128 | 1,050 ms | Starts 25 ms after contact and drifts gently through depth. |
 
-A hard drop uses the wash and both landing layers. Its immediately
+A hard drop uses the wash, persistent wake and both landing layers. Its immediately
 following lock record does not replay them. A natural lock uses the two landing
 layers without a wash. Internal edges are masked, so cells do
 not emit grains through the middle of their shape. The contact light starts
 immediately and has a peak setting of 0.44; a natural lock uses 0.324. Their shared
 light envelope stays below those settings.
+The wake mixes 1.2–2.8-unit grains with sparse flecks up to 5.2 units. Its
+stronger sideways velocity clears the opaque well before the grains retreat
+through depth; size and opacity fade continuously to zero before retirement.
 
 Accepted movement and rotation also add capped impulses to the active blocks'
 lean, depth compression and emission. Exponential filtering retains the current
 pose through overlapping inputs. Newly locked cells settle independently of the
 next piece; logical cell positions, collision rules and the ghost stay immediate.
+The same accepted action origins illuminate and accelerate the surrounding
+cloud. Movement and turns bend its wind; force targets decay after input stops.
+Gameplay field and light clocks freeze while paused, including overlapping
+wakes from both Duet boards. Menu confirmations can still complete.
 
 ## A cleared row
 
@@ -47,7 +55,7 @@ across sixteen fields. The prior release used 112 instances per row.
 
 | Layer | Instances per row | Delay / field life | Geometry and motion |
 | --- | ---: | --- | --- |
-| Fracture front | 320 | 0 / 240 ms | Thin bright splinters, 2.2 by 0.38 by 0.6 proportions. A forty-millisecond front sweeps from the row center toward its ends. The short white-cyan core cools into cyan or occasional amber. |
+| Fracture front | 320 | 0 / 500 ms | Thin bright splinters, 2.2 by 0.38 by 0.6 proportions. A center-out front preserves the coherent row longer before cooling into cyan or occasional amber. |
 | Heavy fragments | 96 | 35 ms / 1–1.35 s | Opaque chunks, 2.2 to 5.8 units before the envelope, with independent uneven proportions and tumbling. Initial X speed reaches 220 units/s, Y starts at 50 to 150 units/s, and Z starts at 20 to 65 units/s. Gravity is -250 units/s² and drag is 1.8/s. |
 | Microembers | 2,048 | 55 ms / 3.2–6 s | Fine solids, 0.45 to 1.52 units before the envelope. They disperse through depth with 0.9/s drag, -7 units/s² gravity and bounded curl drift. Dimmer larger grains give the trailing dust a broken texture. |
 | Expanding energy | 192 | 20 ms / 3.116–5.58 s | A sparse elliptical front begins at the row perimeter. Its horizontal and vertical radii grow by `180F` and `90F`; depth advances by `30F`, using 1.1/s drag. It leaves the center open. |
@@ -66,8 +74,9 @@ chunk_life = 1 + 0.35 * s
 
 The bright opening cools over 550 ms regardless of tail length. Ember and energy
 alpha also multiply by `0.3 + 0.7 exp(-2.8a)`, leaving dim drifting grains rather
-than holding a bright glow for six seconds. The opening demo's release survives
-the first run handoff, while ordinary restarts still retire all old fields.
+than holding a bright glow for six seconds. Departing-block release fields
+survive the new-run handoff; ordinary action cues retire through the existing
+sixty-millisecond envelope.
 
 Fracture, ember and energy grains use source-alpha additive blending with depth
 testing and no depth writes. Heavy chunks use opaque depth-tested geometry and
@@ -95,9 +104,10 @@ After 700 ms, a release steps through the visible rows from top to bottom at
 12.5 ms per row. The existing block meshes detach intact, retaining each piece's
 color, material, bevel and depth. Each body follows an analytic path from its
 original grid position rather than accumulating offsets each frame. Its upward
-travel is `72t + 48t²` world units, with mild sideways spread and forward depth.
-Independent yaw and roll make the blocks tumble. Bodies stay full size for the
-first 1.5 seconds of flight, then shrink smoothly over 1.2 seconds. The board
+travel is `180t + 180t²` world units. A cell-dependent outward velocity and
+`45t²` lateral acceleration carry bodies beyond the well, with forward depth.
+Independent yaw and roll make the blocks tumble. Bodies stay full size and
+retire after 1.8 seconds of flight, once outside the visible board. The board
 border, HUD, Hold and Next previews stay fixed throughout departure. Hold
 and Next hide when the result appears.
 
@@ -113,14 +123,16 @@ missing cells emit nothing. Reduced effects halves this count. Two full Duet
 boards use at most 40 fields and 3,840 instances, within the existing 96-field
 pool. The original 400 settled tile slots provide the block bodies, with no new
 entities. Pre-loss cues retire before departure starts. Loss adds no large row
-flash, energy ring or reward illumination. Reduced motion and effects-off shrink
-the stationary cells over 300 ms, emit no drifting fields and show results at
+flash, energy ring or reward illumination. Reduced motion and effects-off keep
+cells stationary for 300 ms, then hide them, emit no drifting fields and show results at
 400 ms.
 
-The upward whole-block departure follows the observed reference. The hold,
-stagger, flight equation, retirement and result timings are original art
-direction; the recording does not isolate the time of top-out or reveal the
-natural end of its effect. The `--loss` C/pico_unit check drives real legal drops
+Opening Play, occupied restarts and mode switches share this departure,
+including the active piece. The fresh run starts at 2.8 seconds and its HUD
+reveals over 800 ms. Quiet settings take 480 ms altogether. A lost board that
+has already departed restarts immediately. These timings and the stronger
+outward flight are original tuning for the requested choreography.
+The `--loss` C/pico_unit check drives real legal drops
 into top-out and checks each occupied row, original mesh colors and size,
 upward travel, tumble, fixed field budget, frozen gameplay, Solo and Duet,
 quiet settings, retirement and restart. It also runs the existing rescue,

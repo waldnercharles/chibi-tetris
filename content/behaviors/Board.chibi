@@ -68,7 +68,6 @@ behavior Board {
     demo_quality := -1000000
     demo_clock := 0
     demo_wait := 0
-    demo_cleared := false
     loss_started := false
     loss_finished := false
     loss_row: int = 2
@@ -342,7 +341,6 @@ behavior Board {
         if self.BoardState.topout {
             Reset()
             demo_piece = -1
-            demo_cleared = false
         }
         if demo_piece != self.BoardState.pieces {
             demo_piece = self.BoardState.pieces
@@ -400,34 +398,16 @@ behavior Board {
         HardDrop()
     }
 
-    function ClearDemo() {
-        // Include the falling piece in the same row release as the stack.
+    function BeginDeparture() {
+        // Preserve the falling piece as an ordinary body in the release.
         if !self.BoardState.topout {
             Rules.Place(grid, current, rotation, column, row)
         }
-        mask: int = 0
-        count: int = 0
-        for y in 2..21 {
-            occupied := false
-            for x in 0..9 {
-                occupied = occupied || get(grid, y * 10 + x) != 0
-            }
-            if occupied {
-                mask = mask | 1 << y
-                count += 1
-            }
-        }
-        if count > 0 {
-            Emit(9, 1, 0, count, mask)
-            self.BoardState.clear_serial += 1
-            self.BoardState.last_clear = count
-            play_sound("clear4", 0.45)
-        }
-        grid = Rules.Empty()
         self.BoardState.topout = true
         stack_dirty = true
         piece_dirty = true
-        demo_cleared = true
+        loss_started = true
+        ClearContacts()
     }
 
     function Horizontal(left: bool, right: bool, left_pressed: bool, right_pressed: bool, seconds: number) {
@@ -981,12 +961,11 @@ behavior Board {
 
     // Keep the scoring grid and each block's material intact. Released bodies
     // use their grid position as an analytic base, never last frame's offset.
-    function Loss() {
+    function Loss(age: number) {
         if loss_finished {
             return
         }
         quiet := world.Session.reduced_motion || world.Session.effects == 0
-        age := world.Session.loss_time
         if quiet {
             loss_row = 22
         }
@@ -1016,21 +995,24 @@ behavior Board {
             flight := max(0, age - start)
             index := cast<number>(i + self.BoardState.index * 200)
             base := vec3(origin + i % 10 * 24 + 12, 228 - i / 10 * 24, 0)
-            spread := (base.x - origin - 120) * 0.12 + sin(index * 1.91) * 12
-            lift := 72 * flight + 48 * flight * flight
-            tile.Transform3D.position = base + vec3(spread * flight, lift, (16 + sin(index * 2.37) * 6) * flight)
-            yaw := flight * (0.35 + sin(index * 1.7) * 0.24)
-            roll := flight * (0.22 + cos(index * 1.3) * 0.35)
+            side := 1
+            if i % 10 < 5 {
+                side = -1
+            }
+            spread := cast<number>(side) * (90 + abs(base.x - origin - 120) * 0.55 + sin(index * 1.91) * 28)
+            lift := 180 * flight + 180 * flight * flight
+            tile.Transform3D.position = base + vec3(spread * flight + side * 45 * flight * flight, lift, (40 + sin(index * 2.37) * 15) * flight + 12 * flight * flight)
+            yaw := flight * (0.7 + sin(index * 1.7) * 0.5)
+            roll := flight * (0.45 + cos(index * 1.3) * 0.7)
             tile.Transform3D.rotation = { x: -sin(yaw) * sin(roll), y: sin(yaw) * cos(roll), z: cos(yaw) * sin(roll), w: cos(yaw) * cos(roll) }
-            phase := clamp((flight - 1.5) / 1.2, 0, 1)
+            retired := flight >= 1.8
             if quiet {
                 tile.Transform3D.position = base
                 tile.Transform3D.rotation = { x: 0, y: 0, z: 0, w: 1 }
-                phase = clamp(age / 0.3, 0, 1)
+                retired = age >= 0.3
             }
-            size := 1 - phase * phase * (3 - 2 * phase)
-            tile.Transform3D.scale = vec3(size, size, size)
-            if phase == 1 {
+            tile.Transform3D.scale = vec3(1, 1, 1)
+            if retired {
                 tile.RenderState.hidden = true
                 continue
             }
@@ -1041,6 +1023,9 @@ behavior Board {
 
     function Render() {
         show := world.Session.attract || world.Session.screen >= 1 && world.Session.screen <= 4
+        if world.Session.journey && world.Session.journey_time >= 0.8 && world.Session.journey_time <= 1.8 {
+            show = false
+        }
         if self.BoardState.index == 1 && world.Session.mode != 3 {
             show = false
         }
@@ -1113,16 +1098,13 @@ behavior Board {
         }
         self.BoardState.level = level
         enabled := self.BoardState.index == 0 || world.Session.mode == 3
-        if world.Session.attract && self.BoardState.index == 0 {
-            if world.Session.entering {
-                if !demo_cleared {
-                    ClearDemo()
-                }
-            } else {
-                Demo(min(dt, 0.1))
-            }
+        if world.Session.departing && enabled && !loss_started {
+            BeginDeparture()
         }
-        if world.Session.screen == 1 && old_screen == 1 && !world.Session.entering && !restarted && enabled && !self.BoardState.topout {
+        if world.Session.attract && !world.Session.entering && self.BoardState.index == 0 {
+            Demo(min(dt, 0.1))
+        }
+        if world.Session.screen == 1 && old_screen == 1 && !world.Session.entering && !world.Session.journey && !restarted && enabled && !self.BoardState.topout {
             Controls(min(dt, 0.1))
         }
         if world.Session.screen != 1 {
@@ -1156,7 +1138,11 @@ behavior Board {
             loss_started = true
         }
         if loss_started {
-            Loss()
+            age := world.Session.loss_time
+            if world.Session.departing {
+                age = world.Session.intro_time
+            }
+            Loss(age)
         }
     }
 }

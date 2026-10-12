@@ -1,4 +1,4 @@
-// Four cyclic scene families: nebula, accretion disk, cellular bloom and stellar currents.
+// Four cyclic scene families: cyan swarms, ivory orbits, amber lattice and teal currents.
 // Set a positive seed before Begin for a reproducible startup without save writes.
 component StageState {
     style: number

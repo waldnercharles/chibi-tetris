@@ -175,10 +175,10 @@ behavior ConsumerChecks {
                 Check(world.VisualState.flow_phase > prior_flow && world.VisualState.flow_phase - prior_flow < 0.15, "a dense input batch retains a continuous bounded trajectory")
                 Check(world.VisualState.flow_turn > prior_turn, "rightward movement and rotation impart signed circulation")
                 Check(world.VisualState.flow_energy > 0 && world.VisualState.flow_energy < 0.4, "input displacement grows smoothly instead of flashing to full strength")
-                Check(ActiveCues() == 67, "both Duet batches retain all four clear layers until their first render")
+                Check(ActiveCues() == 69, "both Duet batches retain all four clear layers until their first render")
                 Check(CuesAt(-300, 160) == 1, "first board action retains its own origin")
                 Check(CuesAt(300, 160) == 1, "second board action retains its own origin")
-                Check(CuesAt(-300, 80) == 1 && CuesAt(-300, -112) == 2, "drop and landing fields retain their action coordinate frame")
+                Check(CuesAt(-300, 80) == 2 && CuesAt(-300, -112) == 2, "drop and landing fields retain their action coordinate frame")
                 Check(CuesAt(-300, -112) == 2, "lock and combo leave one contact layer and one settling tail")
                 Check(InstancesAt(-300, -112) == 224 && InstancesAt(300, -112) == 224, "each Duet landing retains exactly 96 contact grains and 128 settling grains")
                 Check(CuesAt(-254, -156) == 4 && CuesAt(254, -156) == 4, "all four clear layers retain each board and original row")
@@ -194,7 +194,7 @@ behavior ConsumerChecks {
                 Emit(world, 15, 1, 1, 2, 0, 3, 0)
             }
             case 12 {
-                Check(ActiveCues() == 70, "restart releases all old clear layers while consuming its first records")
+                Check(ActiveCues() == 72, "restart releases all old clear layers while consuming its first records")
                 Check(CuesAt(-333, 77) == 1, "first input of a new run is never skipped")
                 Check(CuesAt(-300, 160) == 1 && CuesAt(300, 160) == 1, "previous run cues retain their positions during release")
                 Check(CuesAt(-140, -228) == 1 && CuesAt(140, -228) == 1, "restart session confirmation survives the board reset")

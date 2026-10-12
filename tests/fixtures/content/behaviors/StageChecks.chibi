@@ -7,6 +7,7 @@ behavior StageChecks {
     frozen_seed := 0
     frozen_direction := vec3(0, 0, 0)
     frozen_light := 0
+    frozen_color: uint = 0
     frozen_revision: int = 0
     transition_baseline := 0
     transition_clock := 0
@@ -46,8 +47,30 @@ behavior StageChecks {
         Check(world.StageState.clock == frozen_clock, "stage lighting and particle flow retain their clock while stopped")
         Check(world.StageState.seed == frozen_seed, "stopped state and new run never reseed stable particle identities")
         Check(world.StageState.revision == frozen_revision, "paused audio and chapter changes do not advance the stage")
+        Check(world.DirectionalLight.color == frozen_color, "the complete stage palette retains its color while stopped")
         direction := world.DirectionalLight.direction
         Check(direction.x == frozen_direction.x && direction.y == frozen_direction.y && direction.z == frozen_direction.z, "the directional light retains its orientation while stopped")
+    }
+
+    function Palette(family: int) {
+        color := world.DirectionalLight.color
+        red := cast<number>(color >> 24 & cast<uint>(255))
+        green := cast<number>(color >> 16 & cast<uint>(255))
+        blue := cast<number>(color >> 8 & cast<uint>(255))
+        match (family) {
+            case 0 {
+                Check(blue > red + 70 && green > red + 60, "the stream stage lights the well with a cyan palette")
+            }
+            case 1 {
+                Check(abs(red - green) < 12 && abs(green - blue) < 30, "the orbital stage uses pale ivory light instead of warm orange")
+            }
+            case 2 {
+                Check(red > green + 60 && green > blue + 60, "the geometric stage has a distinct amber palette")
+            }
+            case 3 {
+                Check(green > red + 90 && blue > red + 70, "the lattice stage uses teal light")
+            }
+        }
     }
 
     function StageGeometry() {
@@ -72,7 +95,8 @@ behavior StageChecks {
     on Tick {
         match (frame) {
             case 4 {
-                Check(world.StageState.seed == 800001 && world.StageState.style == 1, "explicit seed reproduces the accretion disk opening")
+                Check(world.StageState.seed == 800001 && world.StageState.style == 1, "explicit seed reproduces the ivory orbital opening")
+                Palette(1)
                 Check(world.StageState.revision == 1 && world.StageState.reason == 1, "startup publishes one stage revision")
                 Check(world.StageState.transition == 1 && world.StageState.target == 1, "startup begins fully settled without a morph from zero")
                 Check(LightSum() > 8, "the stage has actual local lights with measurable intensity")
@@ -93,6 +117,7 @@ behavior StageChecks {
                 frozen_revision = world.StageState.revision
                 frozen_direction = world.DirectionalLight.direction
                 frozen_light = LightSum()
+                frozen_color = world.DirectionalLight.color
                 world.Session.screen = 2
             }
             case 13 {
@@ -137,11 +162,12 @@ behavior StageChecks {
             }
             case 43 {
                 StageGeometry()
+                Palette(3)
                 world.Session.screen = 1
                 world.Session.stage += 1
             }
             case 46 {
-                Check(world.StageState.target == 0 && world.StageState.style > 3 && world.StageState.style < 3.01, "stellar currents start a continuous final-family morph toward the nebula")
+                Check(world.StageState.target == 0 && world.StageState.style > 3 && world.StageState.style < 3.01, "teal lattice starts a continuous final-family morph toward cyan streams")
                 Check(world.StageState.transition > 0 && world.StageState.transition < 0.01, "the final-family morph begins gradually")
                 transition_baseline = world.StageState.transition
                 transition_clock = world.StageState.clock
@@ -156,10 +182,16 @@ behavior StageChecks {
                 world.StageState.transition = 0.999
             }
             case 80 {
-                Check(world.StageState.style == 0 && world.StageState.target == 0, "the completed final-family morph wraps to the same nebula endpoint")
+                Check(world.StageState.style == 0 && world.StageState.target == 0, "the completed final-family morph wraps to the same cyan endpoint")
+                Palette(0)
                 Check(world.StageState.transition == 1 && world.StageState.revision == wrap_revision, "wrap completion settles once without creating another transition")
                 Check(world.StageState.seed == frozen_seed, "the complete cycle retains every stable particle identity")
                 Check(LightSum() > 8, "the complete cycle retains the actual lit scene")
+                world.Session.screen = 2
+                world.StageState.style = 2
+            }
+            case 82 {
+                Palette(2)
                 self.TestReport.done = true
             }
         }

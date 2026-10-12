@@ -7,6 +7,10 @@ behavior VfxChecks {
     vortex: entity
     stars: entity
     packet: entity
+    drop_tail: entity
+    duet_tail: entity
+    drop_age := 0
+    duet_age := 0
     landing: entity
     settling: entity
     turning: entity
@@ -145,10 +149,12 @@ behavior VfxChecks {
                 Record(first, 4, 1, 130, 80, 1)
             }
             case 10 {
-                Check(ActiveCues() == 8, "ordinary actions own their bounded layers and hard-drop lock does not replay its landing")
+                Check(ActiveCues() == 9, "ordinary actions own their bounded layers and hard-drop lock does not replay its landing")
                 turning = CueAt(80, 96)
                 blocked := CueAt(-60, 50)
-                packet = CueAt(20, 150)
+                packet = LayerAt(20, 150, 96)
+                drop_tail = LayerAt(20, 150, 768)
+                Check(drop_tail != world, "hard drop keeps a separate bounded cloud after the immediate wash")
                 landing = LayerAt(20, 6, 96)
                 settling = LayerAt(20, 6, 128)
                 shifting = CueAt(-110, 120)
@@ -184,6 +190,9 @@ behavior VfxChecks {
                 if light != world {
                     Check(light.PointLight.intensity > 0.1, "contact illumination continues while the brief wash has already finished")
                     Check(packet.ParticleField3D.count == 0, "the traveled-space wash ends before the former delayed impact would begin")
+                    if drop_tail != world {
+                        Check(drop_tail.ParticleField3D.count == 768, "secondary drop grains outlive the immediate wash")
+                    }
                     light_release = light.PointLight.intensity
                 }
             }
@@ -195,6 +204,9 @@ behavior VfxChecks {
             case 30 {
                 if packet != world && landing != world {
                     Check(packet.ParticleField3D.count == 0, "the short drop wash never lingers over the next falling piece")
+                    if drop_tail != world {
+                        Check(drop_tail.ParticleField3D.count == 768 && drop_tail.ParticleField3D.time > 0.3, "drop wake retains its own clock after placement")
+                    }
                     Check(landing.ParticleField3D.count == 96, "delayed landing keeps its full particle lifetime after arrival")
                 }
                 if settling != world {
@@ -293,8 +305,8 @@ behavior VfxChecks {
                 Check(row_lights == 4, "every cleared row owns one bounded local light")
             }
             case 84 {
-                Check(ActiveCues() == 12, "fracture fronts disappear while chunks embers and energy continue")
-                Check(RowInstances(-254, -228) == 2336, "fracture retirement keeps the full longer-lived row budget")
+                Check(ActiveCues() == 16, "clear fronts sustain the visible row while longer layers start spreading")
+                Check(RowInstances(-254, -228) == 2656, "the half-second clear front retains its original row budget")
             }
             case 104 {
                 Check(ActiveCues() == 12, "chunks and dim energy continue after the brief fracture front")
@@ -467,11 +479,11 @@ behavior VfxChecks {
                 Check(world.VisualState.cue_overwrites == 0, "long lifetimes never introduce destructive field reuse")
             }
             case 748 {
-                Check(ActiveCues() == 72, "every overlapped fracture ends promptly despite long tails")
+                Check(ActiveCues() == 96, "overlapped clear fronts retain the same bounded half-second timing")
                 world.Session.reduced_motion = true
             }
             case 750 {
-                Check(ActiveCues() == 72, "reduced-motion changes release long fields through a continuous fade")
+                Check(ActiveCues() == 96, "reduced-motion changes release long fields through a continuous fade")
             }
             case 754 {
                 Check(ActiveCues() == 0, "reduced-motion retirement reaches zero before reuse")
@@ -482,6 +494,54 @@ behavior VfxChecks {
             }
             case 768 {
                 Check(ActiveCues() == 0 && world.VisualState.cue_dropped == 5 && world.VisualState.cue_overwrites == 0, "quiet release expires and preserves saturation diagnostics")
+                world.Session.reduced_motion = false
+                world.Session.mode = 3
+                world.VisualState.energy = 1
+                world.VisualState.bass = 1
+                Record(first, 6, 1, -254, 180, 14)
+                Record(second, 6, 1, 254, 100, 8)
+            }
+            case 770 {
+                drop_tail = LayerAt(-254, 180, 768)
+                duet_tail = LayerAt(254, 100, 768)
+                Check(drop_tail != world && duet_tail != world, "both Duet boards keep separate persistent drop wakes")
+            }
+            case 790 {
+                if drop_tail != world && duet_tail != world {
+                    drop_age = drop_tail.ParticleField3D.time
+                    duet_age = duet_tail.ParticleField3D.time
+                }
+                world.Session.screen = 2
+            }
+            case 800 {
+                if drop_tail != world && duet_tail != world {
+                    Check(drop_tail.ParticleField3D.time == drop_age && duet_tail.ParticleField3D.time == duet_age, "pause retains both drop clocks and their particle shapes")
+                }
+                world.Session.screen = 1
+                Record(first, 6, 0, 10, 10, 8)
+            }
+            case 802 {
+                Check(LayerAt(10, 10, 768) == world, "a rejected hard drop cannot emit a persistent wake")
+                if drop_tail != world {
+                    Check(drop_tail.ParticleField3D.time > drop_age && drop_tail.ParticleField3D.time - drop_age < 0.05, "resume advances the drop wake without replaying paused time")
+                }
+                Record(first, 6, 1, 50, 50, 0)
+            }
+            case 804 {
+                Check(LayerAt(50, 50, 768) == world, "a zero-distance hard drop has no traveled-space wake")
+            }
+            case 1040 {
+                if drop_tail != world && duet_tail != world {
+                    Check(drop_tail.ParticleField3D.count == 768 && duet_tail.ParticleField3D.count == 768, "both long drop wakes survive four active seconds")
+                    Check(drop_tail.ParticleField3D.time > 4.2, "a drop wake retains continuous time while its grains join the background")
+                    Check(drop_tail.Transform3D.position.x == -254 && duet_tail.Transform3D.position.x == 254, "later input never moves a captured Duet wake")
+                }
+            }
+            case 1145 {
+                if drop_tail != world && duet_tail != world {
+                    Check(drop_tail.ParticleField3D.count == 0 && duet_tail.ParticleField3D.count == 0, "even charged drop wakes finish within six active seconds")
+                }
+                Check(ActiveCues() == 0 && world.VisualState.cue_overwrites == 0, "persistent drops release their bounded slots without overwriting another effect")
                 self.TestReport.done = true
             }
         }

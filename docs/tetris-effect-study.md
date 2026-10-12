@@ -1,5 +1,41 @@
 # Tetris Effect reference study
 
+## Nine-minute polish pass
+
+This pass is limited to 0:00–9:00 of the same recording. The watch skill
+downloaded a local analysis copy. I inspected its 17 selected scene frames,
+180 low-resolution frames sampled every three seconds, and a 20-frame detail
+sheet of 0:54–0:58. The sheets are retained in ignored
+`.chibi/reference-polish`. Their approximate labels describe sampling windows,
+not frame-accurate measurements. No later footage was viewed for this pass.
+Captions were unavailable and speech transcription was disabled; the findings
+below concern visible motion and composition.
+
+The early blue stage leaves most of the image dark. Small cyan clouds appear
+around placements and escape the well. The clear near 0:55.7 opens into a dense
+horizontal sheet by 0:55.9, with larger highlights among fine grains. Its bright
+row remains recognizable for roughly half a second, followed by a cooler,
+widely dispersed tail. Around 2:00–2:55, coherent blue streams and a planetary
+rim surround the quiet board. The passage near 2:58–3:11 briefly removes the
+board, travels through particles, and restores the continuing pile.
+
+From about 3:10, pale concentric geometry and a large triangle give the scene
+a different identity. Later passages shift that structure through amber near
+5:40 and teal near 7:30. Quiet intervals matter: the brightest triangle and
+particle fronts are accents, rather than a constant luminous frame.
+
+The authored changes translate those observations into Stillwater's own
+scene: separate fast drop contact and persistent drifting wake, accepted-input
+illumination and wind in the existing cloud, a longer clear front, fine block
+borders and a lighter grid, and four families of sparse orbital motifs. New
+runs and losses share intact outward block flight. Automatic Journey chapters
+preserve the pile during a shorter camera passage. The restart choreography is
+the user's requested adaptation; this bounded study does not establish a loss
+sequence. Stillwater keeps its own rules, music and original geometry.
+
+The earlier notes below belong to the prior study and include different
+sampling intervals. They are not evidence that this pass viewed past 9:00.
+
 Studied October 11, 2026 from the supplied [Tetris Effect recording](https://www.youtube.com/watch?v=urbLIyd-VsQ). This study concerns that recording, separately from the [Particula and Tetris Spheres study](reference-particle-flow.md). The local analysis copy is 640 × 360 at approximately 29.97 frames/s and has no audio. Reference media and extracted frames are scratch evidence under ignored `build/particula`; they are not shipped with the game.
 
 Times below are positions in the video, not the game's displayed timer. Native-frame measurements resolve about 33 ms. The clear contact sheet samples every 100 ms; handoff sheets sample every 500 ms. Those samples bound an onset between adjacent frames, rather than establishing an exact event timestamp. There is no input overlay or isolated sound, so button latency, lock delay and synchronization with music cannot be measured here.

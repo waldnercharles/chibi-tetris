@@ -1,8 +1,8 @@
 # Stillwater
 
-A falling-block game authored in Chibi. A six-chapter journey unfolds through nebula clouds, accretion disks, cellular blooms and stellar currents. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
+A falling-block game authored in Chibi. A six-chapter journey unfolds through cyan streams, ivory orbits, amber geometry and teal currents. Light and motion respond to the music and your play. Play alone or share a journey with someone beside you.
 
-![Stillwater Journey](docs/screenshots/cosmic-evolution.png)
+![Stillwater Journey](docs/screenshots/reference-polish.jpg)
 
 - Journey starts at your highest unlocked chapter after you choose music. Each of its six chapters takes twelve lines.
 - Endless increases the falling speed as you clear lines.
@@ -46,7 +46,7 @@ These controls work inside the scene:
 
 Controller 1's A confirms resume or restart; B restarts while paused or after a result. In Duet, controller 1 shares the left board with player one's keyboard keys and controller 2 shares the right board with player two's keys. Either controller's Start pauses or resumes. Disconnecting a controller pauses play. Reconnect and confirm, or press Enter to continue with the keyboard.
 
-Chapter selection starts a fresh run at the selected chapter and stays paused. Press Enter when ready. The chapter keys stop at the first and highest unlocked chapters.
+Chapter selection starts a fresh run at the selected chapter and stays paused. Press Enter when ready. The chapter keys stop at the first and highest unlocked chapters. New games release the old blocks outward before the fresh board appears. Earning a Journey chapter preserves your pile through a brief camera passage; reduced motion skips it.
 
 External music uses browser audio sharing or a native loopback device. Press M to connect directly to an audio source. The scene responds to its measured sound. See [audio capture](docs/audio.md#music-reaction-and-capture) for setup.
 

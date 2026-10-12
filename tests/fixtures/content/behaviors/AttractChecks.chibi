@@ -9,6 +9,8 @@ behavior AttractChecks {
     demo_clears: int = 0
     demo_events: int = 0
     recovery_serial: int = 0
+    tiles: entity[]
+    positions: CF_V3[]
 
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
@@ -63,27 +65,40 @@ behavior AttractChecks {
                 demo_events = board.ReactionQueue.serial
             }
             case 144 {
-                Check(world.Session.entering && world.Session.attract && world.Session.run == 0, "Play begins a clear before resetting the demo")
+                Check(world.Session.entering && world.Session.departing && world.Session.attract && world.Session.run == 0, "Play begins the shared body release before resetting the demo")
                 Check(world.Session.audio_ready && world.Session.audio_source == 1, "Play preserves the selected connected source")
-                Check(board.BoardState.topout && board.BoardState.clear_serial == demo_clears + 1, "handoff releases the occupied demonstration rows once")
+                Check(board.BoardState.topout && board.BoardState.clear_serial == demo_clears, "handoff freezes the demo without inventing a line clear")
                 Check(board.BoardState.lines == demo_lines, "handoff release never awards line-clear progress")
-                found := false
-                for serial in demo_events + 1..board.ReactionQueue.serial {
-                    cue := ReactionRules.Read(board, serial)
-                    if cue.ReactionEvent.kind == 9 {
-                        found = cue.ReactionEvent.result == 1 && cue.ReactionEvent.amount > 0 && cue.ReactionEvent.detail > 0
+                for tile in find_entities_with_component("MeshAsset") {
+                    if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
+                        tiles = array_add(tiles, tile)
+                        positions = array_add(positions, tile.Transform3D.position)
                     }
                 }
-                Check(found, "handoff publishes the ordinary row-clear event and row mask")
+                Check(length(tiles) > 0, "handoff preserves the actual occupied block meshes")
                 Check(world.Session.hud_alpha == 0, "gameplay HUD waits for the clear")
             }
             case 210 {
                 Check(world.Session.attract && world.Session.entering && world.Session.run == 0, "demo reset waits for clear effects to finish")
                 Check(camera.Transform3D.position.x > -130 && camera.Transform3D.position.x < 90, "camera travels toward the play composition")
                 Check(camera.Camera.width > 700 && camera.Camera.width < 1208, "intro narrows the framing continuously with the camera move")
-                Check(board.BoardState.clear_serial == demo_clears + 1, "handoff emits no repeated clears")
+                Check(board.BoardState.clear_serial == demo_clears, "handoff emits no line clear")
+                found := false
+                for serial in demo_events + 1..board.ReactionQueue.serial {
+                    cue := ReactionRules.Read(board, serial)
+                    if cue.ReactionEvent.kind == 22 {
+                        found = cue.ReactionEvent.result == 1 && cue.ReactionEvent.detail > 0
+                    }
+                }
+                Check(found, "Play uses the same occupied-row release event as loss")
+                for i in 0..length(tiles) - 1 {
+                    tile := get(tiles, i)
+                    before := get(positions, i)
+                    Check(!tile.RenderState.hidden && tile.Transform3D.position.y > before.y + 40, "demo blocks travel intact before the new run")
+                    Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1, "intro release preserves full block size")
+                }
             }
-            case 260 {
+            case 332 {
                 Check(!world.Session.attract && world.Session.entering && world.Session.run == 1, "fresh run starts during the final reveal")
                 Check(world.Session.mode == 2 && world.Session.goal == 40, "Play honors the selected sprint mode")
                 Check(world.Session.hud_alpha > 0 && world.Session.hud_alpha < 1, "HUD materializes gradually")
@@ -91,10 +106,10 @@ behavior AttractChecks {
                 Check(opacity > 0 && opacity < 1, "visible sprint text has partial material opacity during the reveal")
                 Check(world.Session.elapsed == 0 && board.BoardState.pieces == 0 && board.BoardState.score == 0, "reveal keeps the new board and timer still")
             }
-            case 275 {
+            case 347 {
                 Check(board.BoardState.pieces == 0, "player hard drop is suppressed during the reveal")
             }
-            case 310 {
+            case 382 {
                 Check(!world.Session.attract && !world.Session.entering && world.Session.hud_alpha == 1, "handoff completes with fully visible play HUD")
                 Check(world.Session.screen == 1 && world.Session.run == 1 && world.Session.elapsed > 0, "fresh player run begins after the handoff")
                 Check(camera.Transform3D.position.x > 80, "camera reaches the normal play composition")

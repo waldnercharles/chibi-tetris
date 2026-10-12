@@ -29,7 +29,7 @@ behavior AttractRecoveryChecks {
             }
             case 8 {
                 Check(world.Session.entering && world.Session.attract && board.BoardState.topout, "recovery begins after the demo clear")
-                Check(board.BoardState.clear_serial == 1 && world.Session.audio_source == 1, "connected source reaches the clear handoff")
+                Check(board.BoardState.clear_serial == 0 && world.Session.departing && world.Session.audio_source == 1, "connected source reaches the intact body handoff")
                 serial = board.ReactionQueue.serial
                 world.Session.audio_ready = false
                 world.Session.screen = 0
@@ -41,10 +41,10 @@ behavior AttractRecoveryChecks {
             }
             case 24 {
                 Check(world.Session.entering && world.Session.audio_source == 0, "explicit retry can select the bundled score")
-                Check(board.BoardState.topout && board.BoardState.clear_serial == 1, "retry clears the recovered demo exactly once")
-                Check(board.ReactionQueue.serial > serial, "retry clear remains visible to existing reaction consumers")
+                Check(board.BoardState.topout && board.BoardState.clear_serial == 0 && world.Session.departing, "retry releases the recovered demo without a line clear")
+                Check(board.ReactionQueue.serial >= serial, "retry preserves existing reaction consumers")
             }
-            case 180 {
+            case 250 {
                 Check(world.Session.screen == 1 && !world.Session.attract && !world.Session.entering, "audio failure retry completes its fresh handoff")
                 Check(world.Session.run == 1 && world.Session.elapsed > 0 && board.BoardState.pieces == 0, "retry begins exactly one clean player run")
                 self.TestReport.done = true

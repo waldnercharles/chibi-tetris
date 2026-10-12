@@ -1,4 +1,4 @@
-// Scene families share stable GPU particle identities and interpolate in place.
+// Cyan streams, ivory orbits, amber geometry and teal lattice share stable grains.
 // External song boundaries are inferred from sound, never provider metadata.
 behavior StageDirector {
     world: entity
@@ -152,23 +152,23 @@ behavior StageDirector {
     }
 
     function Stage() {
-        nebula := Weight(0)
-        disk := Weight(1)
-        cells := Weight(2)
-        current := Weight(3)
+        cyan := Weight(0)
+        ivory := Weight(1)
+        amber := Weight(2)
+        teal := Weight(3)
         energy := stage_audio.x
         bass := stage_audio.y
         treble := stage_audio.z
         reaction := stage_reaction
         clock := world.StageState.clock
-        key_color := Color(141 * nebula + 255 * disk + 132 * cells + 197 * current, 207 * nebula + 198 * disk + 255 * cells + 224 * current, 255 * nebula + 115 * disk + 195 * cells + 255 * current)
-        rim_color := Color(192 * nebula + 241 * disk + 255 * cells + 127 * current, 118 * nebula + 105 * disk + 142 * cells + 178 * current, 255 * nebula + 83 * disk + 208 * cells + 255 * current)
+        key_color := Color(126 * cyan + 237 * ivory + 255 * amber + 104 * teal, 221 * cyan + 235 * ivory + 170 * amber + 240 * teal, 250 * cyan + 218 * ivory + 84 * amber + 207 * teal)
+        rim_color := Color(48 * cyan + 185 * ivory + 224 * amber + 41 * teal, 126 * cyan + 199 * ivory + 75 * amber + 141 * teal, 219 * cyan + 220 * ivory + 33 * amber + 168 * teal)
         world.DirectionalLight.color = key_color
         world.DirectionalLight.intensity = 2.35 + energy * 0.2
         world.DirectionalLight.direction = vec3(0.52 + sin(clock * 0.055 + phase) * 0.1, -0.65, -0.48)
         self.Environment.ambient_intensity = 0.2
-        self.Environment.ambient_sky = Color(18 + 14 * nebula + 12 * cells, 20 + 11 * nebula, 36 + 8 * current)
-        self.Environment.ambient_ground = Color(3 + 4 * disk, 4, 9 + 4 * current)
+        self.Environment.ambient_sky = Color(15 + 14 * amber + 8 * ivory, 18 + 9 * cyan + 10 * teal, 24 + 12 * cyan - 8 * amber)
+        self.Environment.ambient_ground = Color(3 + 4 * amber, 4, 7 + 4 * cyan)
         self.Environment.bloom_strength = 0.2 + energy * 0.025 + reaction * 0.025
         self.Environment.bloom_threshold = 1.15
         self.Environment.exposure = -0.45

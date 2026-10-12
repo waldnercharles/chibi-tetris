@@ -82,15 +82,39 @@ vec3 cosmic_event_force(vec3 position, ChibiParameters u)
     return force * vec3(depth_scale, depth_scale, 1.0);
 }
 
+float cosmic_source_light(vec2 projected, vec3 source, vec3 drive)
+{
+    if (source.z <= 0.0 || source.z >= 2.6) return 0.0;
+    float radius = length(projected - source.xy);
+    float spread = 115.0 + source.z * 190.0;
+    float distance = radius / spread;
+    float attack = smoothstep(0.0, 0.10, source.z);
+    float release = 1.0 - smoothstep(1.4, 2.6, source.z);
+    return (drive.x + abs(drive.y) * 0.28) * attack * release /
+        (1.0 + distance * distance * distance * distance);
+}
+
+// Shared draw response for both ambient fields. The bounded result comes only
+// from accepted action origins; brightness follows their existing force clock.
+float cosmic_event_light(vec3 position, ChibiParameters u)
+{
+    vec2 projected = cosmic_board_projection(position, u.Eye);
+    float light = cosmic_source_light(projected, u.Source0, u.Drive0)
+        + cosmic_source_light(projected, u.Source1, u.Drive1)
+        + cosmic_source_light(projected, u.Source2, u.Drive2)
+        + cosmic_source_light(projected, u.Source3, u.Drive3);
+    return min(1.0, light);
+}
+
 vec3 cosmic_tint(vec3 random, vec3 position, vec4 weights, ChibiParameters u)
 {
     // The reference's ivory highlights emerge from density, with colored shadow
     // grains. Separate frequency bands color different depths and populations.
     float hot = smoothstep(0.38, 0.94, random.y + u.Bass * 0.14);
-    vec3 swarm = mix(vec3(0.26, 0.49, 0.62), vec3(1.04, 0.91, 0.65), hot);
-    vec3 filament = mix(vec3(0.31, 0.13, 0.46), vec3(1.18, 0.62, 0.27), hot);
-    vec3 volume = mix(vec3(0.17, 0.40, 0.59), vec3(0.64, 0.91, 0.80), hot);
-    vec3 wind = mix(vec3(0.24, 0.34, 0.57), vec3(0.90, 0.76, 0.65), hot);
+    vec3 swarm = mix(vec3(0.10, 0.34, 0.56), vec3(0.58, 1.02, 1.16), hot);
+    vec3 filament = mix(vec3(0.30, 0.38, 0.48), vec3(1.12, 1.03, 0.82), hot);
+    vec3 volume = mix(vec3(0.36, 0.16, 0.08), vec3(1.20, 0.71, 0.25), hot);
+    vec3 wind = mix(vec3(0.08, 0.30, 0.34), vec3(0.54, 1.04, 0.84), hot);
     vec3 tint = swarm * weights.x + filament * weights.y + volume * weights.z + wind * weights.w;
     vec3 spectrum = vec3(0.88 + u.Bass * 0.36, 0.91 + u.Mid * 0.27, 0.94 + u.Treble * 0.48);
     float depth = 1.0 - smoothstep(1850.0, 3500.0, -position.z);

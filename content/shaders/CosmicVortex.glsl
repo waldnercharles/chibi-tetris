@@ -57,7 +57,8 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
     float frequency = dot(weights, vec4(0.0024, 0.0034, 0.0018, 0.0020));
     frequency *= 0.82 + layer * 0.12 + u.Mid * 0.22;
     vec3 flow = cosmic_curl(state.position * frequency, u.Flow + u.Wind * 0.24);
-    float speed = dot(weights, vec4(160.0, 125.0, 100.0, 170.0)) * (0.65 + layer * 0.14 + band * 0.7);
+    float speed = dot(weights, vec4(160.0, 125.0, 100.0, 170.0)) *
+        (0.65 + layer * 0.14 + band * 0.7 + u.Reaction * 0.55);
     vec3 target = flow * speed + vec3(150.0, 12.0, 0.0) * weights.w;
     // Rotation is an acceleration through the interior, never a ring constraint.
     vec3 orbit = vec3(-relative.y, relative.x, relative.x * 0.12);
@@ -65,7 +66,7 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
     float limit = dot(weights, vec4(540.0 + layer * 105.0, 360.0 + layer * 300.0,
         440.0 + layer * 290.0, 2800.0));
     vec3 confinement = -radial * max(0.0, radius - limit) * 0.42;
-    vec3 force = confinement + cosmic_event_force(state.position, u) * 4.2;
+    vec3 force = confinement + cosmic_event_force(state.position, u) * 5.2;
     force.z -= max(0.0, state.position.z + 650.0) * 1.4;
     force.z += max(0.0, -3400.0 - state.position.z) * 0.7;
     force += radial * u.Beat * (120.0 + u.Bass * 260.0) * (1.0 - layer * 0.13);
@@ -90,11 +91,14 @@ ChibiParticle vortex(ChibiParticleInput p, ChibiParameters u)
     float size = 0.42 + pow(random.z, 4.0) * 0.50;
     float accent = pow(random.x, 12.0);
     float speed = length(p.velocity);
-    float light = 0.72 + foreground * 0.30 + u.Energy * 0.24 + u.Treble * accent * 0.38;
+    float wake = cosmic_event_light(p.position, u);
+    float light = 0.72 + foreground * 0.30 + u.Energy * 0.24 + u.Treble * accent * 0.38 + wake * 1.3;
     ChibiParticle result = chibi_particle();
     result.position = p.position;
     result.size = size * (0.86 + u.Treble * accent * 0.45) * sqrt(envelope);
-    result.color = vec4(cosmic_tint(random, p.position, weights, u) * light,
+    vec3 tint = cosmic_tint(random, p.position, weights, u);
+    tint = mix(tint, vec3(0.50, 0.95, 1.12), wake * 0.32);
+    result.color = vec4(tint * light,
         envelope * quiet * (0.30 + 0.55 * random.y));
     // Most grains are round solids. Only rare fast foreground grains stretch,
     // in their actual direction of travel, retaining a sharp visible center.

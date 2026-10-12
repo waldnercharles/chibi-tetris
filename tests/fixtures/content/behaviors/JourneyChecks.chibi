@@ -1,0 +1,146 @@
+// Earned chapter scenery changes must carry the same playable board onward.
+behavior JourneyChecks {
+    world: entity
+    board: entity
+    frame: int = 0
+    quiet := false
+    run: int = 0
+    seed: int = 0
+    score: int = 0
+    row: int = 0
+    column: int = 0
+    current: int = 0
+    meshes: int = 0
+    elapsed := 0
+    interrupted := false
+    tiles: entity[]
+    positions: CF_V3[]
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        interrupted = read_saved_number("test_audio_failure", 0).Number != 0
+    }
+
+    function Preserved() {
+        Check(world.Session.run == run && world.Session.seed == seed, "chapter passage preserves the current run and seeded queue")
+        Check(board.BoardState.pieces == 2 && board.BoardState.score == score && board.BoardState.lines == 12, "chapter passage retains the original pile and score")
+        Check(board.BoardState.row == row && board.BoardState.column == column && board.BoardState.current == current, "chapter passage holds the active piece in place")
+        Check(!board.BoardState.topout && !world.Session.entering && !world.Session.departing, "earned chapter passage never invokes loss or restart")
+        Check(length(find_entities_with_component("MeshAsset")) == meshes, "chapter passage keeps the fixed body pool")
+    }
+
+    on Tick {
+        match (frame) {
+            case 20 {
+                quiet = world.Session.reduced_motion || world.Session.effects == 0
+                run = world.Session.run
+                seed = world.Session.seed
+                score = board.BoardState.score
+                row = board.BoardState.row
+                column = board.BoardState.column
+                current = board.BoardState.current
+                meshes = length(find_entities_with_component("MeshAsset"))
+                Check(board.BoardState.pieces == 2 && score > 0, "legal placements provide a real occupied Journey board")
+                for tile in find_entities_with_component("MeshAsset") {
+                    if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
+                        tiles = array_add(tiles, tile)
+                        positions = array_add(positions, tile.Transform3D.position)
+                    }
+                }
+                Check(length(tiles) >= 8, "the passage starts with the actual placed block bodies")
+                board.BoardState.lines = 12
+            }
+            case 24 {
+                elapsed = world.Session.elapsed
+                Check(world.Session.stage == 1 && world.Session.screen == 1, "earned chapter changes scenery without a result screen")
+                Check(read_saved_number("chapter", 0).Number == 1, "earned chapter still saves its unlock")
+                Check(world.Session.journey != quiet, "only motion-enabled boards take the scenic passage")
+                Preserved()
+                if !quiet {
+                    send_event<"Restart">(world)
+                    send_event<"Duet">(world)
+                    send_event<"ChapterPrevious">(world)
+                }
+            }
+            case 40 {
+                if quiet {
+                    Preserved()
+                    Check(world.Session.elapsed > elapsed && world.Session.hud_alpha == 1, "quiet chapter continues without a visual interruption")
+                }
+            }
+            case 55 {
+                if quiet {
+                    Check(board.BoardState.pieces == 3, "quiet chapter keeps gameplay responsive")
+                    self.TestReport.done = true
+                }
+            }
+            case 90 {
+                if !quiet {
+                    Preserved()
+                    Check(world.Session.journey && world.Session.elapsed == elapsed, "passage freezes the game clock and rejects input")
+                    Check(world.Session.hud_alpha == 0 && board.RenderState.hidden, "the middle passage clears the board and HUD for the surrounding scenery")
+                    for tile in tiles {
+                        Check(tile.RenderState.hidden, "each original cell hides during the middle passage")
+                    }
+                    if interrupted {
+                        // Supply host-visible readiness loss, then recover through
+                        // the production AudioReactive command path below.
+                        world.Session.audio_source = 1
+                        world.Session.audio_ready = false
+                        world.Session.audio_return_screen = 1
+                        world.Session.screen = 0
+                        world.Session.audio_request = 1
+                    }
+                }
+            }
+            case 94 {
+                if interrupted {
+                    Check(world.Session.journey && world.Session.screen == 0 && !world.Session.audio_ready, "audio failure leaves the board paused while its passage completes")
+                    Check(world.Session.audio_request == 0 && world.Session.audio_source == 1, "audio controls are consumed without interrupting the pending passage")
+                    Check(world.Session.elapsed == elapsed, "source failure never advances the journey game clock")
+                }
+            }
+            case 180 {
+                if interrupted {
+                    Preserved()
+                    Check(!world.Session.journey && world.Session.screen == 0 && world.Session.elapsed == elapsed, "finished passage waits for an explicit audio choice with the same run")
+                    world.Session.audio_request = 1
+                }
+            }
+            case 190 {
+                if !quiet {
+                    Preserved()
+                    Check(!world.Session.journey && world.Session.hud_alpha == 1 && world.Session.elapsed > elapsed, "passage restores the same live board and resumes time")
+                    for i in 0..length(tiles) - 1 {
+                        tile := get(tiles, i)
+                        p := tile.Transform3D.position
+                        before := get(positions, i)
+                        Check(!tile.RenderState.hidden && abs(p.x - before.x) + abs(p.y - before.y) < 0.001, "the same block identities return to their unchanged grid cells")
+                    }
+                    if interrupted {
+                        Check(world.Session.audio_source == 0 && world.Session.audio_ready && world.Session.screen == 1, "actual AudioReactive fallback resumes the preserved Journey board")
+                    }
+                }
+            }
+            case 210 {
+                if !quiet {
+                    Check(board.BoardState.pieces == 3, "the preserved board accepts a real drop after passage")
+                    self.TestReport.done = true
+                }
+            }
+        }
+        frame += 1
+    }
+}

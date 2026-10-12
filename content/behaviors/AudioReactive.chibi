@@ -53,7 +53,7 @@ behavior AudioReactive {
     function Controls() {
         request := self.Session.audio_request
         self.Session.audio_request = 0
-        if self.Session.entering || self.Session.screen == 4 {
+        if self.Session.entering || self.Session.journey || self.Session.screen == 4 {
             return
         }
         if self.Session.screen == 0 && input.Confirm.pressed {

@@ -1,0 +1,34 @@
+version 1
+name "JourneyChecks"
+presentation "3d"
+(array)entities {
+    - name="Camera" prototype="Camera"
+    - {
+        name "World"
+        prototype "World"
+        components {
+            Session audio_ready=#true
+        }
+    }
+    - {
+        name "Board1"
+        prototype "Board"
+        components {
+            GlobalBinding name="Board1"
+            BoardState index=0
+        }
+    }
+    - {
+        name "Board2"
+        prototype "Board"
+        components {
+            GlobalBinding name="Board2"
+            BoardState index=1
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        (array)behaviors "JourneyChecks"
+    }
+}

@@ -21,8 +21,8 @@ behavior CameraMotion {
             pan = -240
             width = 1208.8889
         }
-        if world.Session.entering && !world.Session.reduced_motion {
-            progress := clamp((world.Session.intro_time - 0.15) / 1.75, 0, 1)
+        if world.Session.entering && world.Session.attract && !world.Session.reduced_motion {
+            progress := clamp((world.Session.intro_time - 0.2) / 2.45, 0, 1)
             eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
             pan = -240 * (1 - eased)
             if world.Session.selected_mode != 3 {
@@ -38,6 +38,12 @@ behavior CameraMotion {
             x += sin(time * 0.13) * 7
             y += sin(time * 0.09) * 5
             z -= world.VisualState.bass * 4
+            if world.Session.journey {
+                passage := sin(clamp(world.Session.journey_time / 2.6, 0, 1) * 3.14159265)
+                passage *= passage
+                x += passage * 28
+                z += passage * 650
+            }
         }
         yaw := atan2(x, z)
         pitch := -atan2(y, sqrt(x * x + z * z))

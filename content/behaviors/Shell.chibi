@@ -15,6 +15,8 @@ behavior Shell {
     pad1 := false
     pad2 := false
     initialized := false
+    pending_mode: int = -1
+    pending_pause := false
     action writer = commit_save()
 
     on Begin {
@@ -95,6 +97,18 @@ behavior Shell {
     }
 
     function Start(mode: int) {
+        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
+            return
+        }
+        if Occupied() {
+            pending_mode = mode
+            BeginDeparture()
+            return
+        }
+        StartNow(mode)
+    }
+
+    function StartNow(mode: int) {
         if !self.Session.audio_ready {
             self.Session.screen = 0
             return
@@ -110,7 +124,7 @@ behavior Shell {
         if mode != 2 {
             self.Session.seed = 73129 + cast<int>(clock * 1000) % 1000000
         }
-        RestartRun()
+        ResetRun()
         ReactionRules.Emit(self, 16, 1, old_mode, mode, 0, mode, mode)
     }
 
@@ -124,26 +138,54 @@ behavior Shell {
             pad2 = controller_connected(1)
             return
         }
+        pending_mode = self.Session.selected_mode
+        BeginDeparture()
+    }
+
+    function Occupied() -> (occupied: bool) {
+        if !self.Session.audio_ready || self.Session.screen == 3 && !self.Session.won {
+            return false
+        }
+        return board1.BoardState.ready && board1.BoardState.pieces > 0 || self.Session.mode == 3 && board2.BoardState.ready && board2.BoardState.pieces > 0
+    }
+
+    function BeginDeparture() {
         self.Session.entering = true
+        self.Session.departing = true
         self.Session.intro_time = 0
+        self.Session.hud_alpha = 0
+        if !self.Session.attract {
+            self.Session.screen = 4
+        }
     }
 
     function Intro() {
         if !self.Session.audio_ready {
             self.Session.entering = false
+            self.Session.departing = false
             self.Session.hud_alpha = 1
             return
         }
         self.Session.intro_time += min(dt, 0.1)
-        clear_time := 1.6
-        duration := 2.4
-        if self.Session.reduced_motion {
-            clear_time = 0.18
-            duration = 0.36
+        clear_time := 2.8
+        duration := 3.6
+        if self.Session.reduced_motion || self.Session.effects == 0 {
+            clear_time = 0.3
+            duration = 0.48
         }
-        if self.Session.attract && self.Session.intro_time >= clear_time {
+        if self.Session.departing && self.Session.intro_time >= clear_time {
             self.Session.attract = false
-            Start(self.Session.selected_mode)
+            self.Session.departing = false
+            if pending_mode >= 0 {
+                StartNow(pending_mode)
+            } else {
+                ResetRun()
+            }
+            if pending_pause {
+                self.Session.screen = 2
+            }
+            pending_mode = -1
+            pending_pause = false
         }
         self.Session.hud_alpha = clamp((self.Session.intro_time - clear_time) / (duration - clear_time), 0, 1)
         if self.Session.intro_time >= duration {
@@ -153,7 +195,7 @@ behavior Shell {
     }
 
     function SelectMode(mode: int) {
-        if self.Session.screen == 4 {
+        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if self.Session.attract {
@@ -166,13 +208,24 @@ behavior Shell {
     }
 
     function RestartRun() {
-        if self.Session.screen == 4 {
+        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if !self.Session.audio_ready {
             self.Session.screen = 0
             return
         }
+        if Occupied() {
+            pending_mode = -1
+            BeginDeparture()
+            return
+        }
+        ResetRun()
+    }
+
+    function ResetRun() {
+        self.Session.journey = false
+        self.Session.journey_time = 0
         self.Session.stage = startingChapter
         self.Session.run += 1
         self.ReactionQueue.run = self.Session.run
@@ -205,7 +258,7 @@ behavior Shell {
     }
 
     function ResumePlay() {
-        if self.Session.screen == 4 {
+        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if !self.Session.audio_ready {
@@ -220,7 +273,7 @@ behavior Shell {
     }
 
     function ChangeChapter(direction: int) {
-        if self.Session.screen == 4 {
+        if self.Session.screen == 4 || self.Session.entering || self.Session.journey {
             return
         }
         if !self.Session.audio_ready || self.Session.mode != 0 || self.Session.screen == 1 {
@@ -235,7 +288,11 @@ behavior Shell {
         previous := self.Session.stage
         chapter = selected
         Start(0)
-        self.Session.screen = 2
+        if self.Session.entering {
+            pending_pause = true
+        } else {
+            self.Session.screen = 2
+        }
         ReactionRules.Emit(self, 17, 1, previous, selected, direction, selected, 0)
     }
 
@@ -326,6 +383,10 @@ behavior Shell {
                 }
                 play_sound("complete", 0.45)
                 Music()
+                if self.Session.mode == 0 && board1.BoardState.current > 0 && !self.Session.reduced_motion && self.Session.effects > 0 {
+                    self.Session.journey = true
+                    self.Session.journey_time = 0
+                }
             }
         }
         if self.Session.mode == 1 {
@@ -386,6 +447,27 @@ behavior Shell {
         }
         clock += dt
         Preferences()
+        if self.Session.journey {
+            self.Session.play_request = false
+            self.Session.mode_request = 0
+            self.Session.journey_time = min(2.6, self.Session.journey_time + min(dt, 0.1))
+            passage := clamp(self.Session.journey_time / 0.8, 0, 1)
+            if self.Session.journey_time > 1.8 {
+                passage = clamp((2.6 - self.Session.journey_time) / 0.8, 0, 1)
+            }
+            self.Session.hud_alpha = 1 - passage * passage * (3 - 2 * passage)
+            if self.Session.journey_time >= 2.6 || self.Session.reduced_motion || self.Session.effects == 0 {
+                self.Session.journey = false
+                self.Session.hud_alpha = 1
+            }
+            return
+        }
+        if self.Session.entering {
+            self.Session.play_request = false
+            self.Session.mode_request = 0
+            Intro()
+            return
+        }
         if self.Session.screen == 4 {
             self.Session.loss_time += min(dt, 0.1)
             duration := 2.8
@@ -400,11 +482,6 @@ behavior Shell {
         }
         if self.Session.screen == 3 && !self.Session.won && self.Session.loss_time > 0 {
             self.Session.loss_time = min(4, self.Session.loss_time + min(dt, 0.1))
-        }
-        if self.Session.entering {
-            self.Session.play_request = false
-            Intro()
-            return
         }
         if self.Session.mode_request > 0 {
             mode := self.Session.mode_request - 1

@@ -15,7 +15,7 @@ components {
         name "Column1"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=-96.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -26,7 +26,7 @@ components {
         name "Column2"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=-72.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -37,7 +37,7 @@ components {
         name "Column3"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=-48.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -48,7 +48,7 @@ components {
         name "Column4"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=-24.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -59,7 +59,7 @@ components {
         name "Column5"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=0.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -70,7 +70,7 @@ components {
         name "Column6"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=24.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -81,7 +81,7 @@ components {
         name "Column7"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=48.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -92,7 +92,7 @@ components {
         name "Column8"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=72.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -103,7 +103,7 @@ components {
         name "Column9"
         prototype "WellLine"
         components {
-            Geometry3D width=2.4 height=480.0 depth=0.6
+            Geometry3D width=0.7 height=480.0 depth=0.6
             Transform3D {
                 position x=96.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -114,7 +114,7 @@ components {
         name "Row1"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-216.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -125,7 +125,7 @@ components {
         name "Row2"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-192.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -136,7 +136,7 @@ components {
         name "Row3"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-168.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -147,7 +147,7 @@ components {
         name "Row4"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-144.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -158,7 +158,7 @@ components {
         name "Row5"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-120.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -169,7 +169,7 @@ components {
         name "Row6"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-96.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -180,7 +180,7 @@ components {
         name "Row7"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-72.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -191,7 +191,7 @@ components {
         name "Row8"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-48.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -202,7 +202,7 @@ components {
         name "Row9"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=-24.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -213,7 +213,7 @@ components {
         name "Row10"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -224,7 +224,7 @@ components {
         name "Row11"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=24.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -235,7 +235,7 @@ components {
         name "Row12"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=48.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -246,7 +246,7 @@ components {
         name "Row13"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=72.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -257,7 +257,7 @@ components {
         name "Row14"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=96.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -268,7 +268,7 @@ components {
         name "Row15"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=120.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -279,7 +279,7 @@ components {
         name "Row16"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=144.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -290,7 +290,7 @@ components {
         name "Row17"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=168.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -301,7 +301,7 @@ components {
         name "Row18"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=192.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
@@ -312,7 +312,7 @@ components {
         name "Row19"
         prototype "WellLine"
         components {
-            Geometry3D width=240.0 height=2.4 depth=0.6
+            Geometry3D width=240.0 height=0.7 depth=0.6
             Transform3D {
                 position x=0.0 y=216.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0

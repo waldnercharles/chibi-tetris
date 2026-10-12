@@ -10,9 +10,11 @@ behavior Environment {
     lights: entity[]
     lives: number[]
     retires: number[]
+    gameplay: bool[]
     light_ages: number[]
     light_peaks: number[]
     light_delays: number[]
+    light_gameplay: bool[]
     cursors: entity[]
     sequences: int[] = [0, 0, 0]
     runs: int[] = [-1, -1, -1]
@@ -46,6 +48,7 @@ behavior Environment {
     cue_delay := 0
     cue_depth := 0
     cue_loss := 0
+    cue_gameplay := true
     cue_mask: int = 1023
     loss_active := false
     // Four bounded impulse origins retain event position and age. Overlapping
@@ -74,6 +77,7 @@ behavior Environment {
             fields = array_add(fields, field)
             lives = array_add(lives, 0)
             retires = array_add(retires, -1)
+            gameplay = array_add(gameplay, true)
         }
         for i in 0..7 {
             light := await spawn(ReactionLight)
@@ -81,6 +85,7 @@ behavior Environment {
             light_ages = array_add(light_ages, 1)
             light_peaks = array_add(light_peaks, 0)
             light_delays = array_add(light_delays, 0)
+            light_gameplay = array_add(light_gameplay, true)
         }
         ready = true
     }
@@ -118,6 +123,7 @@ behavior Environment {
         light_ages[light_slot] = 0
         light_delays[light_slot] = delay
         light_peaks[light_slot] = min(1.2, strength)
+        light_gameplay[light_slot] = cue_gameplay
         light_slot = (light_slot + 1) % 8
     }
 
@@ -184,6 +190,7 @@ behavior Environment {
             sources[i] = source
             drive := get(drives, i)
             drives[i] = drive + (get(targets, i) - drive) * blend
+            targets[i] = get(targets, i) * exp(-delta * 1.1)
         }
     }
 
@@ -197,7 +204,7 @@ behavior Environment {
 
     // Patterns: fracture, move edge, tangential turn, soft fall, contact,
     // fracture front, hold, blocked edge, descending packets, clear debris,
-    // microembers, expanding energy and settling dust. These are fixed instanced fields.
+    // microembers, expanding energy, settling dust and persistent drop wakes.
     function Cue(pattern: int, x: number, y: number, direction: int, travel: int, strength: number, life: number, hue: number) {
         available := false
         for offset in 0..95 {
@@ -256,6 +263,9 @@ behavior Environment {
             case 12 {
                 count = 128
             }
+            case 13 {
+                count = 768
+            }
         }
         if cue_loss > 0 && pattern == 10 {
             count = 96
@@ -295,11 +305,14 @@ behavior Environment {
         set_material_parameter(field, "Point3", cue_point3)
         if field.Shader.material == "ReactionParticles.Cue" {
             set_material_parameter(field, "Pivot", cue_pivot)
+            set_material_parameter(field, "Origin", vec3(x, y, cue_depth))
+            set_material_parameter(field, "Current", vec3(flow, turn_velocity, energy))
         }
         set_material_parameter(field, "Delay", cue_delay)
         set_material_parameter(field, "Fade", 1)
         lives[slot] = cue_delay + life
         retires[slot] = -1
+        gameplay[slot] = cue_gameplay
         slot = (slot + 1) % 96
     }
 
@@ -329,7 +342,7 @@ behavior Environment {
         cue_depth = front
         cue_delay = 0
         strength := 0.65 + cast<number>(amount) * 0.1
-        Cue(5, center, row_y, 1, 0, strength, 0.24, 0.05)
+        Cue(5, center, row_y, 1, 0, strength, 0.5, 0.05)
         if world.Session.reduced_motion || world.Session.effects == 0 {
             return
         }
@@ -349,6 +362,7 @@ behavior Environment {
     }
 
     function BoardEvent(board: entity, record: entity) {
+        cue_gameplay = true
         kind := record.ReactionEvent.kind
         x := record.ReactionEvent.x
         piece_x := x + record.ReactionEvent.center_offset
@@ -406,6 +420,8 @@ behavior Environment {
                 quiet := world.Session.reduced_motion || world.Session.effects == 0
                 if !quiet && amount > 0 {
                     Cue(8, x, y, 1, amount, 0.32, 0.09, 0)
+                    tail := 4.8 + clamp(world.VisualState.energy * 0.7 + world.VisualState.bass * 0.3, 0, 1) * 1.2
+                    Cue(13, x, y, 1, amount, 0.35, tail, 0)
                 }
                 Landing(x, y - amount * 24, piece_x, 0.45)
                 Push(0.34, 0.12)
@@ -470,6 +486,7 @@ behavior Environment {
     }
 
     function SessionEvent(record: entity) {
+        cue_gameplay = false
         cue_point0 = vec3(-6, 0, 10.5)
         cue_point1 = vec3(-2, 0, 10.5)
         cue_point2 = vec3(2, 0, 10.5)
@@ -563,7 +580,7 @@ behavior Environment {
         }
         delta := min(dt, 0.05)
         if visual_run != world.Session.run {
-            preserve_release := visual_run == 0 && world.Session.entering && world.Session.run == 1
+            preserve_release := world.Session.entering
             Retire(preserve_release)
             visual_run = world.Session.run
             impulse = 0
@@ -607,10 +624,12 @@ behavior Environment {
             tempo *= clamp(world.VisualState.beat_confidence * 4, 0, 1)
             pulse_velocity += (tempo - pulse_velocity) * (1 - exp(-delta * 5))
             pulse += pulse_velocity * delta
-            wind += (0.18 + mid * 0.7 + energy * 0.25) * delta
+            wind += (0.18 + mid * 0.7 + energy * 0.25 + reaction * 0.8 + abs(turn_velocity) * 0.65) * delta
             chapter += (cast<number>(world.Session.stage) - chapter) * min(1, delta * 1.8)
         }
-        impulse *= exp(-delta * 1.8)
+        if advancing {
+            impulse *= exp(-delta * 1.8)
+        }
         if !moving {
             impulse = 0
             turn_velocity = 0
@@ -618,7 +637,9 @@ behavior Environment {
         for i in 0..95 {
             field := get(fields, i)
             if field.ParticleField3D.count > 0 {
-                field.ParticleField3D.time += delta
+                if world.Session.screen != 2 || !get(gameplay, i) || !moving || get(retires, i) >= 0 {
+                    field.ParticleField3D.time += delta
+                }
                 if get(retires, i) >= 0 {
                     retires[i] = max(0, get(retires, i) - delta)
                     fade := get(retires, i) / 0.06
@@ -634,7 +655,9 @@ behavior Environment {
         }
         for i in 0..7 {
             light := get(lights, i)
-            light_ages[i] += delta
+            if world.Session.screen != 2 || !get(light_gameplay, i) || !moving {
+                light_ages[i] += delta
+            }
             age := max(0, get(light_ages, i) - get(light_delays, i))
             attack := clamp(age / 0.025, 0, 1)
             release := clamp((0.3 - age) / 0.275, 0, 1)
@@ -651,6 +674,7 @@ behavior Environment {
             onset_ready = true
         }
         if advancing && onset_ready && onset_cooldown == 0 && world.VisualState.beat > 0.25 {
+            cue_gameplay = true
             onset_ready = false
             onset_cooldown = 0.16
             Push(0.15 + bass * 0.18, 0)

@@ -2,7 +2,7 @@ version 3
 name "BlockSurface"
 domain "material"
 id_counter 7000
-description "Near-opaque colored coat over an opaque BlockCore. Stage and measured music shift roughness, metallic reflection, glow and coat opacity without exposing the background through the body."
+description "Colored beveled coat with a fine luminous face border over an opaque BlockCore. Darker face centers keep each cell readable through the surrounding particle wakes."
 (array)graphs {
     - {
         kind "event"
@@ -38,9 +38,10 @@ description "Near-opaque colored coat over an opaque BlockCore. Stage and measur
             - {
                 id 400
                 type "Behavior Expression"
-                reference_name "Tint.xyz"
+                reference_name "Tint.xyz * (0.68 + Edge * 0.42)"
                 inputs {
                     Tint id=401 type="struct" type_name="ShaderVec3"
+                    Edge id=403 type="float"
                 }
                 outputs {
                     Result id=402 type="struct" type_name="ShaderVec3"
@@ -49,10 +50,11 @@ description "Near-opaque colored coat over an opaque BlockCore. Stage and measur
             - {
                 id 500
                 type "Behavior Expression"
-                reference_name "Tint.xyz * Finish.z"
+                reference_name "Tint.xyz * (Finish.z + Edge * (0.24 + Finish.z * 0.6))"
                 inputs {
                     Tint id=501 type="struct" type_name="ShaderVec3"
                     Finish id=502 type="struct" type_name="ShaderVec3"
+                    Edge id=504 type="float"
                 }
                 outputs {
                     Result id=503 type="struct" type_name="ShaderVec3"
@@ -87,6 +89,18 @@ description "Near-opaque colored coat over an opaque BlockCore. Stage and measur
                 reference_name "Opacity"
                 outputs Value=1.0
             }
+            - id=900 type="Shader UV"
+            - {
+                id 910
+                type "Behavior Expression"
+                reference_name "smoothstep(0.76, 0.9, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))"
+                inputs {
+                    UV id=911 type="struct" type_name="ShaderVec2"
+                }
+                outputs {
+                    Result id=912 type="float"
+                }
+            }
         }
         (array)edges {
             - from="200.Value" to="400.Tint"
@@ -99,10 +113,14 @@ description "Near-opaque colored coat over an opaque BlockCore. Stage and measur
             - from="600.Result" to="100.Roughness"
             - from="700.Result" to="100.Metallic"
             - from="800.Value" to="100.Opacity"
+            - from="900.UV" to="910.UV"
+            - from="910.Result" to="400.Edge"
+            - from="910.Result" to="500.Edge"
         }
     }
-    - id=1000 kind="function" math_expression="Tint.xyz" expression_mode=1 entry_id=1100
-    - id=2000 kind="function" math_expression="Tint.xyz * Finish.z" expression_mode=1 entry_id=2100
+    - id=1000 kind="function" math_expression="Tint.xyz * (0.68 + Edge * 0.42)" expression_mode=1 entry_id=1100
+    - id=2000 kind="function" math_expression="Tint.xyz * (Finish.z + Edge * (0.24 + Finish.z * 0.6))" expression_mode=1 entry_id=2100
     - id=3000 kind="function" math_expression="Finish.x" expression_mode=1 entry_id=3100
     - id=4000 kind="function" math_expression="Finish.y" expression_mode=1 entry_id=4100
+    - id=5000 kind="function" math_expression="smoothstep(0.76, 0.9, max(abs(UV.x * 2 - 1), abs(UV.y * 2 - 1)))" expression_mode=1 entry_id=5100
 }

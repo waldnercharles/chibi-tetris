@@ -160,14 +160,28 @@ behavior LossChecks {
                     before := get(positions, i)
                     p := tile.Transform3D.position
                     q := tile.Transform3D.rotation
-                    Check(p.y > before.y + 20 && abs(p.x - before.x) < 60, "loss lifts actual blocks with restrained sideways spread")
+                    center := 0
+                    if duet {
+                        center = -254
+                        if before.x > 0 {
+                            center = 254
+                        }
+                    }
+                    Check(p.y > before.y + 80 && abs(p.x - before.x) > 35, "loss sends actual blocks well beyond their grid cells")
+                    Check((p.x - before.x) * (before.x - center) > 0, "each block departs outward from its own well")
                     Check(p.z > before.z && abs(q.x) + abs(q.y) + abs(q.z) > 0.01, "original block meshes tumble through depth")
-                    Check(tile.Transform3D.scale.x > 0.99 && tile.Geometry3D.width == 22, "block bodies retain their recognizable size before the tail")
+                    Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1 && tile.Geometry3D.width == 22, "block bodies keep their full dimensions throughout flight")
                     Check(tile.Material.scene == get(colors, i), "each released block retains its original piece color")
                 }
                 Check(ReleaseFields() > 0, "quiet ember trails accompany the colored block bodies")
                 Check(world.Session.screen == 4, "results wait for the loss choreography")
                 CheckPreviews()
+            }
+            if age == 148 && !quiet {
+                Check(VisibleTiles() > 0, "full-size bodies still depart before leaving view")
+                for tile in tiles {
+                    Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1, "loss never scales a departing or retired body toward zero")
+                }
             }
             if age == 230 && !quiet {
                 Check(VisibleTiles() == 0, "released bodies retire smoothly after their upward flight")

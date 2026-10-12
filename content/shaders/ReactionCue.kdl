@@ -32,6 +32,14 @@ parameters {
         type "vec3"
         (array)default 0.0 0.0 0.0
     }
+    Origin {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
+    Current {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
     Delay type="float" default=0.0
     Fade type="float" default=1.0
 }

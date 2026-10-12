@@ -14,6 +14,41 @@ float cue_exposed(vec3 point, vec2 normal, ChibiParameters u)
     );
 }
 
+// The drop's white wash has its own short field. These smaller grains retain
+// the recorded path, then spread into the surrounding current over seconds.
+ChibiParticle drop_wake(ChibiParticleInput p, ChibiParameters u, vec3 point, vec3 random, float quantile)
+{
+    float elapsed = max(0.0, p.time - u.Delay - quantile * 0.055);
+    float duration = u.Life * (0.80 + random.z * 0.16);
+    float envelope = smoothstep(0.0, 0.06, elapsed) *
+        (1.0 - smoothstep(duration * 0.44, duration, elapsed)) * u.Fade;
+    float motion = elapsed * (1.0 - u.Quiet);
+    vec3 source = point + vec3((random.x - 0.5) * 21.0,
+        -u.Travel * 24.0 * quantile, 0.7 + random.y * 2.0);
+    vec3 q = (source + u.Origin) * 0.009 + random * 4.0;
+    q += vec3(u.Current.x * 0.071, -u.Current.x * 0.053, u.Current.x * 0.037);
+    vec3 curl = vec3(sin(q.z) + cos(q.y), sin(q.x) + cos(q.z), sin(q.y) + cos(q.x));
+    float side = mix(-1.0, 1.0, step(0.5, random.x));
+    vec3 velocity = vec3(side * (80.0 + random.y * 110.0) + u.Current.y * 45.0,
+        -12.0 + (random.z - 0.5) * 44.0, -36.0 - random.y * 52.0);
+    float drift = reaction_drag(0.28, motion);
+    vec3 position = source + velocity * drift + curl * (motion - drift) * 28.0;
+    float hot = exp(-elapsed * 8.0);
+    // Sparse coarse flecks remain readable among the ambient field's fine dust.
+    float coarse = smoothstep(0.78, 0.94, random.z);
+    float grain = 1.2 + random.z * 1.6 + coarse * 2.4;
+    float light = 1.5 + random.y * 0.6 + u.Current.z * 0.3;
+    ChibiParticle result = chibi_particle();
+    result.position = position;
+    result.size = grain * sqrt(max(envelope, 0.0));
+    result.color = vec4(mix(vec3(0.18, 0.72, 0.98) * light, vec3(0.82, 1.35, 1.6), hot),
+        envelope * (0.48 + random.z * 0.30 + coarse * 0.12));
+    result.scale = vec3(1.0 + hot * (1.2 + random.y), 0.8, 0.8);
+    result.rotation = vec3(0.0, 0.0, atan(velocity.y, velocity.x));
+    result.lighting = 0.16;
+    return result;
+}
+
 ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
 {
     vec3 random = reaction_random(p.index, p.seed);
@@ -25,6 +60,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     if (cell == 3) point = u.Point3;
     vec3 center = (u.Point0 + u.Point1 + u.Point2 + u.Point3) * 0.25;
     int pattern = int(u.Pattern + 0.5);
+    if (pattern == 13) return drop_wake(p, u, point, random, quantile);
     float age = max(0.0, p.time - u.Delay);
     float birth = reaction_birth(min(u.Life * 0.12, 0.045), quantile);
     float duration = u.Life * (0.70 + random.z * 0.16);

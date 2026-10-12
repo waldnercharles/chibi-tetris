@@ -8,6 +8,7 @@ behavior MusicFieldChecks {
     drive := vec3(0, 0, 0)
     phase := 0
     flow := 0
+    charged := 0
 
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
@@ -87,6 +88,7 @@ behavior MusicFieldChecks {
                 second := world.VisualState.field_impulse1
                 Check(second.x == 250 && second.y == -100 && second.z > 0, "distant input gets a separate captured origin")
                 Check(world.VisualState.field_impulse0.x == -200, "distant input leaves the first wave in place")
+                charged = world.VisualState.field_motion0.x
             }
             case 14 {
                 Capture()
@@ -108,6 +110,13 @@ behavior MusicFieldChecks {
                 Frozen()
                 Check(world.VisualState.field_impulse2.z == 2.6 && world.VisualState.field_impulse3.z == 2.6, "reduced motion creates no new spatial force")
                 world.Session.reduced_motion = false
+            }
+            case 90 {
+                Check(world.VisualState.field_motion0.x > 0 && world.VisualState.field_motion0.x < charged, "accepted input brightness and force decay continuously after the action")
+                ReactionRules.Emit(board, 1, 0, 700, 300, 1, 1, 3)
+            }
+            case 92 {
+                Check(world.VisualState.field_impulse2.z == 2.6 && world.VisualState.field_impulse3.z == 2.6, "rejected movement cannot brighten or deflect ambient particles")
             }
             case 210 {
                 Check(world.VisualState.field_impulse0.z == 2.6 && world.VisualState.field_impulse1.z == 2.6, "all spatial impulses finish after their bounded lifetime")

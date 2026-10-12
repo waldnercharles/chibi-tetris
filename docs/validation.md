@@ -1,5 +1,53 @@
 # Validation record
 
+## Nine-minute visual polish — October 11, 2026
+
+This pass inspected only 0:00–9:00 of the supplied recording. Nine contact
+sheets retain 180 frames at three-second intervals, with a separate clear
+detail sheet. [The study](tetris-effect-study.md#nine-minute-polish-pass)
+records the observations and adaptations. The downloaded movie and loose
+frames were removed; contact sheets, browser captures and logs remain in
+ignored `.chibi/reference-polish`.
+
+Hard drops now retain a separate 768-grain wake for 4.8–6 seconds. Accepted
+actions brighten and bend the existing background, and gameplay tails freeze
+when paused. A longer clear front, finer grid and luminous block borders make
+the well easier to read. Original cyan streams and a rim give way to ivory,
+amber and teal orbital geometry. New runs and losses share full-size outward
+block flight. Automatic Journey chapters briefly hide the board during a
+2.6-second camera passage, then restore the same pile and score. Quiet settings
+skip the passage and retire departing blocks without movement or shrinking.
+
+Independent review covered transition ownership, opaque block cores, fixed
+pools, pause clocks, shader bounds and audio recovery. The selected dispatcher
+group (`--loss`, `--attract`, `--consumer`, `--vfx`, `--music-field`, `--stage`,
+`--ui`) passed 16 C cases and 821 dispatcher assertions in 45.569 seconds under
+one production 60-second deadline. Fixtures also execute authored assertions,
+including hidden/restored cell identities and input rejection during passage.
+Audio interruption cases supply host-visible connection loss and recover
+through the real `AudioReactive` fallback; they do not simulate browser stream
+termination. New palette and particle ownership checks failed
+against their prior implementations during development.
+
+Production and changed fixture assets are formatted, C formatting and diff
+checks pass, and validation reports 144 assets with zero errors or warnings.
+Native and web exports use the unchanged pinned engine and SDK. A bounded
+640 × 360 Metal preview compiled and rendered the orbital shader. The final
+web build visibly rendered the revised wake, block borders, background shapes
+and whole-block departure; movement, rotation, hold, both Duet drops and pause
+were exercised. No product errors appeared in the browser console.
+
+At normal 2560 × 1440 rendering (1280 × 720 CSS), two-second warmups followed
+by 2.5-second samples measured Journey at 58.80 FPS, 16.7 ms median and 24.1 ms
+p95, and Duet at 58.82 FPS, 16.7 ms median and 24.9 ms p95. The prior build's
+same-size sample measured 58.78 FPS and 24.9 ms p95. These are short local
+observations, not sustained or cross-device guarantees. Public revision,
+assets and play are verified separately after committing and publishing.
+
+The game-wide aggregate and full/quarantined engine, render and Studio suites
+were not run or reconstructed. The engine pin did not change. No temporary
+project clones or one-off executables remain from this pass.
+
 ## Persistent particle flow and reference-led reactions — October 11, 2026
 
 The engine pinned in `toolchain.json` adds optional persistent state to GLSL particle fields. A GPU update writes position, velocity and age into ping-pong floating-point textures; the instanced mesh draw reads that state. The 131,072 main grains now move through changing force fields instead of prescribed surfaces. Another 16,384 grains provide quiet depth. Stable integer hashes give the main population distinct identities, and independently distributed reset ages prevent a synchronized fade. This is particle advection, not a pressure-based fluid solver or particle collision system.

@@ -5,6 +5,11 @@ component Session {
     // Initial live demo and the explicit Play handoff never advance run results.
     attract: bool
     entering: bool
+    // A pending new run releases the current bodies before resetting the board.
+    departing: bool
+    // Earned Journey chapters pause play while the scenery carries the board onward.
+    journey: bool
+    journey_time: number
     intro_time: number
     hud_alpha: number
     selected_mode: int

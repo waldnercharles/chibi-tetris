@@ -860,11 +860,11 @@ TEST_CASE(attract_placement_rules)
 
 TEST_CASE(attract_play_handoff)
 {
-    yyjson_mut_doc *doc = request("AttractChecks", 313);
+    yyjson_mut_doc *doc = request("AttractChecks", 385);
     key(doc, 0, 0);
     tap(doc, 100, KEY_3);
     tap(doc, 140, KEY_ENTER);
-    tap(doc, 265, KEY_SPACE);
+    tap(doc, 337, KEY_SPACE);
     REQUIRE(snapshot(doc));
     REQUIRE(report(31));
     return true;
@@ -894,7 +894,7 @@ TEST_CASE(attract_reduced_motion)
 
 TEST_CASE(attract_audio_failure_recovery)
 {
-    yyjson_mut_doc *doc = request("AttractRecoveryChecks", 183);
+    yyjson_mut_doc *doc = request("AttractRecoveryChecks", 253);
     key(doc, 0, 0);
     tap(doc, 5, KEY_ENTER);
     tap(doc, 20, KEY_ENTER);
@@ -905,7 +905,7 @@ TEST_CASE(attract_audio_failure_recovery)
 
 TEST_CASE(compact_opening_pointer_controls)
 {
-    yyjson_mut_doc *doc = request("UiChecks", 76);
+    yyjson_mut_doc *doc = request("UiChecks", 82);
     key(doc, 0, 0);
     click_world(doc, 6, -440, 135);
     click_world(doc, 10, -367, 11);
@@ -1397,13 +1397,13 @@ TEST_CASE(evolving_stage_direction)
     yyjson_mut_doc *doc = request("StageChecks", 126);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(46));
+    REQUIRE(report(54));
     return true;
 }
 
 TEST_CASE(layered_world_space_reactions)
 {
-    yyjson_mut_doc *doc = request("VfxChecks", 770);
+    yyjson_mut_doc *doc = request("VfxChecks", 1147);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
     REQUIRE(report(211));
@@ -1461,6 +1461,60 @@ TEST_CASE(occupied_stack_releases_on_loss)
     REQUIRE(yyjson_get_int(field("Board1", "BoardState", "score")) == 0);
     REQUIRE(yyjson_get_int(field("Board1", "BoardState", "ghost_row")) >= 18);
     REQUIRE(!visible_mesh("content/meshes/text/game_over.mesh"));
+    return true;
+}
+
+TEST_CASE(occupied_boards_depart_before_new_runs)
+{
+    for (int variant = 0; variant < 7; ++variant) {
+        bool quiet = variant == 4 || variant == 5;
+        yyjson_mut_doc *doc = request("TransitionChecks", quiet ? 73 : 253);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        char value[8];
+        snprintf(value, sizeof value, "%d", variant);
+        yyjson_mut_obj_add_strcpy(doc, saved, "test_transition", value);
+        yyjson_mut_obj_add_str(doc, saved, "reduced_motion", variant == 4 ? "1" : "0");
+        yyjson_mut_obj_add_str(doc, saved, "effects", variant == 5 ? "0" : "2");
+        key(doc, 0, 0);
+        for (int frame = 10; frame <= 14; frame += 4) {
+            yyjson_mut_val *input = sample_input(doc, frame);
+            yyjson_mut_val *controls = yyjson_mut_obj_add_arr(doc, input, "controls");
+            yyjson_mut_arr_add_int(doc, controls, KEY_SPACE);
+            yyjson_mut_arr_add_int(doc, controls, KEY_W);
+            key(doc, frame + 1, 0);
+        }
+        if (variant == 0 || variant == 4) {
+            tap(doc, 18, KEY_P);
+        }
+        tap(doc, 28, KEY_SPACE);
+        if (variant < 4) {
+            tap(doc, 200, KEY_SPACE);
+        }
+        REQUIRE(snapshot(doc));
+        REQUIRE(report(variant == 6 ? 19 : 15));
+    }
+    return true;
+}
+
+TEST_CASE(journey_passage_preserves_the_board)
+{
+    for (int variant = 0; variant < 4; ++variant) {
+        bool quiet = variant == 1 || variant == 2;
+        yyjson_mut_doc *doc = request("JourneyChecks", quiet ? 58 : 213);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "reduced_motion", variant == 1 ? "1" : "0");
+        yyjson_mut_obj_add_str(doc, saved, "effects", variant == 2 ? "0" : "2");
+        yyjson_mut_obj_add_str(doc, saved, "test_audio_failure", variant == 3 ? "1" : "0");
+        key(doc, 0, 0);
+        tap(doc, 10, KEY_SPACE);
+        tap(doc, 14, KEY_SPACE);
+        if (!quiet) {
+            tap(doc, 28, KEY_SPACE);
+        }
+        tap(doc, quiet ? 45 : 200, KEY_SPACE);
+        REQUIRE(snapshot(doc));
+        REQUIRE(report(variant == 3 ? 27 : 17));
+    }
     return true;
 }
 
@@ -1584,6 +1638,8 @@ int main(int argc, char **argv)
     }
     if (all || loss) {
         RUN_TEST_CASE(occupied_stack_releases_on_loss);
+        RUN_TEST_CASE(occupied_boards_depart_before_new_runs);
+        RUN_TEST_CASE(journey_passage_preserves_the_board);
     }
     if (all || music_response) {
         RUN_TEST_CASE(authored_music_response);

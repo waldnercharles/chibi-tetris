@@ -12,7 +12,7 @@ Shell fixtures run the actual `World` prototype and `Shell` behavior. Test-only 
 
 The unowned ReactionField prototype first runs by itself and must remain dormant before its owner configures an event. The production Stillwater scene also runs directly. Its check explicitly chooses the score, exercises drop, pause/resume and mode keys, verifies that the UI snapshot is empty, checks the authored GPU field counts and confirms that effects-off and reduced-motion settings freeze the complete field shape while gameplay remains active. Legacy sprite particle count remains zero. Mode changes retain the same entity pool.
 
-The `--attract` cases cover legal autoplayer evaluation, real demo locks without progress, same-run queue continuity after recovery, explicit Play, shared row-clear handoff, camera motion and actual HUD opacity during reveal. The `--onboarding` cases verify that gameplay waits for explicit Play, including direct capture requests, connected-source preservation, score selection, and preserved paused runs. World-space pointer rays exercise both music actions and an outside click through the actual HUD. The controller verifies authored connection state; real browser checks separately verify the permission request.
+The `--attract` cases cover legal autoplayer evaluation, real demo locks without progress, same-run queue continuity after recovery, explicit Play, shared whole-block departure, camera motion and actual HUD opacity during reveal. The `--onboarding` cases verify that gameplay waits for explicit Play, including direct capture requests, connected-source preservation, score selection, and preserved paused runs. World-space pointer rays exercise both music actions and an outside click through the actual HUD. The controller verifies authored connection state; real browser checks separately verify the permission request.
 
 The `--previews` case drives the production Shell and both Boards. It counts actual hold and next-piece meshes: Solo and Duet hide them during pause and restore them on resume while keeping board context visible. It also runs with `--hud` and the complete dispatcher.
 
@@ -23,10 +23,15 @@ These are bounded simulation checks. They do not claim GPU rendering, physical-c
 `--motion` covers a single-row soft tap, controlled held repeats, no stored-gravity burst, repeated short taps, high gravity, four solid block finishes with a shared bevel, a camera depth-precision margin for their thinnest preview coating, restrained idle emission, music-reactive settled and active coat opacity, physical reaction origins and cosmetic beat motion. `--stage` covers seeded starts, musical/chapter transitions, ten-second morphs through every family including wraparound, removal of surrounding facets, stage-light freeze and reduced motion. `--vfx` covers birth/delay/retirement, physical front-face and landing positions, contact-light timing, four clear layers with exact instance budgets and shader bindings, and saturation without overwriting live cues.
 
 `--loss` drives real boards into top-out in Solo and Duet. It verifies sparse
-row occupancy, original colored blocks lifting and tumbling intact, the fixed
+row occupancy, original colored blocks flying outward and tumbling at full size, the fixed
 field budget, frozen controls and clock, preserved scoring, quiet settings,
 fixed visible Hold and Next previews and delayed results. It also checks
 rescue priority, winning final clears and chapter selection after the loss
 phase. Returning from the audio chooser preserves the completed result and
-leaves retired blocks hidden. A loss snapshot is simulation evidence;
+leaves retired blocks hidden. The same selection covers occupied new-game
+departures, mode switches, quiet settings, and Journey passages that preserve
+the run and freeze input and time. `--vfx` additionally checks four-second drop
+wakes, accepted-action ownership, paused Solo/Duet tails and final retirement;
+`--music-field` checks that the force targets decay after input stops.
+A loss snapshot is simulation evidence;
 rendered drift, shader compilation and browser frame time are separate checks.

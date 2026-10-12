@@ -504,7 +504,7 @@ behavior Hud {
 
     function Reveal() {
         opacity := 1
-        if world.Session.entering {
+        if world.Session.entering || world.Session.journey {
             opacity = world.Session.hud_alpha
         }
         for label in labels {
@@ -620,7 +620,7 @@ behavior Hud {
         options_changed = false
         changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial || selected_mode != world.Session.selected_mode
         if refresh < 0.1 && !changed {
-            if world.Session.entering && !world.Session.attract {
+            if (world.Session.entering || world.Session.journey) && !world.Session.attract {
                 Reveal()
             }
             return

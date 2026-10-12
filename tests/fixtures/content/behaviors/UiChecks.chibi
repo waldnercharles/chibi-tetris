@@ -82,7 +82,7 @@ behavior UiChecks {
                 Check(world.Session.entering && world.Session.audio_source == 0, "Play explicitly falls back while capture is pending")
                 Check(VisiblePlates() == 0 && !VisibleLabel("content/meshes/text/ui_play.mesh"), "all opening panels hide during the clear handoff")
             }
-            case 73 {
+            case 79 {
                 Check(world.Session.run == 1 && world.Session.mode == 3 && !world.Session.entering, "selected mode starts after the reduced-motion handoff")
                 Check(VisiblePlates() == 0 && VisibleLabel("content/meshes/text/score.mesh"), "play HUD replaces the compact opening controls")
                 self.TestReport.done = true

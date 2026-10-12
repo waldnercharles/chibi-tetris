@@ -1,0 +1,177 @@
+// Production boards retain their bodies and run state until a requested reset.
+behavior TransitionChecks {
+    world: entity
+    first: entity
+    second: entity
+    camera: entity
+    frame: int = 0
+    variant: int = 0
+    run: int = 0
+    mode: int = 0
+    seed: int = 0
+    score: int = 0
+    pieces: int = 0
+    meshes: int = 0
+    elapsed := 0
+    quiet := false
+    tiles: entity[]
+    positions: CF_V3[]
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        first = get_global_variable("Board1")
+        second = get_global_variable("Board2")
+        camera = get_global_variable("Camera")
+        variant = cast<int>(read_saved_number("test_transition", 0).Number)
+        quiet = variant == 4 || variant == 5
+    }
+
+    function Finished() {
+        expected := mode
+        if variant == 1 {
+            expected = 3
+        }
+        if variant == 3 {
+            expected = 2
+        }
+        Check(world.Session.run == run + 1 && world.Session.mode == expected, "departure commits exactly the requested new run")
+        Check(!world.Session.entering && !world.Session.departing && world.Session.screen == 1, "new run begins only after the reveal")
+        Check(first.BoardState.pieces == 0 && first.BoardState.score == 0 && !first.BoardState.topout, "reset clears the departed stack and counters")
+        Check(world.Session.elapsed > 0 && world.Session.elapsed < 1, "only the new run advances its clock after reveal")
+        Check(length(find_entities_with_component("MeshAsset")) == meshes, "transitions reuse the fixed mesh pools")
+        if variant != 1 && variant != 3 {
+            Check(world.Session.seed == seed, "restart preserves the seeded sequence")
+        }
+        if expected == 3 {
+            Check(second.BoardState.current == first.BoardState.current && !second.BoardState.topout, "Duet starts both fresh boards from the same sequence")
+        }
+        self.TestReport.done = true
+    }
+
+    on Tick {
+        match (frame) {
+            case 1 {
+                if variant == 3 {
+                    send_event<"Duet">(world)
+                }
+            }
+            case 20 {
+                run = world.Session.run
+                mode = world.Session.mode
+                seed = world.Session.seed
+                score = first.BoardState.score
+                pieces = first.BoardState.pieces
+                meshes = length(find_entities_with_component("MeshAsset"))
+                Check(pieces == 2 && score > 0, "legal drops create the old run's occupied board")
+                if variant == 2 {
+                    world.Session.screen = 3
+                    world.Session.won = true
+                }
+            }
+            case 22 {
+                if variant == 1 {
+                    send_event<"Duet">(world)
+                } else {
+                    if variant == 3 {
+                        send_event<"Sprint">(world)
+                    } else {
+                        send_event<"Restart">(world)
+                    }
+                }
+            }
+            case 24 {
+                elapsed = world.Session.elapsed
+                Check(world.Session.entering && world.Session.departing && world.Session.screen == 4, "occupied restart begins the shared loss departure")
+                Check(world.Session.run == run && world.Session.mode == mode, "departing boards retain their original run and placement")
+                Check(first.BoardState.score == score && first.BoardState.pieces == pieces, "release preserves the old run until reset")
+                for tile in find_entities_with_component("MeshAsset") {
+                    if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
+                        tiles = array_add(tiles, tile)
+                        positions = array_add(positions, tile.Transform3D.position)
+                    }
+                }
+                Check(length(tiles) >= 8, "old settled blocks remain visible at departure start")
+                send_event<"Resume">(world)
+                send_event<"Restart">(world)
+                send_event<"Journey">(world)
+            }
+            case 35 {
+                Check(world.Session.run == run && world.Session.elapsed == elapsed, "queued transition freezes the old clock and rejects further run commands")
+                Check(camera.Transform3D.position.x > 75, "restart camera remains centered instead of replaying the opening pan")
+                width := 700
+                if mode == 3 {
+                    width = 1208.8889
+                }
+                Check(abs(camera.Camera.width - width) < 0.01, "departing boards keep their original Solo or Duet framing")
+                for i in 0..length(tiles) - 1 {
+                    tile := get(tiles, i)
+                    before := get(positions, i)
+                    Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1, "departure keeps every block full size")
+                    if quiet {
+                        p := tile.Transform3D.position
+                        Check(abs(p.x - before.x) + abs(p.y - before.y) + abs(p.z - before.z) < 0.001 && !tile.RenderState.hidden, "quiet departure remains stationary before retirement")
+                    }
+                }
+            }
+            case 70 {
+                if quiet {
+                    Finished()
+                }
+            }
+            case 90 {
+                if !quiet {
+                    Check(world.Session.run == run && world.Session.elapsed == elapsed, "new game waits for the old blocks to leave")
+                    for i in 0..length(tiles) - 1 {
+                        tile := get(tiles, i)
+                        before := get(positions, i)
+                        Check(!tile.RenderState.hidden && tile.Transform3D.position.y > before.y + 20, "restarts use the same intact moving bodies as loss")
+                    }
+                }
+            }
+            case 194 {
+                if !quiet {
+                    Check(world.Session.run == run + 1 && !world.Session.departing && world.Session.entering, "reset occurs after departure and before reveal completes")
+                    Check(world.Session.elapsed == 0 && first.BoardState.pieces == 0, "reveal suppresses controls and the new game clock")
+                }
+                if variant == 6 {
+                    // Match the state AudioReactive exposes when a host stream
+                    // ends. The no-device controller cannot inject host PCM/status.
+                    world.Session.audio_source = 1
+                    world.Session.audio_ready = false
+                    world.Session.audio_return_screen = 1
+                    world.Session.screen = 0
+                }
+            }
+            case 198 {
+                if variant == 6 {
+                    Check(world.Session.screen == 0 && !world.Session.entering && !world.Session.departing, "source failure exits the reveal into explicit audio selection")
+                    Check(world.Session.run == run + 1 && world.Session.elapsed == 0 && first.BoardState.pieces == 0, "interrupted reveal retains its single committed new run")
+                    world.Session.audio_request = 1
+                }
+            }
+            case 204 {
+                if variant == 6 {
+                    Check(world.Session.audio_source == 0 && world.Session.audio_ready && world.Session.screen == 1, "actual AudioReactive score selection recovers the interrupted reveal")
+                    Check(world.Session.run == run + 1 && !first.BoardState.topout, "audio recovery resumes without replaying loss or resetting again")
+                }
+            }
+            case 250 {
+                if !quiet {
+                    Finished()
+                }
+            }
+        }
+        frame += 1
+    }
+}
