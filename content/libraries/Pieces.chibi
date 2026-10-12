@@ -163,10 +163,9 @@ library Pieces {
         return (get(xs, test - 1), get(ys, test - 1))
     }
 
+    // Shape and stored kind identify pieces; every rendered cell shares this tint.
     function Color(kind: int) -> (color: uint) {
-        colors: uint[] = [33884159, 60608255, 4105046271, 2166939647,
-        430593791, 3811001599, 575328255, 4066841599]
-        return get(colors, kind)
+        return cast<uint>(1807469311)
     }
 
     // Park-Miller in 64-bit integers is identical on native and WebAssembly.

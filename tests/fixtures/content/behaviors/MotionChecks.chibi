@@ -31,10 +31,24 @@ behavior MotionChecks {
     action_emission := 0
     landing_tile: entity
     landing_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    ripple_tiles: entity[] = []
+    near_tile: entity
+    far_tile: entity
+    near_arrival: int = -1
+    far_arrival: int = -1
+    near_baseline := 0
+    far_baseline := 0
+    ripple_peak := 0
+    ripple_step := 0
+    prior_ripple := 0
+    paused_ripple := 0
+    paused_sink := 0
 
     on Begin {
         world = get_global_variable("World")
         board = get_global_variable("Board1")
+        near_tile = self
+        far_tile = self
     }
 
     function Check(condition: bool, message: string) {
@@ -115,7 +129,7 @@ behavior MotionChecks {
         Check(active.Geometry3D.width == 22 && active.Geometry3D.height == 22, "block footprint remains inside its cell")
         Check(active.Shader.material == "BlockSurface", "stage blocks use a lit material")
         alpha := cast<number>(active.Material.scene & 255)
-        Check(alpha >= 239 && alpha <= 255, "each stage keeps the colored coat near opaque")
+        Check(alpha >= 214 && alpha <= 246, "each stage retains a translucent coat over its stable dark body")
     }
 
     on Tick {
@@ -171,12 +185,13 @@ behavior MotionChecks {
                 action_emission = active.Material.emission_intensity
             }
             case 29 {
-                Check(board.BoardState.column == action_column - 1 && active.Transform3D.position.x == action_position.x - 24, "move feedback keeps the rendered cell centered on the immediate logical move")
+                Check(board.BoardState.column == action_column - 1, "accepted movement changes its logical cell immediately")
+                Check(active.Transform3D.position.x < action_position.x - 12 && active.Transform3D.position.x > action_position.x - 24, "the rendered cell approaches its accepted endpoint continuously")
                 Check(abs(active.Transform3D.rotation.y) > 0.001 && active.Material.emission_intensity > action_emission, "accepted movement adds a visible lean and highlight without audio")
                 Check(active.Transform3D.position.y == action_position.y && Same(ghost.Transform3D.scale, vec3(1, 1, 1)), "input feedback leaves gravity and landing ghost geometry unchanged")
             }
             case 31 {
-                Check(board.BoardState.column == action_column && active.Transform3D.position.x == action_position.x, "opposing moves return to the same logical cell without accumulating visual displacement")
+                Check(board.BoardState.column == action_column && active.Transform3D.position.x < action_position.x && active.Transform3D.position.x > action_position.x - 8, "opposing moves retain the current render position while returning toward the original cell")
                 Check(abs(active.Transform3D.rotation.y) < 0.04 && active.Material.emission_intensity < 0.2, "opposing impulses remain bounded while their highlight continues")
             }
             case 33 {
@@ -276,7 +291,7 @@ behavior MotionChecks {
             }
             case 146 {
                 camera: entity = get_global_variable("Camera")
-                Check(camera.Camera.width == 700, "single-board framing preserves a readable board in narrow windows")
+                Check(camera.Camera.width == 1000, "single-board framing preserves a readable board in narrow windows")
                 Check(board.BoardState.level == 20 && board.BoardState.row >= 18, "soft drop never slows faster high-level gravity")
                 Check(board.BoardState.pieces == 0, "high-level gravity retains the half-second lock delay")
             }
@@ -304,14 +319,14 @@ behavior MotionChecks {
                 meshes := find_entities_with_component("MeshAsset")
                 for tile in meshes {
                     position := tile.Transform3D.position
-                    if !tile.RenderState.hidden && tile.Geometry3D.width == 22 && position.z == 0 && abs(position.x - record.ReactionEvent.point0.x) < 0.001 && abs(position.y - record.ReactionEvent.point0.y) < 0.001 {
+                    if !tile.RenderState.hidden && tile.Geometry3D.width == 22 && position.z == 0 && abs(position.x - record.ReactionEvent.point0.x) < 0.001 && abs(position.y - board.Transform3D.position.y - record.ReactionEvent.point0.y) < 0.001 {
                         landing_tile = tile
-                        landing_position = position
+                        landing_position = vec3(position.x, position.y - board.Transform3D.position.y, position.z)
                         break
                     }
                 }
-                Check(board.Transform3D.position.y < -1 && board.Transform3D.position.y > -5, "hard-drop weight sinks the well a few pixels without delaying placement")
-                Check(board.Transform3D.position.z < -16, "hard-drop weight also settles slightly into depth")
+                Check(board.Transform3D.position.y < -4 && board.Transform3D.position.y > -11, "hard-drop weight moves the complete rendered board without delaying placement")
+                Check(board.Transform3D.position.z == -16, "coherent board weight preserves cell and ghost depth alignment")
                 Check(landing_tile != self && board.BoardState.pieces == 1, "hard drop places the captured piece immediately before its contact response")
                 if landing_tile != self {
                     Check(landing_tile.Transform3D.scale.z < 1 && landing_tile.Material.emission_intensity > 0.04, "newly settled cells compress and brighten at contact")
@@ -320,7 +335,9 @@ behavior MotionChecks {
             }
             case 186 {
                 if landing_tile != self {
-                    Check(Same(landing_tile.Transform3D.position, landing_position) && landing_tile.Transform3D.scale.z > 0.99, "contact depth settles while occupied cell centers remain fixed")
+                    position := landing_tile.Transform3D.position
+                    position.y -= board.Transform3D.position.y
+                    Check(Same(position, landing_position) && landing_tile.Transform3D.scale.z > 0.99, "contact depth settles while occupied cells retain their board-relative centers")
                 }
                 world.Session.reduced_motion = true
             }
@@ -342,8 +359,94 @@ behavior MotionChecks {
                 Check(cast<number>(settled.Material.scene & 255) > cast<number>(settled_color & 255), "bass changes the settled coat opacity above its solid core")
                 Check((settled.Material.scene & 4294967040) == (settled_color & 4294967040), "music keeps the settled piece hue")
                 Check(Same(settled.Transform3D.position, settled_position) && Same(settled.Transform3D.scale, vec3(1, 1, 1)), "settled material changes leave occupied cells stationary")
+            }
+            case 215 {
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                world.VisualState.mid = 0
+                world.VisualState.beat = 0
+                for tile in find_entities_with_component("MeshAsset") {
+                    if !tile.RenderState.hidden && tile.Geometry3D.width == 22 && tile.Transform3D.position.z == 0 {
+                        ripple_tiles = array_add(ripple_tiles, tile)
+                    }
+                }
+                Check(length(ripple_tiles) == 4, "ripple regression starts with a settled piece before the next drop")
+            }
+            case 222 {
+                record := Last(6)
+                center := (Point(record, 0) + Point(record, 1) + Point(record, 2) + Point(record, 3)) * 0.25
+                center.y -= record.ReactionEvent.amount * 24
+                nearest := 1000000
+                farthest := -1
+                for tile in ripple_tiles {
+                    position := tile.Transform3D.position
+                    x := position.x - center.x
+                    y := position.y - board.Transform3D.position.y - center.y
+                    distance := sqrt(x * x + y * y)
+                    if distance < nearest {
+                        nearest = distance
+                        near_tile = tile
+                    }
+                    if distance > farthest {
+                        farthest = distance
+                        far_tile = tile
+                    }
+                }
+                Check(farthest - nearest > 20, "the ripple crosses distinct occupied-cell distances")
+                near_baseline = 0.08
+                far_baseline = 0.08
+            }
+            case 255 {
+                Check(near_arrival >= 222 && far_arrival > near_arrival, "the drop lights nearer occupied cells before farther cells")
+                Check(ripple_peak > 0.5 && ripple_peak < 1.8, "the traveling wave makes a clear bounded highlight on the settled stack")
+                palette := Pieces.Color(1)
+                for tile in find_entities_with_component("MeshAsset") {
+                    if !tile.RenderState.hidden {
+                        Check(floor(cast<number>(tile.Material.scene) / 256) == floor(cast<number>(palette) / 256), "active settled and preview blocks share one hue")
+                    }
+                }
+                ripple_peak = 0
+                prior_ripple = near_tile.Material.emission_intensity
+            }
+            case 292 {
+                paused_ripple = near_tile.Material.emission_intensity
+                paused_sink = board.Transform3D.position.y
+                world.Session.screen = 2
+            }
+            case 300 {
+                Check(near_tile.Material.emission_intensity == paused_ripple && board.Transform3D.position.y == paused_sink, "pause freezes a live cell ripple and coherent board recoil")
+                world.Session.screen = 1
+            }
+            case 312 {
+                Check(ripple_peak > 0.5 && ripple_peak < 1.8 && ripple_step < 0.65, "overlapping drops preserve a bright smooth bounded wave")
+                world.Session.effects = 0
+            }
+            case 314 {
+                Check(board.Transform3D.position.y == 0, "effects off restores the complete board to its logical frame")
+                for tile in ripple_tiles {
+                    Check(tile.Material.emission_intensity < 0.1, "effects off clears every occupied-cell ripple")
+                }
+                world.Session.effects = 2
+            }
+            case 390 {
+                Check(near_tile.Material.emission_intensity < 0.1, "expired or cleared waves never replay on old settled cells")
                 self.TestReport.done = true
             }
+        }
+        if frame >= 222 && frame < 255 && near_tile != self && far_tile != self {
+            if near_arrival < 0 && near_tile.Material.emission_intensity > near_baseline + 0.14 {
+                near_arrival = frame
+            }
+            if far_arrival < 0 && far_tile.Material.emission_intensity > far_baseline + 0.14 {
+                far_arrival = frame
+            }
+            ripple_peak = max(ripple_peak, near_tile.Material.emission_intensity)
+        }
+        if frame >= 269 && frame < 312 && near_tile != self {
+            value := near_tile.Material.emission_intensity
+            ripple_peak = max(ripple_peak, value)
+            ripple_step = max(ripple_step, abs(value - prior_ripple))
+            prior_ripple = value
         }
         frame += 1
     }

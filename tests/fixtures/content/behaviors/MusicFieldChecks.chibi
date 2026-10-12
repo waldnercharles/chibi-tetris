@@ -9,6 +9,13 @@ behavior MusicFieldChecks {
     phase := 0
     flow := 0
     charged := 0
+    wave_origin := vec3(0, 0, 0)
+    wave_frozen := vec3(0, 0, 0)
+    wave_power := 0
+    reject_origin := vec3(0, 0, 0)
+    phase_follow := false
+    previous_phase := 0
+    largest_phase_step := 0
 
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
@@ -24,6 +31,15 @@ behavior MusicFieldChecks {
     function Emit(x: number, y: number) {
         record := board.ReactionQueue.write
         ReactionRules.Emit(board, 1, 1, x, y, 1, 1, 3)
+        record.ReactionEvent.point0 = vec3(x - 12, y - 12, 10.5)
+        record.ReactionEvent.point1 = vec3(x + 12, y - 12, 10.5)
+        record.ReactionEvent.point2 = vec3(x - 12, y + 12, 10.5)
+        record.ReactionEvent.point3 = vec3(x + 12, y + 12, 10.5)
+    }
+
+    function Drop(x: number, y: number, travel: int) {
+        record := board.ReactionQueue.write
+        ReactionRules.Emit(board, 6, 1, x, y, 1, travel, 3)
         record.ReactionEvent.point0 = vec3(x - 12, y - 12, 10.5)
         record.ReactionEvent.point1 = vec3(x + 12, y - 12, 10.5)
         record.ReactionEvent.point2 = vec3(x - 12, y + 12, 10.5)
@@ -54,7 +70,13 @@ behavior MusicFieldChecks {
         ReactionRules.Initialize(get_global_variable("Board2"), 1)
     }
 
-    on Tick {
+    on Tick(dt) {
+        if phase_follow {
+            next_phase := world.VisualState.beat_phase + dt / world.VisualState.beat_period
+            world.VisualState.beat_phase = next_phase - floor(next_phase)
+            largest_phase_step = max(largest_phase_step, abs(world.VisualState.field_pulse - previous_phase))
+            previous_phase = world.VisualState.field_pulse
+        }
         match (frame) {
             case 4 {
                 Check(world.VisualState.field_bands.x == 0, "silence starts without bass deformation")
@@ -89,13 +111,17 @@ behavior MusicFieldChecks {
                 Check(second.x == 250 && second.y == -100 && second.z > 0, "distant input gets a separate captured origin")
                 Check(world.VisualState.field_impulse0.x == -200, "distant input leaves the first wave in place")
                 charged = world.VisualState.field_motion0.x
+                world.VisualState.beat_tracking = true
+                world.VisualState.beat_phase = 0.2
             }
             case 14 {
                 Capture()
+                world.VisualState.beat_phase = 0.9
                 world.Session.screen = 2
             }
             case 20 {
                 Frozen()
+                world.VisualState.beat_phase = 0.2
                 world.Session.screen = 1
             }
             case 22 {
@@ -103,6 +129,7 @@ behavior MusicFieldChecks {
                 Check(age > frozen.z && age - frozen.z < 0.05, "resume advances only elapsed active frames")
                 Check(world.VisualState.field_pulse > phase && world.VisualState.field_pulse - phase < 0.6, "resume continues musical phase without replaying paused time")
                 Capture()
+                world.VisualState.beat_tracking = false
                 world.Session.reduced_motion = true
                 Emit(700, 300)
             }
@@ -111,15 +138,103 @@ behavior MusicFieldChecks {
                 Check(world.VisualState.field_impulse2.z == 2.6 && world.VisualState.field_impulse3.z == 2.6, "reduced motion creates no new spatial force")
                 world.Session.reduced_motion = false
             }
+            case 30 {
+                Drop(-50, 200, 8)
+            }
+            case 32 {
+                wave_origin = world.VisualState.field_wave0
+                Check(wave_origin.x == -50 && wave_origin.y == 8, "drop lighting starts at the mean of the four captured landing cells")
+                Check(wave_origin.z > 0 && wave_origin.z < 0.05, "a new drop owns a fresh wavefront clock")
+                Check(world.VisualState.field_wave_power01.x > 0.9, "drop wave carries visible bounded energy")
+            }
+            case 40 {
+                Drop(240, 120, 6)
+            }
+            case 42 {
+                first_wave := world.VisualState.field_wave0
+                next_wave := world.VisualState.field_wave1
+                Check(first_wave.x == wave_origin.x && first_wave.y == wave_origin.y && first_wave.z > wave_origin.z, "a second drop preserves the first traveling light origin and age")
+                Check(next_wave.x == 240 && next_wave.y == -24 && next_wave.z < first_wave.z, "overlapping drop waves propagate from independent landing centers")
+            }
+            case 44 {
+                wave_frozen = world.VisualState.field_wave0
+                wave_power = world.VisualState.field_wave_power01.x
+                world.Session.screen = 2
+            }
+            case 50 {
+                wave := world.VisualState.field_wave0
+                Check(wave.x == wave_frozen.x && wave.y == wave_frozen.y && wave.z == wave_frozen.z, "pause freezes every active drop wave without restarting its radius")
+                Check(world.VisualState.field_wave_power01.x == wave_power, "pause preserves wave energy")
+                world.Session.screen = 1
+            }
+            case 52 {
+                age := world.VisualState.field_wave0.z
+                Check(age > wave_frozen.z && age - wave_frozen.z < 0.05, "resuming a drop wave excludes paused wall time")
+            }
+            case 58 {
+                world.Session.reduced_motion = true
+                Drop(400, 300, 5)
+            }
+            case 62 {
+                Check(world.VisualState.field_wave_power01.x == 0 && world.VisualState.field_wave_power01.y == 0, "reduced motion eases existing drop illumination to zero")
+                Check(world.VisualState.field_wave2.z == 1.6 && world.VisualState.field_wave3.z == 1.6, "reduced motion starts no new traveling drop light")
+                world.Session.reduced_motion = false
+            }
             case 90 {
                 Check(world.VisualState.field_motion0.x > 0 && world.VisualState.field_motion0.x < charged, "accepted input brightness and force decay continuously after the action")
+                reject_origin = world.VisualState.field_impulse2
                 ReactionRules.Emit(board, 1, 0, 700, 300, 1, 1, 3)
             }
             case 92 {
-                Check(world.VisualState.field_impulse2.z == 2.6 && world.VisualState.field_impulse3.z == 2.6, "rejected movement cannot brighten or deflect ambient particles")
+                Check(world.VisualState.field_impulse2.x == reject_origin.x && world.VisualState.field_impulse2.y == reject_origin.y && world.VisualState.field_impulse2.z > reject_origin.z, "rejected movement cannot replace or restart an existing ambient force")
+                Check(world.VisualState.field_wave2.z == 1.6 && world.VisualState.field_wave3.z == 1.6, "rejected movement creates no drop-light wave")
+            }
+            case 100 {
+                Drop(-300, 0, 3)
+                Drop(-100, 0, 3)
+                Drop(100, 0, 3)
+                Drop(300, 0, 3)
+            }
+            case 102 {
+                wave_frozen = world.VisualState.field_wave0
+                wave_power = world.VisualState.field_wave_power01.x
+                Check(wave_frozen.x == -300 && world.VisualState.field_wave3.x == 300, "four simultaneous drops retain four independent light fronts")
+            }
+            case 104 {
+                Drop(450, 0, 3)
+            }
+            case 106 {
+                Check(world.VisualState.field_wave0.x == -300, "saturated light slots fade before moving to a later landing")
+                Check(world.VisualState.field_wave_power01.x < wave_power && world.VisualState.field_wave_power01.x > 0, "saturated light retires through intermediate brightness")
+                Check(world.VisualState.field_wave1.x == -100 && world.VisualState.field_wave2.x == 100 && world.VisualState.field_wave3.x == 300, "saturation does not restart other live fronts")
+            }
+            case 110 {
+                Check(world.VisualState.field_wave0.x == 450 && world.VisualState.field_wave0.z < 0.05, "queued drop begins at its landing after the prior front fades out")
+            }
+            case 120 {
+                tracked_phase := world.VisualState.field_pulse / 6.2831853 + 0.25
+                world.VisualState.beat_phase = tracked_phase - floor(tracked_phase)
+                world.VisualState.beat_tracking = true
+                phase_follow = true
+                previous_phase = world.VisualState.field_pulse
+            }
+            case 150 {
+                error := world.VisualState.beat_phase * 6.2831853 - world.VisualState.field_pulse
+                error -= floor((error + 3.14159265) / 6.2831853) * 6.2831853
+                Check(abs(error) < 0.12 * 6.2831853, "tracked musical phase catches a quarter-beat offset within half a second")
+                Check(largest_phase_step < 0.4, "tracking correction crosses beat wrap without resetting the continuous field phase")
+                phase_follow = false
+                world.VisualState.beat_tracking = false
+                world.VisualState.beat_phase = 0
+                previous_phase = world.VisualState.field_pulse
+            }
+            case 152 {
+                advance := world.VisualState.field_pulse - previous_phase
+                Check(advance > 0 && advance < 0.55, "losing tracked phase preserves the musical field's current position and velocity")
             }
             case 210 {
                 Check(world.VisualState.field_impulse0.z == 2.6 && world.VisualState.field_impulse1.z == 2.6, "all spatial impulses finish after their bounded lifetime")
+                Check(world.VisualState.field_wave0.z == 1.6 && world.VisualState.field_wave1.z == 1.6, "drop wavefront clocks stop at their finite outer reach")
                 fields: int = 0
                 for field in find_entities_with_component("ParticleField3D") {
                     fields += 1

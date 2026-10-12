@@ -37,6 +37,13 @@ behavior TransitionChecks {
         quiet = variant == 4 || variant == 5
     }
 
+    function WellOffset(x: number) -> (offset: number) {
+        if mode == 3 && x > 0 {
+            return second.Transform3D.position.y
+        }
+        return first.Transform3D.position.y
+    }
+
     function Finished() {
         expected := mode
         if variant == 1 {
@@ -98,7 +105,9 @@ behavior TransitionChecks {
                 for tile in find_entities_with_component("MeshAsset") {
                     if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
                         tiles = array_add(tiles, tile)
-                        positions = array_add(positions, tile.Transform3D.position)
+                        position := tile.Transform3D.position
+                        position.y -= WellOffset(position.x)
+                        positions = array_add(positions, position)
                     }
                 }
                 Check(length(tiles) >= 8, "old settled blocks remain visible at departure start")
@@ -109,7 +118,7 @@ behavior TransitionChecks {
             case 35 {
                 Check(world.Session.run == run && world.Session.elapsed == elapsed, "queued transition freezes the old clock and rejects further run commands")
                 Check(camera.Transform3D.position.x > 75, "restart camera remains centered instead of replaying the opening pan")
-                width := 700
+                width := 1000
                 if mode == 3 {
                     width = 1208.8889
                 }
@@ -120,6 +129,7 @@ behavior TransitionChecks {
                     Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1, "departure keeps every block full size")
                     if quiet {
                         p := tile.Transform3D.position
+                        p.y -= WellOffset(before.x)
                         Check(abs(p.x - before.x) + abs(p.y - before.y) + abs(p.z - before.z) < 0.001 && !tile.RenderState.hidden, "quiet departure remains stationary before retirement")
                     }
                 }
@@ -135,7 +145,18 @@ behavior TransitionChecks {
                     for i in 0..length(tiles) - 1 {
                         tile := get(tiles, i)
                         before := get(positions, i)
-                        Check(!tile.RenderState.hidden && tile.Transform3D.position.y > before.y + 20, "restarts use the same intact moving bodies as loss")
+                        delta := tile.Transform3D.position - before
+                        delta.y -= WellOffset(before.x)
+                        center := 0
+                        if mode == 3 {
+                            center = -254
+                            if before.x > 0 {
+                                center = 254
+                            }
+                        }
+                        Check(!tile.RenderState.hidden, "restart retains each original body through its flight")
+                        Check(delta.x * delta.x + delta.y * delta.y > 400, "restart bodies have moved beyond their cells")
+                        Check(delta.x * (before.x - center) + delta.y * before.y > 0, "restart bodies travel away from their original well center")
                     }
                 }
             }

@@ -8,6 +8,14 @@ behavior Hud {
     plates: entity[] = []
     options_open := false
     options_changed := false
+    options_amount := 0
+    options_from := 0
+    options_time := 0.2
+    menu_amount := 0
+    menu_from := 0
+    menu_target := 0
+    menu_time := 0.2
+    hover_amounts: number[] = []
     timer_backing: entity
     panel: entity
     ready := false
@@ -44,6 +52,9 @@ behavior Hud {
         for i in 0..9 {
             plate := await spawn(UiPlate)
             plates = array_add(plates, plate)
+        }
+        for i in 0..7 {
+            hover_amounts = array_add(hover_amounts, 0)
         }
         ready = true
         Draw()
@@ -147,24 +158,102 @@ behavior Hud {
 
     function UiText(slot: int, name: string, x: number, y: number, size: number, shade: number) {
         ModalLabel(slot, name, x, y, size)
-        set_material_parameter(get(labels, slot), "Shade", shade)
+        label := get(labels, slot)
+        // Clear the panels' camera-space depth across the tilted menu view.
+        label.Transform3D.position.z = 90
+        set_material_parameter(label, "Shade", shade)
+    }
+
+    function Ease(time: number, duration: number) -> (amount: number) {
+        progress := clamp(time / duration, 0, 1)
+        return progress * progress * progress * (progress * (progress * 6 - 15) + 10)
     }
 
     function ButtonShade(choice: int) -> (shade: number) {
-        if hover_choice == choice {
-            return 0.042
+        return 0.018 + Ease(get(hover_amounts, choice), 1) * 0.024
+    }
+
+    function OptionsLayout() -> (amount: number) {
+        if world.Session.reduced_motion {
+            if options_open {
+                return 1
+            }
+            return 0
         }
-        return 0.018
+        return options_amount
+    }
+
+    function PlayY() -> (y: number) {
+        if !world.Session.attract {
+            return 69
+        }
+        return -86 - OptionsLayout() * 164
+    }
+
+    function AnimateMenu(seconds: number) -> (changed: bool) {
+        changed = false
+        target := 0
+        if world.Session.screen == 0 && !world.Session.entering {
+            target = 1
+        }
+        if target != menu_target {
+            menu_from = menu_amount
+            menu_target = target
+            menu_time = 0
+        }
+        menu_time = min(0.2, menu_time + seconds)
+        amount := menu_from + (menu_target - menu_from) * Ease(menu_time, 0.2)
+        changed = amount != menu_amount
+        menu_amount = amount
+        target = 0
+        if options_open {
+            target = 1
+        }
+        options_time = min(0.2, options_time + seconds)
+        amount = options_from + (target - options_from) * Ease(options_time, 0.2)
+        changed = changed || amount != options_amount
+        options_amount = amount
+        for i in 0..7 {
+            direction := -1
+            if hover_choice == i {
+                direction = 1
+            }
+            amount = clamp(get(hover_amounts, i) + direction * seconds / 0.15, 0, 1)
+            changed = changed || amount != get(hover_amounts, i)
+            hover_amounts[i] = amount
+        }
+        return changed
+    }
+
+    function RevealMenu() {
+        for i in 0..96 {
+            label := get(labels, i)
+            if label.RenderState.hidden {
+                continue
+            }
+            opacity := menu_amount
+            if i >= 26 && i <= 41 {
+                opacity *= options_amount
+            }
+            alpha := cast<uint>(cast<int>(round(opacity * 255)))
+            label.Material.scene = (label.Material.scene & 4294967040) | alpha
+            label.Material.emission_intensity = 0.16 * opacity
+            set_material_parameter(label, "Opacity", opacity)
+        }
+        for i in 0..9 {
+            opacity := menu_amount
+            if i >= 5 {
+                opacity *= options_amount
+            }
+            set_material_parameter(get(plates, i), "Opacity", opacity)
+        }
     }
 
     function DrawOptions(x: number) {
-        height := 40
-        y := -36
-        if options_open {
-            height = 200
-            y = -116
-        }
-        Plate(2, x, y, 320, height, 0.006)
+        amount := OptionsLayout()
+        height := 40 + amount * 160
+        y := -36 - amount * 80
+        Plate(2, x, y, 320, height, 0.006 + Ease(get(hover_amounts, 2), 1) * 0.012)
         UiText(3, "ui_options", x - 104, -36, 9, 0.48)
         symbol := "ui_plus"
         symbol_size := 9
@@ -173,7 +262,7 @@ behavior Hud {
             symbol_size = 2.5
         }
         UiText(17, symbol, x + 133, -36, symbol_size, 0.65)
-        if !options_open {
+        if options_amount <= 0 || world.Session.reduced_motion && !options_open {
             return
         }
         names := ["ui_effects", "ui_motion", "ui_ghost"]
@@ -204,7 +293,7 @@ behavior Hud {
         Number(38, 3, cast<int>(round(world.Session.master * 100)), x + 53, -194, 10)
         for i in 38..40 {
             label := get(labels, i)
-            label.Transform3D.position.z = 70
+            label.Transform3D.position.z = 90
         }
         UiText(41, "setting_percent", x + 77, -194, 8, 0.36)
     }
@@ -245,21 +334,14 @@ behavior Hud {
             connect = "ui_retry"
         }
         UiText(13, connect, x, 135, 10, 0.72)
-        play_y := 69
+        play_y := PlayY()
         if world.Session.attract {
             Plate(1, x, 46, 320, 108, 0.006)
             UiText(2, "ui_game", x - 107, 79, 8, 0.32)
             UiText(18, "ui_journey", x, 40, 16, 0.72)
             DrawOptions(x)
-            play_y = -86
-            if options_open {
-                play_y = -250
-            }
         }
-        shade := 0.72
-        if hover_choice == 0 {
-            shade = 0.85
-        }
+        shade := 0.72 + Ease(get(hover_amounts, 0), 1) * 0.13
         Plate(4, x, play_y, 320, 44, shade)
         UiText(12, "ui_play", x, play_y, 13, 0.007)
     }
@@ -279,13 +361,9 @@ behavior Hud {
         }
         point := ray.Origin + ray.Direction * distance
         x := 0
-        play_y := 69
+        play_y := PlayY()
         if world.Session.attract {
             x = -440
-            play_y = -86
-            if options_open {
-                play_y = -250
-            }
         }
         choice: int = -1
         if abs(point.x - x) < 160 && abs(point.y - play_y) < 22 {
@@ -320,6 +398,8 @@ behavior Hud {
             return
         }
         if choice == 2 {
+            options_from = options_amount
+            options_time = 0
             options_open = !options_open
             options_changed = true
             return
@@ -405,12 +485,11 @@ behavior Hud {
         timer_backing.RenderState.hidden = world.Session.mode != 2 || world.Session.screen == 0
         panel.RenderState.hidden = world.Session.screen == 1 || world.Session.screen == 4 || world.Session.entering
         panel.Transform3D.position = vec3(0, 0, 64)
-        if world.Session.entering && world.Session.attract {
-            RememberState()
-            return
-        }
-        if world.Session.screen == 0 {
-            DrawConnection()
+        if world.Session.screen == 0 || menu_amount > 0 || world.Session.entering && world.Session.attract {
+            if menu_amount > 0 {
+                DrawConnection()
+                RevealMenu()
+            }
             RememberState()
             return
         }
@@ -578,7 +657,8 @@ behavior Hud {
         }
         ReadPointer()
         refresh += dt
-        changed := ReadSettings(dt) || options_changed
+        changed := AnimateMenu(min(dt, 0.05))
+        changed = ReadSettings(dt) || options_changed || changed
         options_changed = false
         changed = changed || pointer_choice != hover_choice || audio_source != world.Session.audio_source || audio_status != world.Session.audio_status || audio_signal != world.Session.audio_signal || audio_quiet != world.Session.audio_quiet || screen != world.Session.screen || world_serial != world.ReactionQueue.serial
         if refresh < 0.1 && !changed {

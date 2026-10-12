@@ -44,7 +44,7 @@ behavior AttractChecks {
             case 10 {
                 Check(world.Session.attract && world.Session.screen == 0, "opening retains explicit play actions")
                 Check(camera.Transform3D.position.x < -100, "opening camera gives the real board its side composition")
-                Check(camera.Camera.width > 1200, "opening framing contains the chooser and demonstration board")
+                Check(camera.Camera.width > 1200 && abs(camera.Camera.fov - 0.61086524) < 0.001, "opening framing contains the chooser and demonstration board")
                 Check(world.Session.run == 0 && world.Session.elapsed == 0, "demo has no player run or timer")
             }
             case 120 {
@@ -72,7 +72,9 @@ behavior AttractChecks {
                 for tile in find_entities_with_component("MeshAsset") {
                     if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
                         tiles = array_add(tiles, tile)
-                        positions = array_add(positions, tile.Transform3D.position)
+                        position := tile.Transform3D.position
+                        position.y -= board.Transform3D.position.y
+                        positions = array_add(positions, position)
                     }
                 }
                 Check(length(tiles) > 0, "handoff preserves the actual occupied block meshes")
@@ -81,7 +83,7 @@ behavior AttractChecks {
             case 210 {
                 Check(world.Session.attract && world.Session.entering && world.Session.run == 0, "demo reset waits for clear effects to finish")
                 Check(camera.Transform3D.position.x > -130 && camera.Transform3D.position.x < 90, "camera travels toward the play composition")
-                Check(camera.Camera.width > 700 && camera.Camera.width < 1208, "intro narrows the framing continuously with the camera move")
+                Check(camera.Camera.fov > 0.61 && camera.Camera.fov < 0.88, "intro widens the perspective lens continuously with the camera move")
                 Check(board.BoardState.clear_serial == demo_clears, "handoff emits no line clear")
                 found := false
                 for serial in demo_events + 1..board.ReactionQueue.serial {
@@ -94,7 +96,9 @@ behavior AttractChecks {
                 for i in 0..length(tiles) - 1 {
                     tile := get(tiles, i)
                     before := get(positions, i)
-                    Check(!tile.RenderState.hidden && tile.Transform3D.position.y > before.y + 40, "demo blocks travel intact before the new run")
+                    delta := tile.Transform3D.position - before
+                    delta.y -= board.Transform3D.position.y
+                    Check(!tile.RenderState.hidden && delta.x * delta.x + delta.y * delta.y > 1600 && delta.x * before.x + delta.y * before.y > 0, "demo blocks travel outward intact before the new run")
                     Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1, "intro release preserves full block size")
                 }
             }
@@ -113,7 +117,7 @@ behavior AttractChecks {
                 Check(!world.Session.attract && !world.Session.entering && world.Session.hud_alpha == 1, "handoff completes with fully visible play HUD")
                 Check(world.Session.screen == 1 && world.Session.run == 1 && world.Session.elapsed > 0, "fresh player run begins after the handoff")
                 Check(camera.Transform3D.position.x > 80, "camera reaches the normal play composition")
-                Check(camera.Camera.width == 700, "completed single-board intro uses its readable portrait framing")
+                Check(camera.Camera.width == 1000 && abs(camera.Camera.fov - 0.88) < 0.001, "completed single-board intro uses the wider gameplay composition")
                 Check(board.BoardState.pieces == 0 && board.BoardState.lines == 0, "demo stack and score do not leak into the player run")
                 Check(world.Session.audio_source == 1, "external source survives the entire handoff")
                 Check(LabelOpacity("content/meshes/text/score.mesh") == 1, "finished handoff shows the actual score mesh")

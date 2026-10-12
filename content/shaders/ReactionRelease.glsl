@@ -26,13 +26,15 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
         return state;
     }
     vec3 random = reaction_random(p.index, p.seed);
+    vec3 event = reaction_event(p.seed);
     vec3 source = release_source(p.index, random, u);
     float birth = u.Delay + release_birth(source.x, reaction_quantile(p.index, p.seed), u);
     if (p.reset) {
         state.position = source;
-        float depth = mix(-100.0 - random.x * 120.0, 155.0 + random.x * 130.0, step(0.65, random.z));
-        state.velocity = vec3((random.x - 0.5) * 340.0,
-            22.0 + (random.y - 0.5) * 175.0, depth);
+        float depth = mix(-180.0 - random.x * 230.0, 250.0 + random.x * 170.0, step(0.73, random.z));
+        float fan = 430.0 + event.y * 330.0;
+        state.velocity = vec3((random.x - 0.5) * fan,
+            40.0 + (event.x - 0.5) * 90.0 + (random.y - 0.5) * 270.0, depth);
         if (u.Pattern == 11.0) state.velocity.xy *= 1.45;
         if (u.Loss > 0.5) state.velocity *= 0.28;
         float elapsed = max(0.0, p.time - birth) * (1.0 - u.Quiet);
@@ -40,13 +42,14 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
         state.age = p.time;
         return state;
     }
-    return reaction_advect(state, p, u, birth, 0.3);
+    return reaction_advect(state, p, u, birth, 0.19);
 }
 
 // Fracture, opaque debris, microembers and energy share a captured row front.
 ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
 {
     vec3 random = reaction_random(p.index, p.seed);
+    vec3 event = reaction_event(p.seed);
     float quantile = reaction_quantile(p.index, p.seed);
     vec4 layers = vec4(
         reaction_pattern(u.Pattern, 5.0), reaction_pattern(u.Pattern, 9.0),
@@ -56,6 +59,7 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     float birth = release_birth(source.x, quantile, u);
     float duration = u.Life * (0.56 + random.z * 0.16 +
         (layers.z + layers.w) * (0.16 + random.z * 0.02));
+    duration *= 0.82 + event.z * 0.18;
     // Loss adds a sparse ember tail behind the departing original block meshes.
     duration = mix(duration, u.Life * (0.78 + random.z * 0.14), u.Loss);
     float elapsed = max(0.0, p.time - u.Delay - birth);
@@ -67,8 +71,9 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     envelope = mix(envelope, loss_envelope, u.Loss);
     int cell = int(mod(p.index, 10.0));
     float occupied = float((int(u.RowMask) >> cell) & 1);
-    envelope *= occupied;
+    envelope *= occupied * reaction_population(p.index, p.seed, event);
     float motion = elapsed * (1.0 - u.Quiet);
+    float spread = 0.7 + event.y * 0.75;
 
     // Heavy fragments use exact exponential drag and gravity.
     float drag_rate = 4.5 - layers.y * 2.7;
@@ -76,17 +81,18 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     float gravity_time = (motion - drag_time) / drag_rate;
     vec3 fracture = source + vec3(
         (random.x - 0.5) * 60.0, (random.y - 0.5) * 45.0, 16.0 + random.z * 24.0
-    ) * drag_time;
+    ) * drag_time * spread;
     vec3 debris = source + vec3(
         (random.x - 0.5) * 440.0, 50.0 + random.y * 100.0, 20.0 + random.z * 45.0
-    ) * drag_time - vec3(0.0, 250.0 * gravity_time, 0.0);
+    ) * drag_time * spread - vec3(0.0, 250.0 * gravity_time, 0.0);
 
     float fleck = step(0.78, random.y);
+    float coarse = smoothstep(0.94, 0.995, random.z);
     float wake = step(0.48, random.y) * (1.0 - fleck);
     float clear_size = (
         layers.x * (1.25 + random.z * 1.5) + layers.y * (2.2 + random.z * 3.6) +
-        layers.z * (0.52 + random.z * 0.9 + fleck * 1.1 + wake * 0.35) +
-        layers.w * (0.55 + random.z * 0.7)
+        layers.z * (1.25 + random.z * 1.7 + coarse * 7.0 + fleck * 0.7) +
+        layers.w * (1.0 + random.z * 1.4 + coarse * 3.0)
     ) * (1.0 - phase * 0.24) * envelope;
     float loss_size = (0.55 + random.z * 0.7) * (1.0 - phase * 0.3) * envelope;
     clear_size = mix(clear_size, loss_size, u.Loss);
@@ -111,7 +117,7 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     ChibiParticle result;
     result.position = fracture * layers.x + debris * layers.y;
     if (u.Pattern == 10.0 || u.Pattern == 11.0) result.position = p.position;
-    result.size = mix(clear_size, envelope, u.Quiet);
+    result.size = mix(clear_size * spread, envelope, u.Quiet);
     result.color = mix(clear_color, vec4(0.4, 0.8, 1.0, envelope * 0.4), u.Quiet);
     result.scale = mix(vec3(1.0), vec3(2.2, 0.38, 0.6), layers.x * (1.0 - u.Quiet)) *
         mix(vec3(1.0), vec3(
@@ -119,6 +125,11 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
         ), layers.y * (1.0 - u.Quiet));
     result.rotation = vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) *
         (2.2 + motion * 8.0) * layers.y * (1.0 - u.Quiet);
+    if (u.Pattern == 10.0 || u.Pattern == 11.0) {
+        float streak = (1.0 - coarse) * step(0.80, random.x);
+        result.scale = vec3(1.0 + streak * 2.2, 0.9, 0.9);
+        result.rotation = vec3(0.0, 0.0, atan(p.velocity.y, p.velocity.x));
+    }
     result.lighting = (layers.y * 0.85 + layers.z * 0.35) * (1.0 - u.Quiet);
-    return result;
+    return reaction_illuminate(result, u);
 }

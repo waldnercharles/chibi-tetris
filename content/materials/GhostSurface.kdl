@@ -28,7 +28,7 @@ description "A thin cyan landing silhouette. Each adjoining cell masks its share
                     Value {
                         type "struct"
                         type_name "ShaderVec3"
-                        default x=0.2 y=0.92 z=1.0
+                        default x=0.24 y=1.55 z=1.9
                     }
                 }
             }
@@ -49,7 +49,7 @@ description "A thin cyan landing silhouette. Each adjoining cell masks its share
             - {
                 id 500
                 type "Behavior Expression"
-                reference_name "1 - smoothstep(0.025, 0.055, min(min(UV.x + 1 - Edges.x, 2 - UV.x - Edges.y), min(UV.y + 1 - (Edges.z - 2 * floor(Edges.z / 2)), 2 - UV.y - floor(Edges.z / 2))))"
+                reference_name "1 - smoothstep(0.040, 0.078, min(min(UV.x + 1 - Edges.x, 2 - UV.x - Edges.y), min(UV.y + 1 - (Edges.z - 2 * floor(Edges.z / 2)), 2 - UV.y - floor(Edges.z / 2))))"
                 inputs {
                     UV id=501 type="struct" type_name="ShaderVec2"
                     Edges id=502 type="struct" type_name="ShaderVec3"
@@ -66,5 +66,5 @@ description "A thin cyan landing silhouette. Each adjoining cell masks its share
             - from="500.Result" to="100.Opacity"
         }
     }
-    - id=1000 kind="function" math_expression="1 - smoothstep(0.025, 0.055, min(min(UV.x + 1 - Edges.x, 2 - UV.x - Edges.y), min(UV.y + 1 - (Edges.z - 2 * floor(Edges.z / 2)), 2 - UV.y - floor(Edges.z / 2))))" expression_mode=1 entry_id=1100
+    - id=1000 kind="function" math_expression="1 - smoothstep(0.040, 0.078, min(min(UV.x + 1 - Edges.x, 2 - UV.x - Edges.y), min(UV.y + 1 - (Edges.z - 2 * floor(Edges.z / 2)), 2 - UV.y - floor(Edges.z / 2))))" expression_mode=1 entry_id=1100
 }

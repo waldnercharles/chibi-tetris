@@ -2,6 +2,20 @@
 #ifndef PARTICLE_FLOW_GLSL
 #define PARTICLE_FLOW_GLSL
 
+uint particle_hash(uint value)
+{
+    value = (value ^ (value >> 16u)) * 2146121005u;
+    value = (value ^ (value >> 15u)) * 2221713035u;
+    return value ^ (value >> 16u);
+}
+
+vec3 particle_samples(uint identity)
+{
+    return vec3(float(particle_hash(identity) >> 8u),
+        float(particle_hash(identity + 1013u) >> 8u),
+        float(particle_hash(identity + 7919u) >> 8u)) / 16777216.0;
+}
+
 vec2 cosmic_board_projection(vec3 position, vec3 eye)
 {
     return eye.xy + (position.xy - eye.xy) * eye.z / max(eye.z - position.z, 1.0);
@@ -33,6 +47,30 @@ vec3 cosmic_impulse(vec2 projected, vec3 source, vec3 drive)
     vec2 tangent = vec2(-delta.y, delta.x) * drive.y * 0.22;
     return vec3(radial + tangent + vec2(0.0, drive.z * 70.0), drive.x * 25.0)
         * decay / (1.0 + radius * 0.003);
+}
+
+// A finite annulus travels from the actual landing center. The middle cools
+// behind it; summing independent fronts also lights grains born before a drop.
+float particle_wave(vec2 projected, vec3 wave, float power)
+{
+    if (wave.z <= 0.0 || wave.z >= 1.6 || power <= 0.0) return 0.0;
+    vec2 offset = projected - wave.xy;
+    float distance = length(offset) - wave.z * 650.0;
+    float shell = smoothstep(-210.0, -40.0, distance) *
+        (1.0 - smoothstep(40.0, 130.0, distance));
+    float envelope = smoothstep(0.0, 0.055, wave.z) *
+        (1.0 - smoothstep(1.18, 1.6, wave.z));
+    return shell * envelope * power;
+}
+
+float particle_wave_light(vec3 position, ChibiParameters u)
+{
+    vec2 projected = cosmic_board_projection(position, u.Eye);
+    float light = particle_wave(projected, u.Wave0, u.WavePower01.x)
+        + particle_wave(projected, u.Wave1, u.WavePower01.y)
+        + particle_wave(projected, u.Wave2, u.WavePower23.x)
+        + particle_wave(projected, u.Wave3, u.WavePower23.y);
+    return min(1.8, light);
 }
 
 #endif

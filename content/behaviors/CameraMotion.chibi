@@ -6,11 +6,14 @@ behavior CameraMotion {
     was_entering := false
     intro_pan := -240
     intro_width := 1208.8889
+    intro_fov := 0.61086524
     return_time := 1
     return_pan := -240
     return_width := 1208.8889
+    return_fov := 0.61086524
     pan_value := -240
     width_value := 1208.8889
+    fov_value := 0.61086524
 
     on Begin {
         world = get_global_variable("World")
@@ -23,29 +26,35 @@ behavior CameraMotion {
             return
         }
         pan := 0
-        width := 700
+        width := 1000
+        fov := 0.88
         if world.Session.mode == 3 {
             width = 1208.8889
+            fov = 0.61086524
         }
         if world.Session.attract {
             pan = -240
             width = 1208.8889
+            fov = 0.61086524
         }
         if world.Session.entering && !was_entering {
             intro_pan = pan_value
             intro_width = width_value
+            intro_fov = fov_value
         }
         was_entering = world.Session.entering
         if world.Session.entering && world.Session.attract && !world.Session.reduced_motion {
             progress := clamp((world.Session.intro_time - 0.2) / 2.45, 0, 1)
             eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
             pan = intro_pan * (1 - eased)
-            width = intro_width + (700 - intro_width) * eased
+            width = intro_width + (1000 - intro_width) * eased
+            fov = intro_fov + (0.88 - intro_fov) * eased
         }
         if world.Session.attract && !was_attract {
             return_time = 0
             return_pan = pan_value
             return_width = width_value
+            return_fov = fov_value
         }
         was_attract = world.Session.attract
         if world.Session.attract && !world.Session.entering && return_time < 0.9 {
@@ -57,10 +66,13 @@ behavior CameraMotion {
             eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
             pan = return_pan + (pan - return_pan) * eased
             width = return_width + (width - return_width) * eased
+            fov = return_fov + (fov - return_fov) * eased
         }
         pan_value = pan
         width_value = width
+        fov_value = fov
         self.Camera.width = width
+        self.Camera.fov = fov
         x := 90
         y := 50
         z := 1080

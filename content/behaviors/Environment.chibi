@@ -21,6 +21,7 @@ behavior Environment {
     drop_serials: int[] = [-1, -1]
     slot: int = 0
     light_slot: int = 0
+    event_seed: int = 1
     ready := false
     time := 0
     reaction := 0
@@ -56,6 +57,12 @@ behavior Environment {
     sources: CF_V3[]
     drives: CF_V3[]
     targets: CF_V3[]
+    // Four luminous wavefronts have independent clocks. A saturated slot first
+    // fades for 60ms, then starts its queued impact without moving live light.
+    waves: CF_V3[]
+    wave_powers: number[]
+    wave_pending: CF_V3[]
+    wave_retires: number[]
     pulse := 0
     pulse_velocity := 0
     wind := 0
@@ -67,10 +74,15 @@ behavior Environment {
         stars = get_global_variable("Stars")
         boards = [get_global_variable("Board1"), get_global_variable("Board2"), world]
         cursors = [world, world, world]
+        event_seed = abs(world.Session.seed % 1048576)
         for i in 0..3 {
             sources = array_add(sources, vec3(0, 0, 2.6))
             drives = array_add(drives, vec3(0, 0, 0))
             targets = array_add(targets, vec3(0, 0, 0))
+            waves = array_add(waves, vec3(0, 0, 1.6))
+            wave_powers = array_add(wave_powers, 0)
+            wave_pending = array_add(wave_pending, vec3(0, 0, 0))
+            wave_retires = array_add(wave_retires, 0)
         }
         for i in 0..95 {
             field := await spawn(ReactionField)
@@ -194,6 +206,71 @@ behavior Environment {
         }
     }
 
+    // The 20-bit full-period identity belongs to the captured event, not its
+    // reusable slot. Multiplying by 16 reserves a distinct tag for each layer.
+    function NextIdentity() {
+        event_seed = (event_seed * 5 + 17) % 1048576
+    }
+
+    function DropWave(position: CF_V3, travel: int) {
+        if world.Session.effects == 0 || world.Session.reduced_motion || world.Session.screen >= 2 {
+            return
+        }
+        power := 0.8 + min(20, cast<number>(travel)) * 0.02
+        chosen: int = -1
+        for i in 0..3 {
+            wave := get(waves, i)
+            if wave.z >= 1.6 || get(wave_powers, i) == 0 {
+                wave.x = position.x
+                wave.y = position.y
+                wave.z = 0
+                wave_powers[i] = power
+                waves[i] = wave
+                wave_retires[i] = 0
+                return
+            }
+            if get(wave_retires, i) == 0 && (chosen < 0 || wave.z > get(waves, chosen).z) {
+                chosen = i
+            }
+        }
+        // More than eight simultaneous impacts coalesce in the first queued
+        // front, still preserving the position of every visible old front.
+        if chosen < 0 {
+            chosen = 0
+        }
+        wave_pending[chosen] = vec3(position.x, position.y, power)
+        if get(wave_retires, chosen) == 0 {
+            wave_retires[chosen] = 0.06
+        }
+    }
+
+    function AdvanceWaves(delta: number, moving: bool) {
+        for i in 0..3 {
+            wave := get(waves, i)
+            if !moving {
+                wave_powers[i] = max(0, get(wave_powers, i) - delta * 24)
+                wave_retires[i] = 0
+                waves[i] = wave
+                continue
+            }
+            wave.z = min(1.6, wave.z + delta)
+            remaining := get(wave_retires, i)
+            if remaining > 0 {
+                fade := max(0, remaining - delta)
+                wave_powers[i] *= fade / remaining
+                wave_retires[i] = fade
+                if fade == 0 {
+                    pending := get(wave_pending, i)
+                    wave.x = pending.x
+                    wave.y = pending.y
+                    wave.z = 0
+                    wave_powers[i] = pending.z
+                }
+            }
+            waves[i] = wave
+        }
+    }
+
     function Follow(current: number, target: number, attack: number, release: number, delta: number) -> (value: number) {
         rate := release
         if target > current {
@@ -281,7 +358,7 @@ behavior Environment {
         field.Transform3D.position = vec3(x, y, cue_depth)
         field.ParticleField3D.count = count
         field.ParticleField3D.additive = pattern != 9 || quiet
-        field.ParticleField3D.seed += 37
+        field.ParticleField3D.seed = event_seed * 16 + pattern
         field.ParticleField3D.time = 0
         field.Shader.material = "ReactionParticles.Cue"
         if pattern == 5 || pattern >= 9 && pattern <= 11 {
@@ -293,18 +370,16 @@ behavior Environment {
             set_material_parameter(field, "RowMask", cast<number>(cue_mask))
         }
         set_material_parameter(field, "Pattern", cast<number>(pattern))
-        set_material_parameter(field, "Direction", cast<number>(direction))
-        set_material_parameter(field, "Travel", cast<number>(travel))
-        set_material_parameter(field, "Strength", strength)
         set_material_parameter(field, "Life", life)
         set_material_parameter(field, "Quiet", cast<number>(ReactionRules.Flag(quiet)))
-        set_material_parameter(field, "Hue", hue)
         set_material_parameter(field, "Point0", cue_point0)
-        set_material_parameter(field, "Point1", cue_point1)
-        set_material_parameter(field, "Point2", cue_point2)
-        set_material_parameter(field, "Point3", cue_point3)
         if field.Shader.material == "ReactionParticles.Cue" {
             set_material_parameter(field, "Pivot", cue_pivot)
+            set_material_parameter(field, "Action", vec3(cast<number>(direction), cast<number>(travel), strength))
+            set_material_parameter(field, "Hue", hue)
+            set_material_parameter(field, "Point1", cue_point1)
+            set_material_parameter(field, "Point2", cue_point2)
+            set_material_parameter(field, "Point3", cue_point3)
         }
         set_material_parameter(field, "Origin", vec3(x, y, cue_depth))
         set_material_parameter(field, "Current", vec3(flow, turn_velocity, min(1, energy + beat * 0.6)))
@@ -363,6 +438,7 @@ behavior Environment {
     }
 
     function BoardEvent(board: entity, record: entity) {
+        NextIdentity()
         cue_gameplay = true
         kind := record.ReactionEvent.kind
         x := record.ReactionEvent.x
@@ -426,6 +502,9 @@ behavior Environment {
                     tail := 4.8 + clamp(world.VisualState.energy * 0.7 + world.VisualState.bass * 0.3, 0, 1) * 1.2
                     Cue(13, x, y, 1, amount, 0.35, tail, 0)
                 }
+                center := origin + (cue_point0 + cue_point1 + cue_point2 + cue_point3) * 0.25
+                center.y -= amount * 24
+                DropWave(center, amount)
                 Landing(x, y - amount * 24, piece_x, 0.45)
                 Push(0.34, 0.12)
                 Kick(piece_x, y - amount * 24, 0.85, 0.12)
@@ -489,6 +568,7 @@ behavior Environment {
     }
 
     function SessionEvent(record: entity) {
+        NextIdentity()
         cue_gameplay = false
         cue_point0 = vec3(-6, 0, 10.5)
         cue_point1 = vec3(-2, 0, 10.5)
@@ -556,6 +636,12 @@ behavior Environment {
 
     function FieldForces(field: entity) {
         set_material_parameter(field, "Eye", camera.Transform3D.position)
+        set_material_parameter(field, "Wave0", get(waves, 0))
+        set_material_parameter(field, "Wave1", get(waves, 1))
+        set_material_parameter(field, "Wave2", get(waves, 2))
+        set_material_parameter(field, "Wave3", get(waves, 3))
+        set_material_parameter(field, "WavePower01", vec2(get(wave_powers, 0), get(wave_powers, 1)))
+        set_material_parameter(field, "WavePower23", vec2(get(wave_powers, 2), get(wave_powers, 3)))
         set_material_parameter(field, "Source0", get(sources, 0))
         set_material_parameter(field, "Source1", get(sources, 1))
         set_material_parameter(field, "Source2", get(sources, 2))
@@ -631,6 +717,13 @@ behavior Environment {
             tempo *= clamp(world.VisualState.beat_confidence * 4, 0, 1)
             pulse_velocity += (tempo - pulse_velocity) * (1 - exp(-delta * 5))
             pulse += pulse_velocity * delta
+            if world.VisualState.beat_tracking {
+                // Correct the shortest circular distance. A tracker update
+                // changes speed gradually, never the field's phase outright.
+                phase_error := world.VisualState.beat_phase * 6.2831853 - pulse
+                phase_error -= floor((phase_error + 3.14159265) / 6.2831853) * 6.2831853
+                pulse += phase_error * clamp(world.VisualState.beat_confidence, 0, 1) * 4 * delta
+            }
             wind += (0.18 + mid * 0.7 + energy * 0.25 + reaction * 0.8 + abs(turn_velocity) * 0.65) * delta
             chapter += (cast<number>(world.Session.stage) - chapter) * min(1, delta * 1.8)
         }
@@ -675,6 +768,9 @@ behavior Environment {
             }
             light.PointLight.intensity = intensity
         }
+        if advancing || !moving {
+            AdvanceWaves(delta, moving)
+        }
         Events()
         // Audio onsets release one pulse, then rearm after the envelope falls.
         onset_cooldown = max(0, onset_cooldown - delta)
@@ -697,6 +793,12 @@ behavior Environment {
             flow += flow_velocity * delta
             turn += turn_velocity * delta
         }
+        world.VisualState.field_wave0 = get(waves, 0)
+        world.VisualState.field_wave1 = get(waves, 1)
+        world.VisualState.field_wave2 = get(waves, 2)
+        world.VisualState.field_wave3 = get(waves, 3)
+        world.VisualState.field_wave_power01 = vec2(get(wave_powers, 0), get(wave_powers, 1))
+        world.VisualState.field_wave_power23 = vec2(get(wave_powers, 2), get(wave_powers, 3))
         world.VisualState.field_impulse0 = get(sources, 0)
         world.VisualState.field_impulse1 = get(sources, 1)
         world.VisualState.field_impulse2 = get(sources, 2)

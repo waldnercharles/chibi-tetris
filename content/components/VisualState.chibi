@@ -8,6 +8,9 @@ component VisualState {
     // Measured onset spacing in seconds; .5 until repeated intervals agree.
     beat_period: number
     beat_confidence: number
+    // Host-tracked phase is valid only while beat_tracking is true.
+    beat_phase: number
+    beat_tracking: bool
     // Integrated field motion remains continuous across audio and input changes.
     flow_phase: number
     flow_velocity: number
@@ -26,6 +29,13 @@ component VisualState {
     field_motion1: CF_V3
     field_motion2: CF_V3
     field_motion3: CF_V3
+    // Exact landing centers, ages and strengths sent to every particle field.
+    field_wave0: CF_V3
+    field_wave1: CF_V3
+    field_wave2: CF_V3
+    field_wave3: CF_V3
+    field_wave_power01: CF_V2
+    field_wave_power23: CF_V2
     // Continuous musical phase sent to both particle shaders.
     field_pulse: number
     // Cosmetic pool saturation; event queue loss is tracked separately.

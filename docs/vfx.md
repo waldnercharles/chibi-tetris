@@ -25,6 +25,12 @@ Logical placement remains immediate. Ordinary cues begin at the four captured
 occupied cell fronts, including the block finish and music lift at that action.
 Internal edges do not emit grains through adjoining occupied cells.
 
+One monotonically advancing event identity seeds all layers of each action.
+It varies their density, spread, curl, grain size and cooling coherently; the
+layer number keeps individual samples distinct. First-use pool slots and
+left/right inputs no longer repeat the same initial pattern. Identities stay
+exactly representable by the GPU and survive new-run transitions.
+
 Move, turn, drop, clear embers and clear fans retain GPU position, velocity and
 age. `ParticleFlow.glsl` supplies the same curl and spatial impulse functions
 used by the ambient cloud. Four bounded origins carry overlapping action
@@ -43,11 +49,21 @@ radial/curl acceleration without manufacturing beats during silence.
 Accepted input also drives small filtered active-block lean, compression and
 emission. Landed blocks settle independently of the next piece. A critically
 damped spring lowers the well after a hard drop and returns smoothly, retaining
-velocity across overlapping drops. Logical cells and ghost placement stay
-fixed. The ghost uses four existing thin cells with transparent interiors and
+velocity across overlapping drops. Every visible cell, ghost and preview moves
+with that recoil; logical grid coordinates stay fixed. Rendered movement and
+rotation ease from their current pose, including interrupted input, while
+collision and landing prediction update immediately. The ghost uses four
+existing thin cells with transparent interiors and
 masked shared edges, forming one continuous outside silhouette. Block faces
 are darker with narrower luminous borders so landing illumination remains
 visible.
+
+Four bounded waves travel outward from landing centers at 650 units/s. Each
+settled cell lights after the front reaches it, with a 55 ms attack and smooth
+cooling. The same traveling front brightens already living background grains
+and action tails without resetting their simulation. Overlapping drops retain
+their own wave origins; full slots cool before reuse. Block types share one
+slate/cyan palette so this light reads across the whole pile.
 
 ## Light and antialiasing
 
@@ -92,9 +108,11 @@ geometry. Grain size and opacity retire continuously.
 
 Top-out stops control and the run clock immediately. Duet rescue and winning
 final clears take priority. After a 700 ms hold, visible rows release from top
-to bottom at 12.5 ms intervals. The actual colored block meshes fly outward
-and forward, rising and tumbling at full size. They retire after leaving the
-well; their geometry is never scaled to zero. Sparse occupied-row grains
+to bottom at 12.5 ms intervals. The actual block meshes expand away from the
+well center: upper rows rise, lower rows fall, and lateral spread is stronger
+than vertical travel. Per-cell curl and signed depth carry some blocks toward
+the camera and others away. They tumble at full size and retire after leaving
+the well; their geometry is never scaled to zero. Sparse occupied-row grains
 accompany the departure.
 
 After the 2.8-second loss phase, the main menu returns directly. It retains
@@ -103,7 +121,10 @@ that return. The camera eases toward the menu. Clicking Play during that ease
 starts from its current pose. Pointer Play begins one new run through the same
 departure choreography; no Game Over panel appears. Gameplay and pause retain
 their keyboard controls, while the main menu offers only Journey and uses
-pointer controls.
+pointer controls. Hover color eases over 150 ms; menu opacity and expanded
+options ease over 200 ms. Picking follows each control's displayed position.
+The perspective lens eases between the larger menu demonstration and the
+smaller gameplay well, preserving the current lens when a return is interrupted.
 
 Automatic Journey chapters preserve the pile and score during a 2.6-second
 camera passage. Reduced motion skips that passage and retires departing

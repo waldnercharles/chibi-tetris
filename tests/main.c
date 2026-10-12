@@ -649,7 +649,7 @@ TEST_CASE(authored_rules)
     yyjson_mut_doc *doc = request("RulesChecks", 2);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(712));
+    REQUIRE(report(811));
     return true;
 }
 
@@ -873,7 +873,7 @@ TEST_CASE(pointer_play_preserves_returning_camera)
     key(doc, 0, 0);
     click_world(doc, 205, -440, -86);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(9));
+    REQUIRE(report(10));
     return true;
 }
 
@@ -996,7 +996,7 @@ TEST_CASE(compact_opening_pointer_controls)
     click_world(doc, 42, -378, -118);
     click_world(doc, 46, -440, -86);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(18));
+    REQUIRE(report(25));
     return true;
 }
 
@@ -1453,7 +1453,7 @@ TEST_CASE(authored_environment_consumer)
 
 TEST_CASE(controlled_soft_drop_and_piece_motion)
 {
-    yyjson_mut_doc *doc = request("MotionChecks", 210);
+    yyjson_mut_doc *doc = request("MotionChecks", 392);
     key(doc, 0, 0);
     tap(doc, 28, KEY_LEFT);
     tap(doc, 30, KEY_RIGHT);
@@ -1468,8 +1468,11 @@ TEST_CASE(controlled_soft_drop_and_piece_motion)
         tap(doc, frame, KEY_DOWN);
     }
     tap(doc, 175, KEY_SPACE);
+    tap(doc, 220, KEY_SPACE);
+    tap(doc, 270, KEY_SPACE);
+    tap(doc, 278, KEY_SPACE);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(56));
+    REQUIRE(report(125));
     return true;
 }
 
@@ -1487,7 +1490,7 @@ TEST_CASE(layered_world_space_reactions)
     yyjson_mut_doc *doc = request("VfxChecks", 1147);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(211));
+    REQUIRE(report(216));
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 5);
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
     return true;
@@ -1609,7 +1612,7 @@ TEST_CASE(authored_music_response)
     yyjson_mut_doc *doc = request("MusicResponseChecks", 1);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(47));
+    REQUIRE(report(56));
     return true;
 }
 
@@ -1618,7 +1621,7 @@ TEST_CASE(musical_spatial_forces)
     yyjson_mut_doc *doc = request("MusicFieldChecks", 212);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(24));
+    REQUIRE(report(44));
     return true;
 }
 

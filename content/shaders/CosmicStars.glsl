@@ -119,11 +119,12 @@ ChibiParticle stars(ChibiParticleInput p, ChibiParameters u)
         position.x *= 1.0 + u.Duet * 0.55;
     }
     float action = cosmic_event_light(position, u);
+    float wave = particle_wave_light(position, u) * 0.25;
     float quiet = cosmic_board_quiet(cosmic_board_projection(position, u.Eye), u.Duet);
     result.position = position;
-    result.size = size * (1.0 + action * 0.2);
-    result.color = vec4(cosmic_tint(random, position, weights, u) * (brightness + action * 0.8),
-        opacity * quiet);
+    result.size = size * (1.0 + action * 0.2 + wave * 1.2);
+    result.color = vec4(cosmic_tint(random, position, weights, u) * (brightness + action * 0.8) + vec3(0.3, 1.6, 2.2) * wave,
+        opacity * quiet * (1.0 + wave * 2.4));
     result.scale = vec3(1.0);
     result.rotation = random * COSMIC_TAU;
     result.lighting = 0.1;

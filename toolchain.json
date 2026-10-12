@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "e3f1d8f817a56e297d2fbb247d73ca3b24484694",
-    "source_snapshot_sha256": "e820371c0c7c6bb0e00651d52e23243318024969b7901e4cc2420948aff609b9",
+    "revision": "9ee6b76f3f6ee995e448cf65595195b5fdeb8498",
+    "source_snapshot_sha256": "b7a756f9e5ad9a9f9fe89dc7d1a11e8ef5447a2d35d1f9909df5be3252d5215c",
     "project_format": 22,
     "player_prepared_format": 12,
     "local_branch": "cwaldner/tetris-render-polish"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "093b616444459ab7197dd9a1b988ced00a5016d5451efb40c8e79374a154a972",
-    "manifest_sha256": "e8441582fb3eb7ccc712a9c0bf8ec8d4f5c0fcd8aab116facac7c796688f383b",
+    "build_id": "f07d8e0dbda12509dfe60fede291eea62bbeed4acaca95a1721d52f5bd69bbdd",
+    "manifest_sha256": "9cad237caf6fd73baa1c062619fa0657706fd9f2ce7319fd99a03b865e752c95",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,12 +22,12 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "e3f1d8f817a56e297d2fbb247d73ca3b24484694",
+    "source_revision": "9ee6b76f3f6ee995e448cf65595195b5fdeb8498",
     "files": {
-      "chibi-player.js": "12c570697ea188d33ec1d7a3a18a1d5adf06ab1acb6167830b61e60508d6df16",
-      "chibi-player.wasm": "2a754c2d5935f73e8cc6f7f544f0289bcd722e7170f156c869bff2b0cbe15b79",
-      "compiler/chibi-compile.js": "c574d91e45e74ac12dbd07080042699451bd6c3023c3e92dd1f74ba263c948cd",
-      "compiler/chibi-compile.wasm": "73f35fecf7d0db93bc5859cff4bc2d3d5e6281480ce89965c478c013314a7192",
+      "chibi-player.js": "885122adb42d50429e1e433c425471bcf85f5d78846163f277a8687742f5a0dc",
+      "chibi-player.wasm": "8f5fc040a899d20b3fc053fb2b561038fb4d79de31f8a5bb582fdcf40dfc3a55",
+      "compiler/chibi-compile.js": "39e724dccb7fab12e7d19ebcf7dc4b87fc6b37e2406f7e341c7fece18ede58c6",
+      "compiler/chibi-compile.wasm": "e018999713ba8a14d03130b95a951346decacbb58a3d6027c445d550b13f7817",
       "index.html": "039ddc45202bcc909e1e405b593121dabd128d47aca0ff8020a30a629ca4de73"
     }
   }

@@ -1,4 +1,4 @@
-// Shared deterministic samples. Both entry points retain the original hashes.
+// Shared event identities and deterministic particle samples.
 #ifndef REACTION_COMMON_GLSL
 #define REACTION_COMMON_GLSL
 
@@ -6,16 +6,40 @@
 
 vec3 reaction_random(float index, float seed)
 {
-    return fract(sin(vec3(
-        index * 127.1 + seed,
-        index * 269.5 + seed * 2.0,
-        index * 311.7 + seed * 3.0
-    )) * 43758.5453);
+    return particle_samples(uint(index) ^ particle_hash(uint(seed)));
 }
 
 float reaction_quantile(float index, float seed)
 {
-    return fract(sin(index * 71.37 + seed * 5.0) * 19417.345);
+    return float(particle_hash(uint(index) ^ particle_hash(uint(seed) + 71u)) >> 8u) / 16777216.0;
+}
+
+// All layers of one captured action share their density, spread and cooling.
+// Each new event has a new identity even before the field pool wraps around.
+vec3 reaction_event(float seed)
+{
+    return particle_samples((uint(seed) >> 4u) + 997u);
+}
+
+float reaction_population(float index, float seed, vec3 event)
+{
+    // Density is independent of birth time and position along a drop column.
+    float density_sample = float(particle_hash(uint(index) ^ particle_hash(uint(seed) + 2843u)) >> 8u) / 16777216.0;
+    return 1.0 - step(0.58 + event.x * 0.42, density_sample);
+}
+
+float reaction_duration(float life, vec3 random, vec3 event)
+{
+    return life * (0.70 + event.z * 0.16 + random.z * 0.12);
+}
+
+ChibiParticle reaction_illuminate(ChibiParticle particle, ChibiParameters u)
+{
+    float wave = particle_wave_light(particle.position + u.Origin, u) * (1.0 - u.Quiet);
+    particle.color.rgb += vec3(0.24, 1.65, 2.0) * wave;
+    particle.color.a *= 1.0 + wave * 0.65;
+    particle.size *= 1.0 + wave * 0.24;
+    return particle;
 }
 
 // Preserve the authored float selector, including its half-unit boundary.
@@ -53,13 +77,20 @@ ChibiParticleState reaction_advect(ChibiParticleState state, ChibiParticleInput 
 {
     float seconds = min(p.delta, max(0.0, p.time - birth)) * (1.0 - u.Quiet);
     vec3 world = state.position + u.Origin;
-    vec3 current = cosmic_curl(world * 0.006, u.Current.x);
+    vec3 event = reaction_event(p.seed);
+    vec3 current = cosmic_curl(world * (0.004 + event.y * 0.003), u.Current.x);
+    // An event keeps its broad initial arc while the live common current bends
+    // it. Neighboring schools still exchange the same four input forces.
+    float swirl = (event.x - 0.5) * 2.0;
+    vec3 bend = vec3(-state.velocity.y, state.velocity.x, state.velocity.x * 0.2);
+    state.velocity += bend * swirl * seconds * 0.62 * exp(-max(0.0, p.time - birth) * 0.65);
     vec3 target = current * (45.0 + u.Current.z * 30.0) + vec3(u.Current.y * 28.0, 20.0, -8.0);
     state.velocity += (target - state.velocity) * (1.0 - exp(-seconds * response));
-    state.velocity += reaction_force(state.position, u) * seconds * 2.4;
+    float force_response = u.Pattern == 13.0 ? 1.3 : 2.4;
+    state.velocity += reaction_force(state.position, u) * seconds * force_response;
     state.velocity.z -= max(0.0, world.z - 560.0) * seconds * 2.0;
     state.velocity.z += max(0.0, -1250.0 - world.z) * seconds * 0.7;
-    state.velocity *= min(1.0, 420.0 / max(length(state.velocity), 1.0));
+    state.velocity *= min(1.0, 680.0 / max(length(state.velocity), 1.0));
     state.position += state.velocity * seconds;
     state.age += p.delta;
     return state;

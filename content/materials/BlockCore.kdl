@@ -13,10 +13,10 @@ description "Opaque charcoal body beneath the music-reactive coat. It writes dep
                 type "Shader Surface Output"
                 inputs {
                     "Base Color" {
-                        default x=0.055 y=0.065 z=0.08
+                        default x=0.035 y=0.055 z=0.07
                     }
-                    Roughness 0.52
-                    Metallic 0.12
+                    Roughness 0.62
+                    Metallic 0.06
                     "Alpha Mode" 1
                 }
             }

@@ -55,4 +55,28 @@ parameters {
         type "vec3"
         (array)default 90.0 50.0 1080.0
     }
+    Wave0 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    Wave1 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    Wave2 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    Wave3 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    WavePower01 {
+        type "vec2"
+        (array)default 0.0 0.0
+    }
+    WavePower23 {
+        type "vec2"
+        (array)default 0.0 0.0
+    }
 }

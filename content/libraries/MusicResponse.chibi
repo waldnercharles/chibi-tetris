@@ -13,6 +13,8 @@ library MusicResponse {
         world.VisualState.beat = 0
         world.VisualState.beat_period = 0.5
         world.VisualState.beat_confidence = 0
+        world.VisualState.beat_phase = 0
+        world.VisualState.beat_tracking = false
     }
 
     function Envelope(value: number, target: number, dt: number) -> (result: number) {
@@ -25,6 +27,28 @@ library MusicResponse {
 
     function Compress(value: number) -> (result: number) {
         return value / (0.32 + value)
+    }
+
+    function Rhythm(world: entity, tempo: number, phase: number, confidence: number, beat: number, dt: number) {
+        was_tracking := world.VisualState.beat_tracking
+        world.VisualState.beat_tracking = false
+        world.VisualState.beat_phase = 0
+        if dt > 0.1 || tempo < 40 || tempo > 240 || confidence < 0.08 || world.VisualState.energy < 0.01 {
+            if was_tracking {
+                world.VisualState.beat_confidence = 0
+                world.VisualState.beat_period = 0.5
+            }
+            return
+        }
+        world.VisualState.beat_tracking = true
+        world.VisualState.beat_phase = clamp(phase, 0, 1)
+        world.VisualState.beat_period = 60 / tempo
+        // Tracker confidence is evidence strength, not a probability. Preserve
+        // weak passages while making established timing useful to the field.
+        world.VisualState.beat_confidence = clamp(confidence * 3, 0, 1)
+        strength := (0.6 + clamp(confidence * 2, 0, 0.4)) * clamp(beat * 1.35, 0, 1)
+        world.MusicDynamics.pulse = max(world.MusicDynamics.pulse, strength)
+        world.VisualState.beat = world.MusicDynamics.pulse
     }
 
     function Pulse(world: entity, strength: number) {

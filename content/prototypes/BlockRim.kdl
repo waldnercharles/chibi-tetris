@@ -1,7 +1,7 @@
 name "BlockRim"
 components {
     Geometry3D depth=0.2 height=24.0 width=24.0
-    Material emission_color=0x33ebffff emission_multiplier=1.0 scene=0x33ebffff
+    Material emission_color=0x6bbbcaff emission_multiplier=1.0 scene=0x6bbbcaff
     RenderState hidden=#true
     Shader material="GhostSurface"
     Transform3D {

@@ -3,20 +3,11 @@
 // Stable identities, a continuous divergence-free flow, and board-space forces.
 const float COSMIC_TAU = 6.28318530718;
 
-uint cosmic_hash(uint value)
-{
-    value = (value ^ (value >> 16u)) * 2146121005u;
-    value = (value ^ (value >> 15u)) * 2221713035u;
-    return value ^ (value >> 16u);
-}
-
 vec3 cosmic_random(float index, float seed, float variation)
 {
-    uint identity = uint(index) ^ cosmic_hash(uint(seed) + 19u)
-        ^ cosmic_hash(uint(variation) + 127u);
-    return vec3(float(cosmic_hash(identity) >> 8u),
-        float(cosmic_hash(identity + 1013u) >> 8u),
-        float(cosmic_hash(identity + 7919u) >> 8u)) / 16777216.0;
+    uint identity = uint(index) ^ particle_hash(uint(seed) + 19u)
+        ^ particle_hash(uint(variation) + 127u);
+    return particle_samples(identity);
 }
 
 vec4 cosmic_stage_weights(float style)

@@ -1,5 +1,103 @@
 # Validation record
 
+## Traveling light, varied tails and tracked rhythm — October 11, 2026
+
+The third pass keeps the reference boundary at 9:00. It adds one slate-cyan
+palette, four overlapping radial cell highlights, matching traveling light in
+the background, and fresh event identities with coherent variations in density,
+spread, curl, size and lifetime. Logical inputs remain immediate while rendered
+piece poses ease to their targets. The well, blocks, previews and ghost share a
+damped downward impact. The actual perspective lens now gives the gameplay
+well more surrounding space; changing camera width alone had no effect.
+
+Final temporal browser captures show the hard-drop beam cooling into a distinct
+asymmetric plume, coarse foreground grains separating from finer dust, and a
+visible tail beyond two seconds. Subsequent actions bend existing trails.
+The shared start/loss animation expands full-size blocks around the well,
+including lower rows falling outward and signed depth motion. It returns
+directly to the Journey menu. A bright continuous ambient annulus and the
+remaining upward loss bias were rejected during visual review and corrected.
+The compact sheets and logs remain in ignored `.chibi/complete-effects`.
+
+The clean engine pin is `9ee6b76f3f6ee995e448cf65595195b5fdeb8498`.
+It integrates the MIT-licensed Beat-and-Tempo-Tracking C core and exposes
+measured tempo, phase, confidence and a beat envelope through an additive
+native function. Review corrected upstream callback clocks, resets,
+sample-rate changes, autocorrelation packing and PCM discontinuities. The
+host silences stale predictions; game visuals combine tracked beats with
+responsive spectral attacks and ease phase corrections. KissFFT is not bundled
+because BTT includes its own FFT. No LYGIA code was imported.
+
+All three original 60-second scores were replayed through the production
+analyzer at the shipped gain. Valid tempo estimates were within 3% of 96 BPM
+for 89.2–100% of valid frames; beat-grid RMS error was 76–142 ms. Processing
+cost 1.30–1.35 seconds per minute of PCM. All rhythm outputs returned to zero
+after 100 ms of silence. A compiled WebAssembly probe also checked beat
+acquisition, chunk independence and reset. These establish analyzer behavior,
+not exact phase alignment or completed human listening. Full results and
+provenance are in [audio](audio.md).
+
+Independent source and visual reviews found no remaining issue in the final
+particle, board or rhythm changes. Relevant final checks passed under each
+command group's shared production 60-second deadline:
+
+| Check | Result |
+| --- | --- |
+| Engine native, Release without sanitizers | 308 cases / 179,118 assertions; 14.342 s. |
+| Engine language | 178 cases / 10,518 assertions; 0.943 s. |
+| Engine tooling | 93 cases / 22,588 assertions; 22.676 s. |
+| Game rules, motion, music field, VFX, music response and menu | 9 case executions / 102 dispatcher assertions; 15.683 s. |
+| Final departure, menu and attract interactions | 15 case executions / 505 dispatcher assertions; 46.601 s. |
+| Expanded menu and pointer UI | 3 cases / 369 dispatcher assertions; 13.145 s. |
+| Installed-SDK audio and native catalog | 21 cases / 467 assertions; 3.761 s. |
+| Production asset validation | 145 assets; zero errors or warnings; 4.165 s. |
+
+Game cases also execute authored assertions: 811 rules/ghost checks, 125 motion
+checks, 216 VFX checks, 56 music-response checks and 44 field checks. New palette,
+motion, phase, menu and lens checks failed their former implementations. The
+outward-flight regression failed the upward-only path. Production and changed
+fixture assets are formatted. C formatting and diff checks passed.
+
+The installed-SDK check used the existing dispatcher with both C and C++
+enabled for its existing pass-through draw shim. Initial standalone build
+attempts lacked that C++ language and inherited stricter warnings for existing
+partial initializers; neither failed build is counted as a passing check.
+The temporary build adapter and binaries were removed after the final link
+and CPU checks passed.
+
+A separate default sanitized native aggregate hit its hard deadline at
+60.069 seconds after the audio cases had passed. It also reported existing
+Box3D alignment and SLJIT signed-negation diagnostics. That aggregate is
+incomplete, not passed. Full/quarantined native, render, Studio and game-wide
+suites were not run or reconstructed.
+
+Matching native and browser exports completed with the clean pinned SDK and
+player, including BTT's license and patch record. One bounded hidden Cocoa/Metal
+preview used 60 CPU steps, two GPU warmup frames and one saved 640 × 360 frame.
+It rendered 147,552 particles and 853 entities. This is compilation/rendering
+evidence, not sustained performance.
+
+Actual browser play covered pointer Play, repeated left/right moves, rotation,
+hard drop, overlapping tails, clear release, pause, shared new-run departure
+and direct loss-to-menu recovery. The options panel exposed translucent-panel sorting over its left labels.
+Moving menu lettering in front of those panels fixed it; the settled expanded
+panel is now readable in the actual WebGL fallback. Captures without player input show changing particle shape and light;
+silent images alone cannot establish musical synchronization. No product
+console errors appeared. A disposable shell withheld WebGPU and confirmed the
+real GLES 3.0 fallback; that shell was removed afterward.
+
+At normal 2560 × 1440 rendering (1280 × 720 CSS), two-second warmups followed
+by 2.5-second samples measured WebGPU at 58.80 FPS, 16.7 ms median and 24.9 ms
+p95, and WebGL at 59.00 FPS, 16.7 ms median and 25.0 ms p95. These short samples
+are local observations, not sustained or cross-device guarantees. Publication
+revision, checksums and public play are verified after the clean source commit.
+
+Grains glow and receive light; eight pooled action lights illuminate nearby
+blocks. Each grain is not a separate point light. Shared current and impulse
+fields influence old and new particles; they do not implement pairwise
+particle collisions. External capture routing and human listening remain
+unverified. No disposable project clone or executable remains from this pass.
+
 ## Trance-like reactions, menu recovery and antialiasing — October 11, 2026
 
 The second reference pass revisited all nine overview sheets before 9:00,

@@ -323,48 +323,36 @@ components {
         name "Left"
         prototype "WellLine"
         components {
-            Geometry3D width=1.4 height=486.0 depth=13.0
+            Geometry3D width=1.4 height=486.0 depth=2.0
             Transform3D {
                 position x=-122.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
             }
-            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.45 emission_multiplier=1.0
         }
     }
     - {
         name "Right"
         prototype "WellLine"
         components {
-            Geometry3D width=1.4 height=486.0 depth=13.0
+            Geometry3D width=1.4 height=486.0 depth=2.0
             Transform3D {
                 position x=122.0 y=0.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
             }
-            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.45 emission_multiplier=1.0
         }
     }
     - {
         name "Bottom"
         prototype "WellLine"
         components {
-            Geometry3D width=244.0 height=1.4 depth=13.0
+            Geometry3D width=244.0 height=1.4 depth=2.0
             Transform3D {
                 position x=0.0 y=-243.0 z=5.5
                 scale x=1.0 y=1.0 z=1.0
             }
-            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
-        }
-    }
-    - {
-        name "Top"
-        prototype "WellLine"
-        components {
-            Geometry3D width=244.0 height=1.4 depth=13.0
-            Transform3D {
-                position x=0.0 y=243.0 z=5.5
-                scale x=1.0 y=1.0 z=1.0
-            }
-            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.65 emission_multiplier=1.0
+            Material scene=0x03282eff emission_color=0x039cceff emission_intensity=0.45 emission_multiplier=1.0
         }
     }
     - {

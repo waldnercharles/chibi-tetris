@@ -5,9 +5,9 @@ behavior CameraRecoveryChecks {
     camera: entity
     frame: int = 0
     phase: int = 0
-    previous_width := 700
+    previous_fov := 0.88
     previous_x := 90
-    entry_width := 700
+    entry_fov := 0.88
     entry_x := 90
 
     function Check(condition: bool, message: string) {
@@ -19,6 +19,15 @@ behavior CameraRecoveryChecks {
         if self.TestReport.first_failure == "" {
             self.TestReport.first_failure = message
         }
+    }
+
+    function PlayOpacity() -> (opacity: number) {
+        for mesh in find_entities_with_component("MeshAsset") {
+            if mesh.MeshAsset.source == "content/meshes/text/ui_play.mesh" && !mesh.RenderState.hidden {
+                return cast<number>(mesh.Material.scene & 255) / 255
+            }
+        }
+        return 0
     }
 
     on Begin {
@@ -33,33 +42,35 @@ behavior CameraRecoveryChecks {
         }
         if frame == 200 {
             Check(world.Session.screen == 0 && world.Session.attract && !world.Session.entering, "loss returns to the pointer menu before replay")
-            Check(camera.Camera.width > 700 && camera.Camera.width < 1100, "pointer Play will interrupt unfinished menu camera travel")
+            Check(camera.Camera.fov > 0.75 && camera.Camera.fov < 0.88, "pointer Play will interrupt unfinished menu lens travel")
+            opacity := PlayOpacity()
+            Check(opacity > 0 && opacity < 1, "returning menu controls fade into their restored framing")
         }
-        width := camera.Camera.width
+        fov := camera.Camera.fov
         x := camera.Transform3D.position.x
         match (phase) {
             case 0 {
                 if world.Session.entering {
-                    Check(previous_width > 700 && previous_width < 1100, "Play arrives before the menu camera reaches its endpoint")
-                    Check(abs(width - previous_width) < 20, "Play keeps the current framing on its entering edge")
+                    Check(previous_fov > 0.75 && previous_fov < 0.88, "Play arrives before the menu lens reaches its endpoint")
+                    Check(abs(fov - previous_fov) < 0.03, "Play keeps the current lens on its entering edge")
                     Check(abs(x - previous_x) < 10, "Play keeps the current camera position on its entering edge")
-                    entry_width = width
+                    entry_fov = fov
                     entry_x = x
                     phase = 1
                 }
             }
             case 1 {
-                Check(abs(width - entry_width) < 0.001, "the first intro frame preserves the interrupted return framing")
+                Check(abs(fov - entry_fov) < 0.001, "the first intro frame preserves the interrupted return lens")
                 Check(abs(x - entry_x) < 0.2, "the first intro frame preserves the interrupted return position")
                 phase = 2
             }
         }
         if frame == 435 {
             Check(phase == 2 && world.Session.screen == 1 && !world.Session.entering && world.Session.run == 2, "pointer replay finishes exactly one new Journey run")
-            Check(abs(width - 700) < 0.001, "interrupted menu return still reaches gameplay framing")
+            Check(abs(fov - 0.88) < 0.001, "interrupted menu return still reaches the wider gameplay lens")
             self.TestReport.done = true
         }
-        previous_width = width
+        previous_fov = fov
         previous_x = x
         frame += 1
     }

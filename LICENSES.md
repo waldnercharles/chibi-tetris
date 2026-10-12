@@ -8,6 +8,8 @@ The music and sound effects in `content/sounds` and their original score are ded
 
 The Chibi distribution carries its engine and dependency license notices. Its bundled Inter font is supplied through that SDK and retains its original license. Exported releases must retain the SDK notices.
 
+The pinned engine includes Michael Krzyzaniak's Beat-and-Tempo-Tracking under the MIT License, with the upstream revision and local fixes recorded in its `third_party/btt/README.chibi.md`. The SDK retains `share/chibi/licenses/btt/LICENSE`; browser exports carry the notice under `data/engine/licenses/btt/`. BTT includes its own FFT; KissFFT is not bundled. No LYGIA source is included.
+
 The rotation offsets implement publicly documented geometric rules. `docs/rules.md` records rule references and intentional choices. Stillwater is an independent game and is not affiliated with The Tetris Company or Enhance.
 
 The build-time glyph generator uses libtess2 at upstream commit `8dbd6483e920311a58c9af10a10beb278efebc36`, under the SGI Free Software License B 2.0. Its unmodified source and license are in `tools/vendor/libtess2`. It is not linked into the game.

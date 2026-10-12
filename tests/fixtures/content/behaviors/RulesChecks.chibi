@@ -17,6 +17,7 @@ behavior RulesChecks {
         // mask per cell. Rotating those outlines must preserve shared edges.
         outlines: int[] = [13, 12, 12, 14, 5, 6, 9, 10, 7, 13, 8, 14, 5, 14, 13, 10, 13, 6, 9, 14, 7, 9, 12, 14, 7, 13, 12, 10]
         for kind in 1..7 {
+            Check(Pieces.Color(kind) == Pieces.Color(1), "all rendered piece kinds share the same slate cyan tint")
             for rotation in 0..3 {
                 cells: int[] = []
                 for block in 0..3 {

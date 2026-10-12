@@ -56,7 +56,9 @@ behavior JourneyChecks {
                 for tile in find_entities_with_component("MeshAsset") {
                     if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
                         tiles = array_add(tiles, tile)
-                        positions = array_add(positions, tile.Transform3D.position)
+                        position := tile.Transform3D.position
+                        position.y -= board.Transform3D.position.y
+                        positions = array_add(positions, position)
                     }
                 }
                 Check(length(tiles) >= 8, "the passage starts with the actual placed block bodies")
@@ -126,6 +128,7 @@ behavior JourneyChecks {
                     for i in 0..length(tiles) - 1 {
                         tile := get(tiles, i)
                         p := tile.Transform3D.position
+                        p.y -= board.Transform3D.position.y
                         before := get(positions, i)
                         Check(!tile.RenderState.hidden && abs(p.x - before.x) + abs(p.y - before.y) < 0.001, "the same block identities return to their unchanged grid cells")
                     }

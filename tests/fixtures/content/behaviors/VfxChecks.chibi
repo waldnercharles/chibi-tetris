@@ -26,6 +26,8 @@ behavior VfxChecks {
     sparse_tail: entity
     old_age := 0
     light_release := 0
+    first_move_seed: int = 0
+    first_turn_seed: int = 0
     frame: int = 0
 
     function Check(condition: bool, message: string) {
@@ -160,6 +162,11 @@ behavior VfxChecks {
                 shifting = CueAt(-110, 120)
                 holding = CueAt(-160, 10)
                 falling = CueAt(130, 80)
+                first_move_seed = shifting.ParticleField3D.seed
+                first_turn_seed = turning.ParticleField3D.seed
+                Check(first_move_seed / 16 != first_turn_seed / 16, "separate accepted actions own distinct event identities before any pool reuse")
+                Check(holding.ParticleField3D.seed / 16 != falling.ParticleField3D.seed / 16, "hold and soft fall do not repeat another event population")
+                Check(packet.ParticleField3D.seed / 16 == drop_tail.ParticleField3D.seed / 16 && packet.ParticleField3D.seed / 16 == landing.ParticleField3D.seed / 16, "the beam cloud and contact share one coherent drop identity")
                 Check(turning != world && blocked != world, "local input fields retain their action origins")
                 Check(packet != world && landing != world, "packet starts at the captured piece and landing shifts exactly six cells")
                 Check(settling != world, "hard-drop landing has an independent restrained settling tail")
@@ -538,6 +545,8 @@ behavior VfxChecks {
                 shifting = LayerAt(-90, 180, 48)
                 turning = LayerAt(90, 180, 96)
                 Check(shifting != world && turning != world, "movement and rotation retain distinct bounded trail budgets")
+                Check(shifting.ParticleField3D.seed != first_move_seed && turning.ParticleField3D.seed != first_turn_seed, "repeated actions keep fresh identities after the pool and run have changed")
+                Check(shifting.ParticleField3D.seed >= 0 && shifting.ParticleField3D.seed < 16777216 && turning.ParticleField3D.seed < 16777216, "event and layer identities remain exact in the GPU float seed")
             }
             case 1055 {
                 if shifting != world && turning != world {

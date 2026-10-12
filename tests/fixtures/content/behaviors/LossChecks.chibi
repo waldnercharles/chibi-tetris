@@ -61,6 +61,13 @@ behavior LossChecks {
         return count
     }
 
+    function WellOffset(x: number) -> (offset: number) {
+        if duet && x > 0 {
+            return partner.Transform3D.position.y
+        }
+        return board.Transform3D.position.y
+    }
+
     function CheckPreviews() {
         expected: int = 24
         if duet {
@@ -71,6 +78,7 @@ behavior LossChecks {
             tile := get(previews, i)
             before := get(preview_positions, i)
             p := tile.Transform3D.position
+            p.y -= WellOffset(p.x)
             Check(abs(p.x - before.x) + abs(p.y - before.y) + abs(p.z - before.z) < 0.01, "loss keeps every Hold and Next preview fixed")
         }
     }
@@ -117,6 +125,7 @@ behavior LossChecks {
             run = world.Session.run
             for tile in find_entities_with_component("MeshAsset") {
                 p := tile.Transform3D.position
+                p.y -= WellOffset(p.x)
                 if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 16 {
                     previews = array_add(previews, tile)
                     preview_positions = array_add(preview_positions, p)
@@ -160,7 +169,11 @@ behavior LossChecks {
                 Check(vortex.ParticleField3D.time > field_time, "loss keeps scenery moving while gameplay is frozen")
             }
             if (age == 88 || age == 130) && !quiet {
-                Check(VisibleTiles() == length(tiles), "original colored blocks remain whole through the upward departure")
+                Check(VisibleTiles() == length(tiles), "original colored blocks remain whole through the outward departure")
+                upward: int = 0
+                downward: int = 0
+                nearest_depth := 0
+                farthest_depth := 0
                 for i in 0..length(tiles) - 1 {
                     tile := get(tiles, i)
                     before := get(positions, i)
@@ -173,12 +186,24 @@ behavior LossChecks {
                             center = 254
                         }
                     }
-                    Check(p.y > before.y + 80 && abs(p.x - before.x) > 35, "loss sends actual blocks well beyond their grid cells")
-                    Check((p.x - before.x) * (before.x - center) > 0, "each block departs outward from its own well")
-                    Check(p.z > before.z && abs(q.x) + abs(q.y) + abs(q.z) > 0.01, "original block meshes tumble through depth")
+                    x := p.x - before.x
+                    y := p.y - before.y
+                    Check(x * x + y * y > 6400, "loss sends actual blocks well beyond their grid cells")
+                    Check(x * (before.x - center) + y * before.y > 0, "each block departs radially away from its own well center")
+                    Check(abs(p.z - before.z) > 0.001 && abs(q.x) + abs(q.y) + abs(q.z) > 0.01, "original block meshes tumble through depth")
+                    if before.y > 48 && y > 40 {
+                        upward += 1
+                    }
+                    if before.y < -48 && y < -40 {
+                        downward += 1
+                    }
+                    nearest_depth = min(nearest_depth, p.z - before.z)
+                    farthest_depth = max(farthest_depth, p.z - before.z)
                     Check(tile.Transform3D.scale.x == 1 && tile.Transform3D.scale.y == 1 && tile.Transform3D.scale.z == 1 && tile.Geometry3D.width == 22, "block bodies keep their full dimensions throughout flight")
                     Check(tile.Material.scene == get(colors, i), "each released block retains its original piece color")
                 }
+                Check(upward > 0 && downward > 0, "upper and lower cells leave in opposite vertical directions")
+                Check(nearest_depth < -25 && farthest_depth > 25, "the release expands both behind and in front of the board")
                 Check(ReleaseFields() > 0, "quiet ember trails accompany the colored block bodies")
                 Check(world.Session.screen == 4, "the menu waits for the loss choreography")
                 CheckPreviews()

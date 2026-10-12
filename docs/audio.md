@@ -58,26 +58,58 @@ These sources were checked on October 11, 2026. Build and platform verification,
 
 ## Feedback
 
-The visual response uses the same PCM analyzer for native and browser audio.
-It measures RMS level, three filtered frequency bands and onset strength. The
-authored response normalizes quiet input and detects rises in all three bands.
-A single beat envelope avoids attenuating attacks through repeated smoothing;
-the environment then eases the visible motion and light. Silence does not
-generate substitute beats.
+Native and browser audio use the same PCM analyzer. `get_audio_analysis()`
+retains its level, three frequency bands, onset and source-status outputs.
+The authored response normalizes quiet music and detects rises in every band.
+Its single attack/release envelope preserves transients; the environment eases
+the visible motion and light.
 
-Full 60-second PCM replays at the default master/music gain compared the
-previous response with this revision. Visible pulses changed from 31 to 61 in
-Shore, 42 to 59 in Current, and 48 to 70 in Aurora. Peak beat strength changed
-from 0.67 to 1.0; average energy remained unchanged. These are detected musical
-attacks, not a count of the score's 96 beats. The simple interval estimator
-still has low confidence with missed or syncopated attacks. It does not provide
-a reliable synchronized beat clock.
+The engine now includes the MIT-licensed
+[Beat-and-Tempo-Tracking](https://github.com/michaelkrzyzaniak/Beat-and-Tempo-Tracking/tree/c039090f1af771092d95c3ffc402e557940f7384)
+C core. The additive `get_audio_rhythm()` function supplies estimated BPM,
+phase in [0,1), rhythmic confidence and a beat envelope with an 80 ms release.
+It needs several seconds to acquire a rhythm. Confidence is accumulated
+evidence, not a calibrated probability. The game keeps band attacks responsive
+during acquisition, strengthens tracked beats, and gradually aligns the shared
+particle field with valid measured phase. Gameplay timing is unchanged.
 
-The proposed [Beat-and-Tempo-Tracking](https://github.com/michaelkrzyzaniak/Beat-and-Tempo-Tracking)
-library supplies a fuller tracker, while
-[KissFFT](https://github.com/mborgerding/kissfft) supplies the FFT primitive.
-Neither is included in this pass: the observed defects were missing band
-attacks and excessive smoothing in the authored response.
+The import fixes callback sample positions, startup timestamp underflow,
+incomplete resets and an FFT autocorrelation packing error. A source change,
+format change or missing queued PCM resets history. The host gates published
+rhythm with audible level and recent spectral onsets, because the tracker alone
+continues predicting beats through silence. Analysis consumes queued PCM outside
+the audio callback; processing and resets allocate no memory.
+
+Full 60-second replays of the decoded score at master/music gain 0.80 × 0.65,
+sampled by the visual consumer at 60 Hz, produced these results. A valid frame
+has raw tracking confidence of at least 0.08, the game's phase threshold.
+
+| Track | Valid frames | Valid estimates within 3% of 96 BPM | Tracked pulses | Beat-grid RMS error |
+| --- | ---: | ---: | ---: | ---: |
+| Shore | 3,247 / 3,600 | 90.3% | 84 | 76 ms |
+| Current | 3,385 / 3,600 | 100% | 90 | 90 ms |
+| Aurora | 3,310 / 3,600 | 89.2% | 83 | 142 ms |
+
+All three returned zero tempo, phase, confidence and beat after 100 ms of
+silence. Native processing took 1.30–1.35 seconds per minute of PCM in the
+bounded replay. These are analyzer measurements, not browser frame-time or
+human listening results. Phase is approximate, particularly in Aurora, and
+tempo can briefly follow another subdivision. It therefore guides cosmetic
+motion through a smooth correction rather than controlling the falling piece.
+Tracking retains a fixed sample-history size; unusual capture rates can narrow
+its supported tempo range.
+
+The earlier authored-envelope fix increased measured attack pulses from 31 to
+61 in Shore, 42 to 59 in Current, and 48 to 70 in Aurora without changing average
+energy. Those attacks and the tracked pulses above are different signals; the
+final response combines them instead of treating either count as all 96 score
+beats. This preserves off-beat percussion and bright notes alongside the beat
+clock.
+
+[KissFFT](https://github.com/mborgerding/kissfft) is not bundled. BTT already
+contains its FFT, and the measured processing cost does not justify a second
+FFT implementation. The retained BTT license and local patch record ship in the
+SDK and exported player's license directory.
 
 Effects use the same felt, glass, pluck, bass, and air voices as the score. The move and rotate sounds are quiet pitched touches. Lock has a wooden body; hard drop adds a low impact. Clears widen from a small chord to a rising D minor 7 arpeggio. Hold descends, rescue rises after an intake of air, completion settles on F major 6, and top-out falls gently to D.
 

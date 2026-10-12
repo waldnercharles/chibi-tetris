@@ -9,25 +9,9 @@ parameters {
     Loss type="float" default=0.0
     RowMask type="float" default=1023.0
     Pattern type="float" default=0.0
-    Direction type="float" default=0.0
-    Travel type="float" default=0.0
-    Strength type="float" default=0.0
     Life type="float" default=0.0
     Quiet type="float" default=0.0
-    Hue type="float" default=0.0
     Point0 {
-        type "vec3"
-        (array)default 0.0 0.0 0.0
-    }
-    Point1 {
-        type "vec3"
-        (array)default 0.0 0.0 0.0
-    }
-    Point2 {
-        type "vec3"
-        (array)default 0.0 0.0 0.0
-    }
-    Point3 {
         type "vec3"
         (array)default 0.0 0.0 0.0
     }
@@ -77,4 +61,28 @@ parameters {
     }
     Delay type="float" default=0.0
     Fade type="float" default=1.0
+    Wave0 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    Wave1 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    Wave2 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    Wave3 {
+        type "vec3"
+        (array)default 0.0 0.0 1.6
+    }
+    WavePower01 {
+        type "vec2"
+        (array)default 0.0 0.0
+    }
+    WavePower23 {
+        type "vec2"
+        (array)default 0.0 0.0
+    }
 }

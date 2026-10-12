@@ -46,9 +46,9 @@ behavior Board {
     block_roughness := 0.54
     block_metallic := 0.06
     block_emission := 0.025
-    block_opacity := 0.965
+    block_opacity := 0.9
     base_finish: CF_V3 = { x: 0.54, y: 0.06, z: 0.025 }
-    base_opacity := 0.965
+    base_opacity := 0.9
     finish_signal: CF_V3 = { x: 0, y: 0, z: 0 }
     music_lift := 0
     music_scale := 0
@@ -60,6 +60,12 @@ behavior Board {
     turn_lean := 0
     well_sink := 0
     well_velocity := 0
+    piece_targets: CF_V3[] = []
+    piece_snap := true
+    piece_moving := false
+    ripple_sources: CF_V3[] = []
+    ripple_strengths: number[] = []
+    rippling := false
     contact_tiles: entity[] = []
     contact_drives: number[] = []
     contact_flashes: number[] = []
@@ -84,6 +90,11 @@ behavior Board {
                 tile := await spawn(Block)
                 tiles = array_add(tiles, tile)
             }
+        }
+        for i in 0..3 {
+            piece_targets = array_add(piece_targets, vec3(0, 0, 0))
+            ripple_sources = array_add(ripple_sources, vec3(0, 0, 1.4))
+            ripple_strengths = array_add(ripple_strengths, 0)
         }
         self.BoardState.ready = true
     }
@@ -118,6 +129,8 @@ behavior Board {
     }
 
     function SpawnPiece(kind: int) {
+        piece_snap = true
+        piece_moving = false
         action_drive = 0
         action_flash = 0
         move_drive = 0
@@ -147,6 +160,7 @@ behavior Board {
         seen_run = world.Session.run
         well_sink = 0
         well_velocity = 0
+        ClearRipples()
         ClearContacts()
         grid = Rules.Empty()
         loss_started = false
@@ -191,6 +205,7 @@ behavior Board {
     function Rescue() {
         Emit(12, 1, 0, 6, current)
         ClearContacts()
+        ClearRipples()
         Rules.Rescue(grid)
         self.BoardState.topout = false
         self.BoardState.combo = -1
@@ -335,7 +350,8 @@ behavior Board {
         self.BoardState.drop_serial += 1
         self.BoardState.drop_distance = distance
         if !world.Session.reduced_motion && world.Session.effects > 0 {
-            well_velocity = max(-135, well_velocity - 82 - cast<number>(min(distance, 20)) * 1.2)
+            well_velocity = max(-270, well_velocity - 210 - cast<number>(min(distance, 20)) * 2)
+            Ripple()
         }
         Impact()
         play_sound("hard_drop", 0.35)
@@ -414,6 +430,7 @@ behavior Board {
         stack_dirty = true
         piece_dirty = true
         loss_started = true
+        ClearRipples()
         ClearContacts()
     }
 
@@ -653,8 +670,17 @@ behavior Board {
             z = PieceDepth()
             scale = PieceScale()
         }
+        target := vec3(x, 8 - y + well_sink, z)
+        active := slot >= 200 && slot < 204
+        if active {
+            piece_targets[slot - 200] = target
+        }
+        if !active || tile.RenderState.hidden || piece_snap || world.Session.reduced_motion || world.Session.effects == 0 {
+            tile.Transform3D.position = target
+        } else {
+            piece_moving = true
+        }
         tile.RenderState.hidden = false
-        tile.Transform3D.position = { x: x, y: 8 - y, z: z }
         tile.Transform3D.scale = scale
         tile.Transform3D.rotation = { x: 0, y: 0, z: 0, w: 1 }
         if slot >= 200 && slot < 204 {
@@ -668,7 +694,7 @@ behavior Board {
             tile.Geometry3D.width = 24
             tile.Geometry3D.height = 24
             tile.Geometry3D.depth = 0.2
-            tile.Transform3D.position = { x: x, y: 8 - y, z: -7 }
+            tile.Transform3D.position = { x: x, y: 8 - y + well_sink, z: -7 }
             tile.Material.scene = (color & 4294967040) | 112
             tile.Material.emission_intensity = 0.2
             return
@@ -682,6 +708,7 @@ behavior Board {
         brightness := 0.4 + 0.6 * (rgba - floor(rgba / 256) * 256) / 255
         tint := vec3(red / 255, green / 255, blue / 255) * brightness
         set_material_parameter(tile, "Tint", tint)
+        set_material_parameter(tile, "Impact", 0)
         Finish(tile, slot >= 200 && slot < 204)
     }
 
@@ -704,7 +731,7 @@ behavior Board {
                 orbit := StyleWeight(3)
                 block_depth = aurora * 0.6 + petal * 0.82 + dune * 0.42 + orbit * 0.74
                 base_finish = vec3(aurora * 0.54 + petal * 0.62 + dune * 0.66 + orbit * 0.5, aurora * 0.06 + petal * 0.1 + dune * 0.02 + orbit * 0.12, aurora * 0.025 + petal * 0.02 + dune * 0.018 + orbit * 0.03)
-                base_opacity = aurora * 0.965 + petal * 0.975 + dune * 0.99 + orbit * 0.95
+                base_opacity = aurora * 0.9 + petal * 0.92 + dune * 0.94 + orbit * 0.88
                 drawn_style = style
                 stack_dirty = true
                 piece_dirty = true
@@ -749,7 +776,7 @@ behavior Board {
         roughness := clamp(base_finish.x - finish_signal.y * 0.08 + finish_signal.z * 0.035, 0.14, 0.7)
         metallic := clamp(base_finish.y + finish_signal.x * 0.07 + finish_signal.z * 0.04, 0, 0.72)
         emission := base_finish.z + finish_signal.y * 0.025 + finish_signal.x * 0.015
-        opacity := clamp(base_opacity + finish_signal.x * 0.015 - finish_signal.z * 0.01, 0.94, 1)
+        opacity := clamp(base_opacity + finish_signal.x * 0.015 - finish_signal.z * 0.01, 0.84, 0.96)
         if abs(roughness - block_roughness) + abs(metallic - block_metallic) + abs(emission - block_emission) + abs(opacity - block_opacity) < 0.0001 {
             return
         }
@@ -806,23 +833,40 @@ behavior Board {
         }
     }
 
-    // The well absorbs the impact while the logical cells and landing marker
-    // retain their coordinates. Exact critical damping keeps overlap smooth.
+    // One render offset carries the well, cells, ghost and previews together.
+    // Game coordinates stay fixed; exact critical damping retains overlapping weight.
     function AdvanceWell(seconds: number) {
         if world.Session.screen == 2 || world.Session.screen == 3 {
             return
         }
+        previous := well_sink
         if world.Session.reduced_motion || world.Session.effects == 0 {
             well_sink = 0
             well_velocity = 0
         } else {
-            decay := exp(-seconds * 14)
-            step := (well_velocity + well_sink * 14) * seconds
+            decay := exp(-seconds * 12)
+            step := (well_velocity + well_sink * 12) * seconds
             well_sink = (well_sink + step) * decay
-            well_velocity = (well_velocity - step * 14) * decay
+            well_velocity = (well_velocity - step * 12) * decay
         }
         if visible {
-            self.Transform3D.position = vec3(origin + 120, well_sink, -16 + well_sink * 0.55)
+            self.Transform3D.position = vec3(origin + 120, well_sink, -16)
+        }
+        shift := well_sink - previous
+        if shift == 0 {
+            return
+        }
+        for tile in tiles {
+            if !tile.RenderState.hidden {
+                position := tile.Transform3D.position
+                position.y += shift
+                tile.Transform3D.position = position
+            }
+        }
+        for i in 0..3 {
+            target := get(piece_targets, i)
+            target.y += shift
+            piece_targets[i] = target
         }
     }
 
@@ -894,14 +938,108 @@ behavior Board {
         }
     }
 
-    // Input and music touch four transforms without querying the landing grid.
-    function AnimatePiece() {
+    function ClearRipples() {
+        for i in 0..3 {
+            ripple_sources[i] = vec3(0, 0, 1.4)
+            ripple_strengths[i] = 0
+        }
+        for tile in settled_tiles {
+            set_material_parameter(tile, "Impact", 0)
+            Finish(tile, false)
+        }
+        rippling = false
+    }
+
+    // The center uses the landed cells, independent of the next piece or recoil.
+    function Ripple() {
+        center := vec3(0, 0, 0)
+        for i in 0..3 {
+            cell := Pieces.Cell(current, rotation, i)
+            center += vec3(origin + (column + cell.x) * 24 + 12, 276 - (row + cell.y) * 24, 0) * 0.25
+        }
+        chosen: int = -1
+        nearest: int = 0
+        distance := 1000000
+        for i in 0..3 {
+            source := get(ripple_sources, i)
+            if source.z >= 1.4 && chosen < 0 {
+                chosen = i
+            }
+            squared := (source.x - center.x) * (source.x - center.x) + (source.y - center.y) * (source.y - center.y)
+            if squared < distance {
+                distance = squared
+                nearest = i
+            }
+        }
+        if chosen < 0 {
+            ripple_strengths[nearest] = min(1.5, get(ripple_strengths, nearest) + 0.4)
+        } else {
+            ripple_sources[chosen] = center
+            ripple_strengths[chosen] = 1
+        }
+        rippling = true
+    }
+
+    function AdvanceRipples(seconds: number) {
+        if !rippling || world.Session.screen == 2 {
+            return
+        }
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            ClearRipples()
+            return
+        }
+        alive := false
+        for i in 0..3 {
+            source := get(ripple_sources, i)
+            source.z = min(1.4, source.z + seconds)
+            ripple_sources[i] = source
+            alive = alive || source.z < 1.4
+        }
+        for tile in settled_tiles {
+            position := tile.Transform3D.position
+            position.y -= well_sink
+            light := 0
+            for i in 0..3 {
+                source := get(ripple_sources, i)
+                if source.z >= 1.4 {
+                    continue
+                }
+                x := position.x - source.x
+                y := position.y - source.y
+                age := source.z - sqrt(x * x + y * y) / 650
+                attack := clamp(age / 0.055, 0, 1)
+                light += get(ripple_strengths, i) * attack * attack * (3 - 2 * attack) * exp(-max(0, age - 0.055) * 7)
+            }
+            flash := light / (1 + light * 0.35)
+            set_material_parameter(tile, "Impact", flash)
+            tile.Material.emission_intensity = block_emission + flash * 0.9
+        }
+        rippling = alive
+    }
+
+    // Ease accepted cell endpoints without delaying collision, scoring or the ghost.
+    function AnimatePiece(seconds: number) {
+        if world.Session.screen == 2 || world.Session.screen == 3 {
+            return
+        }
+        piece_moving = false
         for slot in 200..203 {
             tile := get(tiles, slot)
             if tile.RenderState.hidden {
                 continue
             }
             position := tile.Transform3D.position
+            target := get(piece_targets, slot - 200)
+            blend := 1 - exp(-seconds * 48)
+            if world.Session.reduced_motion || world.Session.effects == 0 {
+                blend = 1
+            }
+            position += (target - position) * blend
+            if abs(target.x - position.x) + abs(target.y - position.y) < 0.02 {
+                position = target
+            } else {
+                piece_moving = true
+            }
             position.z = PieceDepth()
             tile.Transform3D.position = position
             tile.Transform3D.scale = PieceScale()
@@ -932,13 +1070,16 @@ behavior Board {
         ghost_row := Rules.Landing(grid, current, rotation, column, row)
         self.BoardState.ghost_row = ghost_row
         for (i in 0..3) {
-            Hide(200 + i)
             Hide(204 + i)
-            if !self.BoardState.topout {
+            if self.BoardState.topout {
+                Hide(200 + i)
+            } else {
                 cell := Pieces.Cell(current, rotation, i)
                 x := origin + (column + cell.x) * 24 + 12
                 if row + cell.y >= 2 {
                     Tile(200 + i, x, -232 + (row + cell.y - 2) * 24 + 12, 22, Pieces.Color(current), false)
+                } else {
+                    Hide(200 + i)
                 }
                 if world.Session.ghost && ghost_row > row && ghost_row + cell.y >= 2 {
                     Tile(204 + i, x, -232 + (ghost_row + cell.y - 2) * 24 + 12, 22, Pieces.Color(current), true)
@@ -948,6 +1089,7 @@ behavior Board {
         }
         piece_dirty = false
         motion_dirty = false
+        piece_snap = false
     }
 
     function Preview(first: int, kind: int, x: number, y: number, dim: bool) {
@@ -1024,14 +1166,13 @@ behavior Board {
             start := 0.7 + cast<number>(i / 10) * 0.0125
             flight := max(0, age - start)
             index := cast<number>(i + self.BoardState.index * 200)
-            base := vec3(origin + i % 10 * 24 + 12, 228 - i / 10 * 24, 0)
-            side := 1
-            if i % 10 < 5 {
-                side = -1
-            }
-            spread := cast<number>(side) * (90 + abs(base.x - origin - 120) * 0.55 + sin(index * 1.91) * 28)
-            lift := 180 * flight + 180 * flight * flight
-            tile.Transform3D.position = base + vec3(spread * flight + side * 45 * flight * flight, lift, (40 + sin(index * 2.37) * 15) * flight + 12 * flight * flight)
+            base := vec3(origin + i % 10 * 24 + 12, 228 - i / 10 * 24 + well_sink, 0)
+            radial := vec3((base.x - origin - 120) / 120, (base.y - well_sink) / 240, 0)
+            radial = radial * (1 / sqrt(radial.x * radial.x + radial.y * radial.y))
+            curl := sin(index * 1.91) * 0.18
+            velocity := vec3((radial.x - radial.y * curl) * 260, (radial.y + radial.x * curl) * 150, sin(index * 2.37 + 0.7) * 145)
+            // Expand across and through the well, with no shared upward drift.
+            tile.Transform3D.position = base + velocity * (flight + flight * flight * 0.45)
             yaw := flight * (0.7 + sin(index * 1.7) * 0.5)
             roll := flight * (0.45 + cos(index * 1.3) * 0.7)
             tile.Transform3D.rotation = { x: -sin(yaw) * sin(roll), y: sin(yaw) * cos(roll), z: cos(yaw) * sin(roll), w: cos(yaw) * cos(roll) }
@@ -1051,7 +1192,7 @@ behavior Board {
         loss_finished = !remaining
     }
 
-    function Render() {
+    function Render(seconds: number) {
         show := world.Session.attract || world.Session.screen >= 1 && world.Session.screen <= 4
         if world.Session.journey && world.Session.journey_time >= 0.8 && world.Session.journey_time <= 1.8 {
             show = false
@@ -1095,8 +1236,8 @@ behavior Board {
         if piece_dirty {
             DrawPiece()
         }
-        if motion_dirty || finish_dirty {
-            AnimatePiece()
+        if motion_dirty || finish_dirty || piece_moving {
+            AnimatePiece(seconds)
         }
         if preview_dirty {
             DrawPreviews()
@@ -1162,9 +1303,10 @@ behavior Board {
         if !loss_started && world.Session.screen != 4 {
             UpdateAppearance(min(dt, 0.1))
         }
-        Render()
+        Render(min(dt, 0.05))
         AdvanceWell(min(dt, 0.05))
         AdvanceContacts(min(dt, 0.05))
+        AdvanceRipples(min(dt, 0.05))
         if world.Session.screen == 4 {
             loss_started = true
         }

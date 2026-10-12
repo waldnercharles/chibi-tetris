@@ -13,6 +13,23 @@ There is no input overlay. The images establish visible action sequences,
 not exact button latency or the original simulation. Overview labels are
 approximate. No footage after nine minutes informed this pass.
 
+The third comparison revisited these same sheets against consecutive browser
+captures. It found three remaining visible gaps: the perspective well was
+about 510 pixels high at 720p instead of the reference's roughly 330; a drop
+lit only touching cells rather than sending a highlight through the pile;
+and first-use particle slots repeated the same event seed. Gameplay now uses
+a 0.88-radian lens, producing a roughly 340-pixel well at that display size.
+The menu retains its larger demonstration. All seven pieces share one cool
+slate/cyan treatment, including Hold, Next and departing blocks.
+
+Settled cells and existing background particles receive traveling drop
+illumination. The captured comparison also rejected an excessively bright,
+continuous background annulus: the reference's asymmetric clouds, coarse
+foreground highlights and black gaps remain the visual target. Ordinary
+action clouds often cool within one or two seconds; the strongest long tails
+follow line clears. Each event now has its own coherent variation in spread,
+density, curl, size and cooling instead of repeating a pool slot's pattern.
+
 ## Action details
 
 | Action | Visible evidence | Direction for Stillwater |
