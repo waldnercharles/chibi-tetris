@@ -1633,12 +1633,9 @@ TEST_CASE(occupied_stack_releases_on_loss)
             tap(doc, 70, KEY_M);
         }
         REQUIRE(snapshot(doc));
-        REQUIRE(report(quiet ? 10 : 14));
+        REQUIRE(report(quiet ? 13 : 17));
         REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 0);
         REQUIRE(yyjson_get_bool(field("World", "Session", "attract")));
-        REQUIRE(visible_mesh("content/meshes/text/ui_journey.mesh"));
-        REQUIRE(visible_mesh("content/meshes/text/ui_play.mesh"));
-        REQUIRE(!visible_mesh("content/meshes/text/game_over.mesh"));
     }
     yyjson_mut_doc *doc = request("LossChecks", 525);
     key(doc, 0, 0);

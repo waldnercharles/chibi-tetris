@@ -51,6 +51,16 @@ behavior LossChecks {
         return count
     }
 
+    function VisibleLabel(name: string) -> (visible: bool) {
+        source := format_text("content/meshes/text/{}.mesh", name)
+        for label in find_entities_with_component("MeshAsset") {
+            if label.MeshAsset.source == source && !label.RenderState.hidden {
+                return true
+            }
+        }
+        return false
+    }
+
     function VisiblePreviews() -> (count: int) {
         count = 0
         for tile in previews {
@@ -221,6 +231,9 @@ behavior LossChecks {
             }
             if age == 182 || quiet && age == 28 {
                 Check(world.Session.screen == 0 && world.Session.attract && !world.Session.won, "loss returns directly to the Journey menu")
+                Check(VisibleLabel("ui_journey"), "the returned menu shows Journey in the complete scene")
+                Check(VisibleLabel("ui_play"), "the returned menu shows the explicit Play action")
+                Check(!VisibleLabel("game_over"), "loss returns without a Game Over label")
                 Check(VisiblePreviews() == 0, "Hold and Next hide in the menu")
                 Check(world.Session.elapsed == elapsed, "loss animation never advances the game clock")
                 best := "journey"
