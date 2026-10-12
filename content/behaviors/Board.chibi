@@ -52,6 +52,15 @@ behavior Board {
     finish_signal: CF_V3 = { x: 0, y: 0, z: 0 }
     music_lift := 0
     music_scale := 0
+    action_drive := 0
+    action_flash := 0
+    move_drive := 0
+    move_lean := 0
+    turn_drive := 0
+    turn_lean := 0
+    contact_tiles: entity[] = []
+    contact_drives: number[] = []
+    contact_flashes: number[] = []
     demo_piece: int = -1
     demo_candidate: int = 0
     demo_column: int = 3
@@ -60,6 +69,9 @@ behavior Board {
     demo_clock := 0
     demo_wait := 0
     demo_cleared := false
+    loss_started := false
+    loss_finished := false
+    loss_row: int = 2
 
     on Begin {
         world = get_global_variable("World")
@@ -105,6 +117,12 @@ behavior Board {
     }
 
     function SpawnPiece(kind: int) {
+        action_drive = 0
+        action_flash = 0
+        move_drive = 0
+        move_lean = 0
+        turn_drive = 0
+        turn_lean = 0
         current = kind
         column = 3
         row = 1
@@ -126,7 +144,11 @@ behavior Board {
             ReactionRules.Initialize(self, world.Session.run)
         }
         seen_run = world.Session.run
+        ClearContacts()
         grid = Rules.Empty()
+        loss_started = false
+        loss_finished = false
+        loss_row = 2
         queue = []
         seed = cast<int64>(world.Session.seed) % 2147483646
         if seed < 0 {
@@ -165,6 +187,7 @@ behavior Board {
 
     function Rescue() {
         Emit(12, 1, 0, 6, current)
+        ClearContacts()
         Rules.Rescue(grid)
         self.BoardState.topout = false
         self.BoardState.combo = -1
@@ -198,6 +221,7 @@ behavior Board {
         ResetLock(grounded)
         piece_dirty = true
         Emit(1, 1, direction, 1, current)
+        Action(0.45, cast<number>(direction) * 0.65, 0)
         self.BoardState.move_serial += 1
         Impact()
         return true
@@ -218,6 +242,7 @@ behavior Board {
         ResetLock(grounded)
         piece_dirty = true
         Emit(2, 1, direction, result.kick, current)
+        Action(0.85, 0, cast<number>(direction) * 0.85)
         self.BoardState.rotate_serial += 1
         Impact()
         play_sound("rotate", 0.2)
@@ -235,6 +260,7 @@ behavior Board {
             replacement = Next()
         }
         SpawnPiece(replacement)
+        Action(0.6, 0, 0)
         hold_used = true
         preview_dirty = true
         self.BoardState.hold_serial += 1
@@ -251,6 +277,7 @@ behavior Board {
         Emit(8, 1, 0, spin, current)
         Rules.Award(self, count, spin)
         if count > 0 {
+            ClearContacts()
             mask: int = 0
             for (cleared in clear_rows) {
                 mask = mask | 1 << cleared
@@ -276,6 +303,12 @@ behavior Board {
             }
         }
         if count == 0 {
+            for block in 0..3 {
+                cell := Pieces.Cell(current, rotation, block)
+                if row + cell.y >= 2 {
+                    Contact(get(tiles, (row + cell.y - 2) * 10 + column + cell.x))
+                }
+            }
             play_sound("lock", 0.25)
         }
         stack_dirty = true
@@ -484,6 +517,7 @@ behavior Board {
             record := self.ReactionQueue.write
             ReactionRules.Emit(self, 4, 1, self.BoardState.impact_x, 228 - (start_row - 1) * 24, 1, row - start_row, current)
             CapturePiece(record, start_row)
+            Action(0.18, 0, 0)
         }
         grounded := !Rules.Fits(grid, current, rotation, column, row + 1)
         if grounded {
@@ -573,7 +607,8 @@ behavior Board {
             cell := Pieces.Cell(current, rotation, block)
             minimum = min(minimum, cell.x)
             maximum = max(maximum, cell.x)
-            face_z := 3 + music_lift + 11 * block_depth * (1 + music_scale)
+            scale := PieceScale()
+            face_z := PieceDepth() + 11 * block_depth * scale.z * cos(move_lean * 0.06)
             point := vec3(record.ReactionEvent.x + (cell.x - 1) * 24, 276 - (action_row + cell.y) * 24, face_z)
             match (block) {
                 case 0 {
@@ -612,7 +647,7 @@ behavior Board {
     function Finish(tile: entity, active: bool) {
         emission := block_emission
         if active {
-            emission += 0.035 + music_scale * 0.5
+            emission += 0.035 + music_scale * 0.5 + action_flash * 0.1
         }
         // The coat changes alpha; the mesh's inner BlockCore always writes depth.
         alpha := cast<uint>(cast<int>(floor(block_opacity * 255)))
@@ -628,12 +663,16 @@ behavior Board {
         z := 0
         scale := vec3(1, 1, 1)
         if slot >= 200 && slot < 204 {
-            z = 3 + music_lift
-            scale = vec3(1 + music_scale * 0.25, 1 - music_scale * 0.4, 1 + music_scale)
+            z = PieceDepth()
+            scale = PieceScale()
         }
         tile.RenderState.hidden = false
         tile.Transform3D.position = { x: x, y: 8 - y, z: z }
         tile.Transform3D.scale = scale
+        tile.Transform3D.rotation = { x: 0, y: 0, z: 0, w: 1 }
+        if slot >= 200 && slot < 204 {
+            PieceRotation(tile)
+        }
         tile.Geometry3D = { width: size, height: size, depth: depth }
         tile.Material.scene = color
         tile.Material.emission_color = color
@@ -743,7 +782,110 @@ behavior Board {
         finish_dirty = false
     }
 
-    // Music updates four transforms. Landing queries and the settled grid stay idle.
+    // Input impulses retain their current value when another action arrives.
+    function Action(flash: number, move: number, turn: number) {
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            return
+        }
+        action_drive = min(1, action_drive + flash)
+        move_drive = clamp(move_drive + move, -1, 1)
+        turn_drive = clamp(turn_drive + turn, -1, 1)
+    }
+
+    function AdvanceAction(seconds: number) {
+        if world.Session.screen == 2 || world.Session.screen == 3 {
+            return
+        }
+        old := action_flash + abs(move_lean) + abs(turn_lean)
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            action_drive = 0
+            action_flash = 0
+            move_drive = 0
+            move_lean = 0
+            turn_drive = 0
+            turn_lean = 0
+        } else {
+            action_flash += (action_drive - action_flash) * (1 - exp(-seconds * 70))
+            move_lean += (move_drive - move_lean) * (1 - exp(-seconds * 75))
+            turn_lean += (turn_drive - turn_lean) * (1 - exp(-seconds * 55))
+            action_drive *= exp(-seconds * 32)
+            move_drive *= exp(-seconds * 48)
+            turn_drive *= exp(-seconds * 28)
+        }
+        if old > 0.00001 || action_flash + abs(move_lean) + abs(turn_lean) > 0.00001 {
+            motion_dirty = true
+        }
+    }
+
+    function PieceDepth() -> (depth: number) {
+        return 3 + music_lift + action_flash * 0.6
+    }
+
+    function PieceScale() -> (scale: CF_V3) {
+        return vec3(1 + music_scale * 0.25 + action_flash * 0.018,
+        1 - music_scale * 0.4 - action_flash * 0.012,
+        1 + music_scale - action_flash * 0.09)
+    }
+
+    function PieceRotation(tile: entity) {
+        yaw := move_lean * 0.03
+        roll := turn_lean * 0.0225
+        tile.Transform3D.rotation = { x: -sin(yaw) * sin(roll), y: sin(yaw) * cos(roll), z: cos(yaw) * sin(roll), w: cos(yaw) * cos(roll) }
+    }
+
+    function Contact(tile: entity) {
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            return
+        }
+        contact_tiles = array_add(contact_tiles, tile)
+        contact_drives = array_add(contact_drives, 1)
+        contact_flashes = array_add(contact_flashes, 0)
+    }
+
+    function ClearContacts() {
+        for tile in contact_tiles {
+            tile.Transform3D.scale = vec3(1, 1, 1)
+            Finish(tile, false)
+        }
+        contact_tiles = []
+        contact_drives = []
+        contact_flashes = []
+    }
+
+    function AdvanceContacts(seconds: number) {
+        if world.Session.screen == 2 || world.Session.screen == 3 {
+            return
+        }
+        if world.Session.reduced_motion || world.Session.effects == 0 {
+            ClearContacts()
+            return
+        }
+        index := length(contact_tiles) - 1
+        while index >= 0 {
+            tile := get(contact_tiles, index)
+            drive := get(contact_drives, index)
+            flash := get(contact_flashes, index)
+            flash += (drive - flash) * (1 - exp(-seconds * 80))
+            drive *= exp(-seconds * 35)
+            contact_drives[index] = drive
+            contact_flashes[index] = flash
+            Finish(tile, false)
+            tile.Transform3D.scale = vec3(1 + flash * 0.015, 1, 1 - flash * 0.1)
+            emission := block_emission + flash * 0.11
+            tile.Material.emission_intensity = emission
+            set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
+            if flash < 0.0001 {
+                tile.Transform3D.scale = vec3(1, 1, 1)
+                Finish(tile, false)
+                contact_tiles = remove_index(contact_tiles, index)
+                contact_drives = remove_index(contact_drives, index)
+                contact_flashes = remove_index(contact_flashes, index)
+            }
+            index -= 1
+        }
+    }
+
+    // Input and music touch four transforms without querying the landing grid.
     function AnimatePiece() {
         for slot in 200..203 {
             tile := get(tiles, slot)
@@ -751,9 +893,10 @@ behavior Board {
                 continue
             }
             position := tile.Transform3D.position
-            position.z = 3 + music_lift
+            position.z = PieceDepth()
             tile.Transform3D.position = position
-            tile.Transform3D.scale = vec3(1 + music_scale * 0.25, 1 - music_scale * 0.4, 1 + music_scale)
+            tile.Transform3D.scale = PieceScale()
+            PieceRotation(tile)
             Finish(tile, true)
         }
         motion_dirty = false
@@ -764,7 +907,8 @@ behavior Board {
         for (i in 0..199) {
             y := i / 10 + 2
             kind := get(grid, i + 20)
-            if kind == 0 {
+            // Loss preserves the scoring grid after its visible bodies retire.
+            if kind == 0 || loss_finished {
                 Hide(i)
                 continue
             }
@@ -821,7 +965,7 @@ behavior Board {
 
     function DrawPreviews() {
         preview_tiles = []
-        if world.Session.screen != 1 || world.Session.entering {
+        if (world.Session.screen != 1 && world.Session.screen != 4) || world.Session.entering {
             for i in 208..231 {
                 Hide(i)
             }
@@ -835,8 +979,68 @@ behavior Board {
         preview_dirty = false
     }
 
+    // Keep the scoring grid and each block's material intact. Released bodies
+    // use their grid position as an analytic base, never last frame's offset.
+    function Loss() {
+        if loss_finished {
+            return
+        }
+        quiet := world.Session.reduced_motion || world.Session.effects == 0
+        age := world.Session.loss_time
+        if quiet {
+            loss_row = 22
+        }
+        if !quiet {
+            while loss_row <= 21 && age >= 0.7 + cast<number>(loss_row - 2) * 0.0125 {
+                mask: int = 0
+                for x in 0..9 {
+                    if get(grid, loss_row * 10 + x) != 0 {
+                        mask = mask | 1 << x
+                    }
+                }
+                if mask != 0 {
+                    record := self.ReactionQueue.write
+                    ReactionRules.Emit(self, 22, 1, origin + 120, 276 - loss_row * 24, 0, loss_row, mask)
+                    record.ReactionEvent.point0 = vec3(0, 0, 11 * block_depth)
+                }
+                loss_row += 1
+            }
+        }
+        remaining := false
+        for i in 0..199 {
+            tile := get(tiles, i)
+            if tile.RenderState.hidden {
+                continue
+            }
+            start := 0.7 + cast<number>(i / 10) * 0.0125
+            flight := max(0, age - start)
+            index := cast<number>(i + self.BoardState.index * 200)
+            base := vec3(origin + i % 10 * 24 + 12, 228 - i / 10 * 24, 0)
+            spread := (base.x - origin - 120) * 0.12 + sin(index * 1.91) * 12
+            lift := 72 * flight + 48 * flight * flight
+            tile.Transform3D.position = base + vec3(spread * flight, lift, (16 + sin(index * 2.37) * 6) * flight)
+            yaw := flight * (0.35 + sin(index * 1.7) * 0.24)
+            roll := flight * (0.22 + cos(index * 1.3) * 0.35)
+            tile.Transform3D.rotation = { x: -sin(yaw) * sin(roll), y: sin(yaw) * cos(roll), z: cos(yaw) * sin(roll), w: cos(yaw) * cos(roll) }
+            phase := clamp((flight - 1.5) / 1.2, 0, 1)
+            if quiet {
+                tile.Transform3D.position = base
+                tile.Transform3D.rotation = { x: 0, y: 0, z: 0, w: 1 }
+                phase = clamp(age / 0.3, 0, 1)
+            }
+            size := 1 - phase * phase * (3 - 2 * phase)
+            tile.Transform3D.scale = vec3(size, size, size)
+            if phase == 1 {
+                tile.RenderState.hidden = true
+                continue
+            }
+            remaining = true
+        }
+        loss_finished = !remaining
+    }
+
     function Render() {
-        show := world.Session.attract || world.Session.screen >= 1 && world.Session.screen <= 3
+        show := world.Session.attract || world.Session.screen >= 1 && world.Session.screen <= 4
         if self.BoardState.index == 1 && world.Session.mode != 3 {
             show = false
         }
@@ -942,7 +1146,17 @@ behavior Board {
         self.BoardState.column = column
         self.BoardState.row = row
         self.BoardState.rotation = rotation
-        UpdateAppearance(min(dt, 0.1))
+        AdvanceAction(min(dt, 0.05))
+        if !loss_started && world.Session.screen != 4 {
+            UpdateAppearance(min(dt, 0.1))
+        }
         Render()
+        AdvanceContacts(min(dt, 0.05))
+        if world.Session.screen == 4 {
+            loss_started = true
+        }
+        if loss_started {
+            Loss()
+        }
     }
 }

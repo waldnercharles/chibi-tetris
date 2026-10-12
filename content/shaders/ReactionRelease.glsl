@@ -21,10 +21,19 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     );
     float duration = u.Life * (0.56 + random.z * 0.16 +
         (layers.z + layers.w) * (0.16 + random.z * 0.02));
+    // Loss adds a sparse ember tail behind the departing original block meshes.
+    birth = mix(birth, quantile * (0.018 + layers.z * 0.085), u.Loss);
+    duration = mix(duration, u.Life * (0.78 + random.z * 0.14), u.Loss);
     float elapsed = max(0.0, p.time - u.Delay - birth);
     float phase = clamp(elapsed / max(duration, 0.001), 0.0, 1.0);
     float envelope = smoothstep(0.0, min(0.016, duration * 0.16), elapsed) *
         (1.0 - smoothstep(duration * 0.28, duration, elapsed)) * u.Fade;
+    float loss_envelope = smoothstep(0.0, 0.045, elapsed) *
+        (1.0 - smoothstep(duration * 0.42, duration, elapsed)) * u.Fade;
+    envelope = mix(envelope, loss_envelope, u.Loss);
+    int cell = int(mod(p.index, 10.0));
+    float occupied = float((int(u.RowMask) >> cell) & 1);
+    envelope *= occupied;
     float motion = elapsed * (1.0 - u.Quiet);
 
     // Exact exponential drag and gravity, plus bounded analytic wind.
@@ -46,6 +55,13 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
         (random.x - 0.5) * 105.0, 12.0 + (random.y - 0.5) * 70.0,
         10.0 + random.z * 32.0
     ) * drag_time - vec3(0.0, 7.0 * gravity_time, 0.0) + curl;
+    float loss_drag = reaction_drag(0.38, motion);
+    vec3 loss_velocity = vec3(
+        source.x * 0.22 + (random.x - 0.5) * 34.0,
+        25.0 + random.y * 34.0,
+        16.0 + random.z * 28.0
+    );
+    embers = mix(embers, source + loss_velocity * loss_drag * 0.78 + curl * 0.6, u.Loss);
     float angle = p.index * 6.283185 / max(p.count, 1.0) + (random.z - 0.5) * 0.018;
     vec3 energy = vec3(
         cos(angle) * (118.0 + 180.0 * drag_time),
@@ -60,6 +76,8 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
         layers.z * (0.45 + random.z * 0.72 + wake * 0.35) +
         layers.w * (0.55 + random.z * 0.7)
     ) * (1.0 - phase * 0.24) * envelope;
+    float loss_size = (0.55 + random.z * 0.7) * (1.0 - phase * 0.3) * envelope;
+    clear_size = mix(clear_size, loss_size, u.Loss);
     // Cooling uses seconds, so a long Life does not prolong the white front.
     vec3 color = mix(
         vec3(1.8, 2.25, 2.65),
@@ -72,6 +90,11 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
             (layers.z * (0.34 + random.z * 0.26) * (1.0 - wake * 0.72) +
                 layers.w * 0.58) * (0.3 + 0.7 * exp(-2.8 * elapsed)))
     );
+
+    vec3 loss_color = mix(vec3(0.15, 0.4, 0.52), vec3(0.35, 0.55, 0.7), random.x);
+    loss_color = mix(loss_color, vec3(0.4, 0.9, 1.2), layers.z * exp(-elapsed * 10.0));
+    clear_color.rgb = mix(clear_color.rgb, loss_color, u.Loss);
+    clear_color.a = mix(clear_color.a, envelope * (0.12 + 0.12 * exp(-elapsed * 3.0)), u.Loss);
 
     ChibiParticle result;
     result.position = fracture * layers.x + debris * layers.y +

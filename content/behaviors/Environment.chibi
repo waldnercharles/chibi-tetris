@@ -42,8 +42,12 @@ behavior Environment {
     cue_point1 := vec3(0, 0, 10.5)
     cue_point2 := vec3(0, 0, 10.5)
     cue_point3 := vec3(0, 0, 10.5)
+    cue_pivot := vec3(0, 0, 10.5)
     cue_delay := 0
     cue_depth := 0
+    cue_loss := 0
+    cue_mask: int = 1023
+    loss_active := false
     // Four bounded impulse origins retain event position and age. Overlapping
     // inputs add force at an existing origin instead of restarting its wave.
     sources: CF_V3[]
@@ -217,16 +221,16 @@ behavior Environment {
                 count = 80
             }
             case 1 {
-                count = 32
+                count = 48
             }
             case 2 {
-                count = 72
+                count = 96
             }
             case 3 {
-                count = 24
+                count = 32
             }
             case 4 {
-                count = 64
+                count = 96
             }
             case 5 {
                 count = 320
@@ -235,7 +239,7 @@ behavior Environment {
                 count = 48
             }
             case 7 {
-                count = 12
+                count = 20
             }
             case 8 {
                 count = 96
@@ -250,8 +254,11 @@ behavior Environment {
                 count = 192
             }
             case 12 {
-                count = 96
+                count = 128
             }
+        }
+        if cue_loss > 0 && pattern == 10 {
+            count = 96
         }
         if world.Session.effects == 1 {
             count = max(8, count / 2)
@@ -271,8 +278,9 @@ behavior Environment {
             field.Shader.material = "ReactionParticles.Release"
         }
         field.Geometry3D = { primitive: 5, width: 1, height: 1, depth: 0.8 }
-        if pattern == 8 && !quiet {
-            field.Geometry3D.height = 1.8
+        if field.Shader.material == "ReactionParticles.Release" {
+            set_material_parameter(field, "Loss", cue_loss)
+            set_material_parameter(field, "RowMask", cast<number>(cue_mask))
         }
         set_material_parameter(field, "Pattern", cast<number>(pattern))
         set_material_parameter(field, "Direction", cast<number>(direction))
@@ -285,6 +293,9 @@ behavior Environment {
         set_material_parameter(field, "Point1", cue_point1)
         set_material_parameter(field, "Point2", cue_point2)
         set_material_parameter(field, "Point3", cue_point3)
+        if field.Shader.material == "ReactionParticles.Cue" {
+            set_material_parameter(field, "Pivot", cue_pivot)
+        }
         set_material_parameter(field, "Delay", cue_delay)
         set_material_parameter(field, "Fade", 1)
         lives[slot] = cue_delay + life
@@ -292,16 +303,16 @@ behavior Environment {
         slot = (slot + 1) % 96
     }
 
-    // Flecks mark the contact, then finer grains settle through its captured depth.
-    // Both layers retain the same arrival clock, without replaying at Lock.
+    // Contact and light confirm placement immediately. Fine grains settle behind
+    // the white flecks; the following hard-drop Lock never repeats the payoff.
     function Landing(x: number, y: number, piece_x: number, strength: number) {
         arrival := cue_delay
-        Cue(4, x, y, 1, 0, strength, 0.64, 0.1)
+        Cue(4, x, y, 1, 0, strength, 0.62, 0.1)
         if world.Session.reduced_motion || world.Session.effects == 0 {
             return
         }
-        cue_delay = arrival + 0.045
-        Cue(12, x, y, 1, 0, strength * 0.6, 1, 0.12)
+        cue_delay = arrival + 0.025
+        Cue(12, x, y, 1, 0, strength * 0.6, 1.05, 0.12)
         low := min(min(cue_point0.y, cue_point1.y), min(cue_point2.y, cue_point3.y))
         front := (cue_point0.z + cue_point1.z + cue_point2.z + cue_point3.z) * 0.25
         Glow(vec3(piece_x, y + low - 10.7, front + 2), 0.26 + strength * 0.4, 0, arrival)
@@ -349,42 +360,52 @@ behavior Environment {
         cue_point1 = record.ReactionEvent.point1 - origin
         cue_point2 = record.ReactionEvent.point2 - origin
         cue_point3 = record.ReactionEvent.point3 - origin
+        front := (cue_point0.z + cue_point1.z + cue_point2.z + cue_point3.z) * 0.25
+        cue_pivot = vec3(0, 0, front)
+        // The event origin is the SRS pivot. I uses the half-cell pivot.
+        if record.ReactionEvent.detail == 1 {
+            cue_pivot = vec3(12, -12, front)
+        }
+        if record.ReactionEvent.detail == 2 {
+            cue_pivot = (cue_point0 + cue_point1 + cue_point2 + cue_point3) * 0.25
+        }
         cue_delay = 0
         cue_depth = 0
+        cue_loss = 0
+        cue_mask = 1023
         if record.ReactionEvent.result == 0 {
-            Cue(7, x, y, direction, 0, 0.035, 0.4, 2)
+            Cue(7, x, y, direction, kind, 0.06, 0.28, 2)
             return
         }
         match (kind) {
             case 1 {
-                Cue(1, x, y, direction, 0, 0.035, 0.52, 0)
+                Cue(1, x, y, direction, amount, 0.08, 0.62, 0)
                 Push(0.08, cast<number>(direction))
                 Kick(piece_x, y, 0.16, cast<number>(direction) * 0.26)
             }
             case 2 {
-                Cue(2, x, y, direction, 0, 0.12, 0.76, 0.25)
+                Cue(2, x, y, direction, 0, 0.14, 0.72, 0.25)
                 Push(0.15, cast<number>(direction) * 1.2)
                 Kick(piece_x, y, 0.20, cast<number>(direction) * 0.65)
             }
             case 3 {
-                Cue(3, x, y, 1, 0, 0.035, 0.48, 0)
+                Cue(3, x, y, 1, 0, 0.05, 0.44, 0)
                 Push(0.06, 0)
                 Kick(piece_x, y, 0.08, 0)
             }
             case 4 {
-                Cue(3, x, y, 1, amount, 0.025, 0.48, 0)
+                Cue(3, x, y, 1, amount, 0.055, 0.52, 0)
                 Push(0.04, 0)
                 Kick(piece_x, y, 0.045, 0)
             }
             case 5 {
-                Cue(3, x, y, 1, 0, 0.025, 0.38, 0)
+                Cue(3, x, y, 1, 0, 0.035, 0.3, 0)
             }
             case 6 {
                 drop_serials[board.BoardState.index] = record.ReactionEvent.serial
                 quiet := world.Session.reduced_motion || world.Session.effects == 0
                 if !quiet && amount > 0 {
-                    Cue(8, x, y, 1, amount, 0.32, 0.42, 0)
-                    cue_delay = 0.16
+                    Cue(8, x, y, 1, amount, 0.32, 0.09, 0)
                 }
                 Landing(x, y - amount * 24, piece_x, 0.45)
                 Push(0.34, 0.12)
@@ -430,6 +451,15 @@ behavior Environment {
                 Push(0.7, -0.4)
                 Kick(piece_x, y, 0.75, -0.55)
             }
+            case 22 {
+                // The actual board meshes provide the departing block bodies.
+                // One sparse field per row adds only a quiet secondary trail.
+                cue_depth = record.ReactionEvent.point0.z
+                cue_point0 = vec3(0, 0, 0)
+                cue_loss = 1
+                cue_mask = record.ReactionEvent.detail
+                Cue(10, x, y, 0, 0, 0.18, 4.8, 0.1)
+            }
             case 12 {
                 Cue(0, x, y, 1, 0, 0.7, 0.46, 0.2)
                 Glow(vec3(piece_x, y, 10.5), 0.65, 0, 0)
@@ -444,9 +474,15 @@ behavior Environment {
         cue_point1 = vec3(-2, 0, 10.5)
         cue_point2 = vec3(2, 0, 10.5)
         cue_point3 = vec3(6, 0, 10.5)
+        cue_pivot = vec3(0, 0, 10.5)
         cue_delay = 0
         cue_depth = 0
         kind := record.ReactionEvent.kind
+        cue_loss = 0
+        cue_mask = 1023
+        if kind == 19 && record.ReactionEvent.result == 0 {
+            return
+        }
         if record.ReactionEvent.result == 0 {
             Cue(7, 180, 270, 1, 0, 0.04, 0.16, 2)
             return
@@ -534,7 +570,12 @@ behavior Environment {
         }
         effects := world.Session.effects
         moving := effects > 0 && !world.Session.reduced_motion
-        advancing := moving && world.Session.screen < 2
+        losing := world.Session.screen == 4
+        if losing && !loss_active {
+            Retire(false)
+        }
+        loss_active = losing
+        advancing := moving && (world.Session.screen < 2 || losing)
         if advancing {
             time += delta
         }

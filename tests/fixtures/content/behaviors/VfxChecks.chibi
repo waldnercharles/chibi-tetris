@@ -21,6 +21,7 @@ behavior VfxChecks {
     charged_tail: entity
     sparse_tail: entity
     old_age := 0
+    light_release := 0
     frame: int = 0
 
     function Check(condition: bool, message: string) {
@@ -139,7 +140,7 @@ behavior VfxChecks {
                 Record(first, 1, 0, -60, 50, 0)
                 Record(first, 6, 1, 20, 150, 6)
                 Record(first, 8, 1, 20, 6, 0)
-                Record(first, 1, 1, -110, 120, 0)
+                Record(first, 1, 1, -110, 120, 1)
                 Record(first, 7, 1, -160, 10, 0)
                 Record(first, 4, 1, 130, 80, 1)
             }
@@ -148,8 +149,8 @@ behavior VfxChecks {
                 turning = CueAt(80, 96)
                 blocked := CueAt(-60, 50)
                 packet = CueAt(20, 150)
-                landing = LayerAt(20, 6, 64)
-                settling = LayerAt(20, 6, 96)
+                landing = LayerAt(20, 6, 96)
+                settling = LayerAt(20, 6, 128)
                 shifting = CueAt(-110, 120)
                 holding = CueAt(-160, 10)
                 falling = CueAt(130, 80)
@@ -158,14 +159,14 @@ behavior VfxChecks {
                 Check(settling != world, "hard-drop landing has an independent restrained settling tail")
                 Check(shifting != world && holding != world && falling != world, "move hold and soft fall preserve their own captured origins")
                 if turning != world && blocked != world {
-                    Check(turning.ParticleField3D.count == 72 && blocked.ParticleField3D.count == 12, "turn and rejection use restrained counts")
+                    Check(turning.ParticleField3D.count == 96 && blocked.ParticleField3D.count == 20, "turn and rejection use restrained counts")
                     Check(turning.Shader.material == "ReactionParticles.Cue" && blocked.Shader.material == "ReactionParticles.Cue", "ordinary input keeps its compact contact shader")
                     Check(turning.Transform3D.position.z == 0, "field origin leaves captured front-face depth in the point payload")
                 }
                 if packet != world && landing != world {
                     Check(packet.Geometry3D.primitive == 5 && landing.Geometry3D.primitive == 5, "cue configuration retains the supported octahedron mesh primitive")
-                    Check(packet.Geometry3D.height == 1.8 && landing.Geometry3D.height == 1, "drop elongation never leaks into contact geometry")
-                    Check(packet.ParticleField3D.count == 96 && landing.ParticleField3D.count == 64, "drop layers have bounded independent instance counts")
+                    Check(packet.Geometry3D.height == 1 && landing.Geometry3D.height == 1, "the short wash and contact use grains rather than tall rail geometry")
+                    Check(packet.ParticleField3D.count == 96 && landing.ParticleField3D.count == 96, "drop layers have bounded independent instance counts")
                 }
                 lights := find_entities_with_component("PointLight")
                 for candidate in lights {
@@ -176,30 +177,32 @@ behavior VfxChecks {
                 Check(light != world, "grounded light sits below the lowest captured landing cell")
                 if light != world {
                     Check(abs(light.Transform.y - 12.5) < 0.01, "light depth follows the captured front face")
-                    Check(light.PointLight.intensity == 0, "delayed impact light stays dark before packet arrival")
+                    Check(light.PointLight.intensity > 0.1, "hard-drop contact lights the landing on the placement frame")
                 }
             }
             case 17 {
                 if light != world {
-                    Check(light.PointLight.intensity == 0, "landing illumination waits for the full smoother packet transit")
+                    Check(light.PointLight.intensity > 0.1, "contact illumination continues while the brief wash has already finished")
+                    Check(packet.ParticleField3D.count == 0, "the traveled-space wash ends before the former delayed impact would begin")
+                    light_release = light.PointLight.intensity
                 }
             }
             case 22 {
                 if light != world {
-                    Check(light.PointLight.intensity > 0.1 && light.PointLight.intensity <= 0.45, "impact light rises through a restrained attack after arrival")
+                    Check(light.PointLight.intensity > 0 && light.PointLight.intensity < light_release, "immediate contact light decays without a second delayed attack")
                 }
             }
             case 30 {
                 if packet != world && landing != world {
-                    Check(packet.ParticleField3D.count == 96, "descending grains retain a smooth tail after their arrival")
-                    Check(landing.ParticleField3D.count == 64, "delayed landing keeps its full particle lifetime after arrival")
+                    Check(packet.ParticleField3D.count == 0, "the short drop wash never lingers over the next falling piece")
+                    Check(landing.ParticleField3D.count == 96, "delayed landing keeps its full particle lifetime after arrival")
                 }
                 if settling != world {
-                    Check(settling.ParticleField3D.count == 96 && settling.ParticleField3D.time > 0.3, "settling dust retains its independent longer release")
+                    Check(settling.ParticleField3D.count == 128 && settling.ParticleField3D.time > 0.3, "settling dust retains its independent longer release")
                 }
                 if turning != world && shifting != world && holding != world && falling != world {
-                    Check(turning.ParticleField3D.count == 72 && shifting.ParticleField3D.count == 32, "rotation and movement trails outlive their former short flash")
-                    Check(holding.ParticleField3D.count == 48 && falling.ParticleField3D.count == 24, "hold and soft fall also retain smooth local tails")
+                    Check(turning.ParticleField3D.count == 96 && shifting.ParticleField3D.count == 48, "rotation and movement trails outlive their former short flash")
+                    Check(holding.ParticleField3D.count == 48 && falling.ParticleField3D.count == 32, "hold and soft fall also retain smooth local tails")
                 }
             }
             case 32 {
@@ -337,8 +340,8 @@ behavior VfxChecks {
                 Record(first, 8, 1, 80, 30, 0)
             }
             case 182 {
-                landing = LayerAt(80, 30, 64)
-                settling = LayerAt(80, 30, 96)
+                landing = LayerAt(80, 30, 96)
+                settling = LayerAt(80, 30, 128)
                 Check(ActiveCues() == 2 && landing != world && settling != world, "natural gravity lock creates one contact and one settling layer")
                 lights := find_entities_with_component("PointLight")
                 found := false
@@ -353,12 +356,12 @@ behavior VfxChecks {
             }
             case 214 {
                 if landing != world && settling != world {
-                    Check(landing.ParticleField3D.count == 64 && settling.ParticleField3D.count == 96, "contact and settling remain alive through a restrained half-second release")
+                    Check(landing.ParticleField3D.count == 96 && settling.ParticleField3D.count == 128, "contact and settling remain alive through a restrained half-second release")
                 }
             }
             case 224 {
                 if landing != world && settling != world {
-                    Check(landing.ParticleField3D.count == 0 && settling.ParticleField3D.count == 96, "settling outlives the contact without restarting its clock")
+                    Check(landing.ParticleField3D.count == 0 && settling.ParticleField3D.count == 128, "settling outlives the contact without restarting its clock")
                 }
             }
             case 248 {

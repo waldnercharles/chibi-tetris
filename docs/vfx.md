@@ -8,28 +8,33 @@ a behavior, and a visible field or light is never moved to a newer event.
 
 Ordinary input starts on the four captured occupied cell fronts. Their depth
 includes the block finish, chapter depth and music lift at the action. The
-effects stay local, with a restrained initial color and longer dim tails.
+effects stay local, with a brief white accent and longer dim tails.
 Grains have small variations in proportion and tumble, and receive some scene
-lighting. A turn follows an arc around the captured piece center.
+lighting. A turn follows an arc around the captured SRS pivot, including the I
+piece's half-cell offset.
 
 | Action or layer | Instances | Field life | Placement and timing |
 | --- | ---: | ---: | --- |
-| Movement | 32 | 520 ms | Leaves the trailing edges and slows through drag. |
-| Rotation | 72 | 760 ms | Curves around the occupied shape, then settles. |
-| Soft fall | 24 | 480 ms | Starts beneath the captured cells; release uses 380 ms. |
+| Movement | 48 | 620 ms | Spans the vacated cell behind exposed trailing edges. |
+| Rotation | 96 | 720 ms | Curves from the exposed silhouette around the SRS pivot. |
+| Soft fall | 32 | 440 / 520 / 300 ms | Start, step and stop; the step wake spans its captured travel. |
 | Hold | 48 | 720 ms | Draws slightly inward and forward through depth. |
-| Rejection | 12 | 400 ms | Stays beside the blocked edge. |
-| Hard-drop packet | 96 | 420 ms | Reaches the landing in 160 ms; its compact wake contracts by 320 ms. |
-| Contact flecks | 64 | 640 ms | Starts at arrival, on exposed lower cell edges. |
-| Settling dust | 96 | 1,000 ms | Starts 45 ms after contact and drifts gently through depth. |
+| Rejection | 20 | 280 ms | Marks the wall, grounded lower edge or rejected rotation perimeter. |
+| Hard-drop wash | 96 | 90 ms | Scattered across traveled cells; contracts in 60 ms and vanishes by 75 ms. |
+| Contact flecks | 96 | 620 ms | Starts immediately on exposed lower cell edges. |
+| Settling dust | 128 | 1,050 ms | Starts 25 ms after contact and drifts gently through depth. |
 
-A hard drop uses the packet and both landing layers. Its immediately
+A hard drop uses the wash and both landing layers. Its immediately
 following lock record does not replay them. A natural lock uses the two landing
-layers without a packet. Internal lower edges are masked, so stacked cells do
-not emit contact grains through the middle of their shape. The packet's wake
-spans at most twelve units along its path. Its light waits for the full 160 ms
-arrival and has a peak setting of 0.44; a natural lock uses 0.324. Their shared
+layers without a wash. Internal edges are masked, so cells do
+not emit grains through the middle of their shape. The contact light starts
+immediately and has a peak setting of 0.44; a natural lock uses 0.324. Their shared
 light envelope stays below those settings.
+
+Accepted movement and rotation also add capped impulses to the active blocks'
+lean, depth compression and emission. Exponential filtering retains the current
+pose through overlapping inputs. Newly locked cells settle independently of the
+next piece; logical cell positions, collision rules and the ghost stay immediate.
 
 ## A cleared row
 
@@ -78,6 +83,50 @@ front remain emissive. Reaction lights have a smooth 25 ms attack and 275 ms
 release; their intensity is zero before arrival and at retirement. The short
 light pulse is separate from the longer fragment lifetime.
 
+## A lost board
+
+A final top-out enters a separate loss phase. Controls and the run clock stop
+immediately, while the scenery and released geometry continue to advance.
+Scoring, line totals and the occupied rule grid remain intact. Duet rescue is
+resolved first, and a winning final clear still takes priority over a blocked
+next spawn. A single stranded Duet board waits for its partner without releasing.
+
+After 700 ms, a release steps through the visible rows from top to bottom at
+12.5 ms per row. The existing block meshes detach intact, retaining each piece's
+color, material, bevel and depth. Each body follows an analytic path from its
+original grid position rather than accumulating offsets each frame. Its upward
+travel is `72t + 48t²` world units, with mild sideways spread and forward depth.
+Independent yaw and roll make the blocks tumble. Bodies stay full size for the
+first 1.5 seconds of flight, then shrink smoothly over 1.2 seconds. The board
+border, HUD, Hold and Next previews stay fixed throughout departure. Hold
+and Next hide when the result appears.
+
+The result appears at 2.8 seconds. The decorative loss clock continues afterward
+until four seconds so departing bodies can finish their flight; gameplay time
+remains stopped. Restart is available as soon as the result appears. It resets
+all tile rotations and positions and retires secondary particles through the
+existing 60 ms release.
+
+Each immutable row record carries its actual occupied-column mask and captured
+front face. One field of 96 quiet microembers accompanies each occupied row;
+missing cells emit nothing. Reduced effects halves this count. Two full Duet
+boards use at most 40 fields and 3,840 instances, within the existing 96-field
+pool. The original 400 settled tile slots provide the block bodies, with no new
+entities. Pre-loss cues retire before departure starts. Loss adds no large row
+flash, energy ring or reward illumination. Reduced motion and effects-off shrink
+the stationary cells over 300 ms, emit no drifting fields and show results at
+400 ms.
+
+The upward whole-block departure follows the observed reference. The hold,
+stagger, flight equation, retirement and result timings are original art
+direction; the recording does not isolate the time of top-out or reveal the
+natural end of its effect. The `--loss` C/pico_unit check drives real legal drops
+into top-out and checks each occupied row, original mesh colors and size,
+upward travel, tumble, fixed field budget, frozen gameplay, Solo and Duet,
+quiet settings, retirement and restart. It also runs the existing rescue,
+completion-priority and chapter-restart checks. Authored simulation does not
+establish rendered appearance or browser frame time.
+
 ## Timing and motion
 
 For clear layers except the fracture front, birth time uses an independent stable hash `q`
@@ -120,27 +169,26 @@ position = source + initial_velocity * F + gravity * G
 The microember curl adds three phase-offset sine/cosine differences multiplied
 by `18 * (1 - exp(-1.6a))`. It starts at zero and stays bounded. This is a
 prescribed flowing trajectory, not a fluid solver. Chunk tumble is constant
-angular motion. The GPU does not persist particle state or simulate collisions,
+angular motion. Reaction fields use analytic motion; the background separately
+retains GPU position, velocity and age. Neither simulates collisions,
 rigid-body contacts or particle-to-particle forces.
 
-Ordinary cues use `E = 0.20L` and `D = L * (0.62 + 0.14h)`. Their slower attack
-and release are:
+Ordinary cues use `E = min(0.12L, 0.045)` and `D = L * (0.70 + 0.16h)`.
+Contact and hard-drop births instead finish within 6 ms. Attack and release are:
 
 ```
-A(a) = smoothstep(0, min(0.050, 0.22D), a)
-       * (1 - smoothstep(0.18D, D, a))
+A(a) = smoothstep(0, min(0.012, 0.12D), a)
+       * (1 - smoothstep(0.12D, D, a))
 ```
 
 Alpha uses this envelope and the mode-change retirement fade; size uses
-`A * (2 - A)` to retain readable coverage through the softer tail. Contact
-fragments are 30% larger than the ordinary grains; settling dust remains finer.
-The latest grain reaches zero before 96% of its field life. Ordinary translation
-uses `F(a, 4.2)`. Contact and settling gravity use `G(a, 4.2)`, with downward
-acceleration of 50 and 18 units/s² respectively. Settling dust adds bounded
-sine differences that start at zero. Rotation uses an angular displacement of
-`-direction * (0.35 + 0.25h) * (1 - exp(-4.2a))`. These are continuous authored
-paths, without particle collision simulation. The hard-drop packet follows
-`-24 * rows * smoothstep(0, 0.16, t - d)`.
+`sqrt(A)` to retain coverage through the tail. The white core cools according to
+`exp(-20a)`, independently of lifetime. Translation uses `F(a, 3.6)`;
+contact and settling gravity use `G(a, 3.6)`, with downward acceleration of 125
+and 20 units/s² respectively. Rotation uses angular displacement
+`-direction * (0.28 + 0.52h) * (1 - exp(-5a))`. These are continuous authored
+paths, without particle collision simulation. The hard-drop wash contracts
+toward the already occupied destination with `smoothstep(0, 0.06, t - d)`.
 
 ## Bounds and validation
 

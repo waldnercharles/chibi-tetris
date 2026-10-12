@@ -89,9 +89,12 @@ behavior ShellChecks {
                 board.BoardState.topout = true
             }
             case 101 {
-                Check(world.Session.screen == 3 && !world.Session.won, "topout produces result before chapter selection")
+                Check(world.Session.screen == 4 && !world.Session.won, "topout starts loss before chapter selection")
             }
             case 105 {
+                Check(world.Session.screen == 4 && world.Session.run == 7, "chapter selection waits for the loss release")
+            }
+            case 273 {
                 Check(world.Session.stage == 1 && world.Session.screen == 2 && world.Session.run == 8, "chapter selection also works from results")
                 self.TestReport.done = true
             }

@@ -734,7 +734,7 @@ TEST_CASE(topout_and_rescue)
 
 TEST_CASE(journey_settings_and_reopen)
 {
-    yyjson_mut_doc *doc = request("ShellChecks", 107);
+    yyjson_mut_doc *doc = request("ShellChecks", 275);
     key(doc, 0, 0);
     tap(doc, 24, KEY_P);
     tap(doc, 26, KEY_8);
@@ -755,6 +755,7 @@ TEST_CASE(journey_settings_and_reopen)
     tap(doc, 83, KEY_8);
     tap(doc, 86, KEY_ENTER);
     tap(doc, 103, KEY_7);
+    tap(doc, 270, KEY_7);
     REQUIRE(snapshot(doc));
     REQUIRE(report(22));
     yyjson_val *result = yyjson_obj_get(yyjson_doc_get_root(reply), "result");
@@ -776,7 +777,7 @@ TEST_CASE(journey_settings_and_reopen)
 
 TEST_CASE(sprint_duet_and_disconnect)
 {
-    yyjson_mut_doc *doc = request("ModeChecks", 82);
+    yyjson_mut_doc *doc = request("ModeChecks", 252);
     pads(doc, 0, true, 0);
     pads(doc, 30, false, 0);
     REQUIRE(snapshot(doc));
@@ -1373,6 +1374,10 @@ TEST_CASE(controlled_soft_drop_and_piece_motion)
 {
     yyjson_mut_doc *doc = request("MotionChecks", 210);
     key(doc, 0, 0);
+    tap(doc, 28, KEY_LEFT);
+    tap(doc, 30, KEY_RIGHT);
+    tap(doc, 32, KEY_X);
+    tap(doc, 34, KEY_Z);
     key(doc, 42, KEY_DOWN);
     key(doc, 72, 0);
     tap(doc, 77, KEY_SPACE);
@@ -1404,6 +1409,58 @@ TEST_CASE(layered_world_space_reactions)
     REQUIRE(report(211));
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_dropped")) == 5);
     REQUIRE(yyjson_get_int(field("World", "VisualState", "cue_overwrites")) == 0);
+    return true;
+}
+
+TEST_CASE(occupied_stack_releases_on_loss)
+{
+    for (int variant = 0; variant < 4; ++variant) {
+        bool quiet = variant == 1 || variant == 3;
+        yyjson_mut_doc *doc = request("LossChecks", quiet ? 100 : 315);
+        yyjson_mut_val *saved = yyjson_mut_obj_add_obj(doc, yyjson_mut_doc_get_root(doc), "saved_state");
+        yyjson_mut_obj_add_str(doc, saved, "test_quiet", quiet ? "1" : "0");
+        yyjson_mut_obj_add_str(doc, saved, "reduced_motion", variant == 1 ? "1" : "0");
+        yyjson_mut_obj_add_str(doc, saved, "effects", variant == 3 ? "0" : "2");
+        yyjson_mut_obj_add_str(doc, saved, "test_duet", variant == 2 ? "1" : "0");
+        key(doc, 0, 0);
+        yyjson_mut_val *hold_input = sample_input(doc, 10);
+        yyjson_mut_val *hold_controls = yyjson_mut_obj_add_arr(doc, hold_input, "controls");
+        yyjson_mut_arr_add_int(doc, hold_controls, KEY_C);
+        yyjson_mut_arr_add_int(doc, hold_controls, KEY_R);
+        key(doc, 11, 0);
+        for (int frame = 12; frame <= 60; frame += 2) {
+            yyjson_mut_val *input = sample_input(doc, frame);
+            yyjson_mut_val *controls = yyjson_mut_obj_add_arr(doc, input, "controls");
+            yyjson_mut_arr_add_int(doc, controls, KEY_SPACE);
+            yyjson_mut_arr_add_int(doc, controls, KEY_W);
+            key(doc, frame + 1, 0);
+        }
+        if (!quiet) {
+            tap(doc, 62, KEY_P);
+            tap(doc, 64, KEY_ENTER);
+            tap(doc, 66, KEY_BACKSPACE);
+            tap(doc, 68, KEY_4);
+            tap(doc, 70, KEY_M);
+        }
+        REQUIRE(snapshot(doc));
+        REQUIRE(report(quiet ? 10 : 14));
+        REQUIRE(visible_mesh("content/meshes/text/game_over.mesh"));
+    }
+    yyjson_mut_doc *doc = request("LossChecks", 252);
+    key(doc, 0, 0);
+    tap(doc, 10, KEY_C);
+    for (int frame = 12; frame <= 60; frame += 2) {
+        tap(doc, frame, KEY_SPACE);
+    }
+    tap(doc, 244, KEY_ENTER);
+    REQUIRE(snapshot(doc));
+    REQUIRE(yyjson_get_int(field("World", "Session", "screen")) == 1);
+    REQUIRE(yyjson_get_int(field("World", "Session", "run")) == 2);
+    REQUIRE(!yyjson_get_bool(field("Board1", "BoardState", "topout")));
+    REQUIRE(yyjson_get_int(field("Board1", "BoardState", "pieces")) == 0);
+    REQUIRE(yyjson_get_int(field("Board1", "BoardState", "score")) == 0);
+    REQUIRE(yyjson_get_int(field("Board1", "BoardState", "ghost_row")) >= 18);
+    REQUIRE(!visible_mesh("content/meshes/text/game_over.mesh"));
     return true;
 }
 
@@ -1446,16 +1503,18 @@ int main(int argc, char **argv)
     bool motion = !strcmp(selection, "--motion");
     bool stage = !strcmp(selection, "--stage");
     bool vfx = !strcmp(selection, "--vfx");
+    bool loss = !strcmp(selection, "--loss");
     bool music_response = !strcmp(selection, "--music-response");
     bool music_field = !strcmp(selection, "--music-field");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
-        !(all || reactions || consumer || hud || onboarding || attract || ui ||
-          previews || motion || stage || vfx || music_response || music_field)) {
+        !(all || reactions || consumer || hud || onboarding || attract || ui || previews ||
+          motion || stage || vfx || loss || music_response || music_field)) {
         fprintf(
             stderr,
             "Usage: %s "
             "--all|--reactions|--consumer|--hud|--onboarding|--attract|--ui|--"
-            "previews|--motion|--stage|--vfx|--music-response|--music-field "
+            "previews|--motion|--stage|--vfx|--loss|--music-response|--music-"
+            "field "
             "/path/to/chibi_ctl /path/to/game\n",
             argv[0]
         );
@@ -1496,15 +1555,19 @@ int main(int argc, char **argv)
         RUN_TEST_CASE(live_keyboard_boards);
         RUN_TEST_CASE(live_controller_boards);
         RUN_TEST_CASE(lock_reset_limit);
+        RUN_TEST_CASE(score_choice_and_mode_keys);
+    }
+    if (all || loss) {
         RUN_TEST_CASE(journey_settings_and_reopen);
         RUN_TEST_CASE(sprint_duet_and_disconnect);
-        RUN_TEST_CASE(score_choice_and_mode_keys);
     }
     if (all || hud || previews) {
         RUN_TEST_CASE(sidebar_previews_follow_play_state);
     }
-    if (all || hud) {
+    if (all || hud || loss) {
         RUN_TEST_CASE(final_clear_wins_over_blocked_spawn);
+    }
+    if (all || hud) {
         RUN_TEST_CASE(sprint_time_display);
         RUN_TEST_CASE(audio_source_status_labels);
         RUN_TEST_CASE(setting_value_labels);
@@ -1518,6 +1581,9 @@ int main(int argc, char **argv)
     }
     if (all || vfx) {
         RUN_TEST_CASE(layered_world_space_reactions);
+    }
+    if (all || loss) {
+        RUN_TEST_CASE(occupied_stack_releases_on_loss);
     }
     if (all || music_response) {
         RUN_TEST_CASE(authored_music_response);

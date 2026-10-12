@@ -42,6 +42,7 @@ behavior AttractChecks {
             case 10 {
                 Check(world.Session.attract && world.Session.screen == 0, "opening retains explicit play actions")
                 Check(camera.Transform3D.position.x < -100, "opening camera gives the real board its side composition")
+                Check(camera.Camera.width > 1200, "opening framing contains the chooser and demonstration board")
                 Check(world.Session.run == 0 && world.Session.elapsed == 0, "demo has no player run or timer")
             }
             case 120 {
@@ -79,6 +80,7 @@ behavior AttractChecks {
             case 210 {
                 Check(world.Session.attract && world.Session.entering && world.Session.run == 0, "demo reset waits for clear effects to finish")
                 Check(camera.Transform3D.position.x > -130 && camera.Transform3D.position.x < 90, "camera travels toward the play composition")
+                Check(camera.Camera.width > 700 && camera.Camera.width < 1208, "intro narrows the framing continuously with the camera move")
                 Check(board.BoardState.clear_serial == demo_clears + 1, "handoff emits no repeated clears")
             }
             case 260 {
@@ -96,6 +98,7 @@ behavior AttractChecks {
                 Check(!world.Session.attract && !world.Session.entering && world.Session.hud_alpha == 1, "handoff completes with fully visible play HUD")
                 Check(world.Session.screen == 1 && world.Session.run == 1 && world.Session.elapsed > 0, "fresh player run begins after the handoff")
                 Check(camera.Transform3D.position.x > 80, "camera reaches the normal play composition")
+                Check(camera.Camera.width == 700, "completed single-board intro uses its readable portrait framing")
                 Check(board.BoardState.pieces == 0 && board.BoardState.lines == 0, "demo stack and score do not leak into the player run")
                 Check(world.Session.audio_source == 1, "external source survives the entire handoff")
                 Check(LabelOpacity("content/meshes/text/elapsed.mesh") == 1, "finished handoff shows the actual sprint timer mesh")

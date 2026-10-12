@@ -1,5 +1,33 @@
 # Validation record
 
+## Persistent particle flow and reference-led reactions — October 11, 2026
+
+The engine pinned in `toolchain.json` adds optional persistent state to GLSL particle fields. A GPU update writes position, velocity and age into ping-pong floating-point textures; the instanced mesh draw reads that state. The 131,072 main grains now move through changing force fields instead of prescribed surfaces. Another 16,384 grains provide quiet depth. Stable integer hashes give the main population distinct identities, and independently distributed reset ages prevent a synchronized fade. This is particle advection, not a pressure-based fluid solver or particle collision system.
+
+The supplied Tetris Effect recording was inspected through a low-resolution overview and denser clear/loss frame sequences. [The study](tetris-effect-study.md) distinguishes measured observations from original tuning. Movement, rotation, rejection, soft drop, hard drop and landing now have different exposed-edge paths and timing. Contact and lighting begin immediately; the granular drop wash retires in 90 ms. Small filtered block impulses add lean, depth compression and highlights without moving logical cells. Final loss reuses the original colored blocks for an accelerating upward tumble, keeps Hold/Next fixed, delays the result, and retires geometry after results without advancing gameplay time.
+
+Independent review found and fixed a retired-stack resurrection when returning from the audio chooser. Regression coverage includes that path, original block colors and transforms, frozen scoring, restart, Solo/Duet, rescue priority, winning-clear priority and quiet settings. Narrow-window play now uses a smaller authored camera width; the intro eases from the full chooser composition. Full-width Duet is retained, and the backdrop no longer exposes its edges in tall windows.
+
+| Affected game check | Result |
+| --- | --- |
+| Loss, restart and audio return | Four C cases / 288 dispatcher assertions; final preview-retention run 13.182 seconds. |
+| Action VFX | 1.774 seconds; restoring the former contact delay failed five authored assertions. |
+| Action reactions | Five cases; 4.746 seconds. |
+| Motion and camera/attract handoff | Five C cases / 43 dispatcher assertions; 5.088 seconds. Previous camera framing failed the new check. |
+| Music response, spatial forces and consumer | Three C cases / 25 dispatcher assertions; 3.883 seconds. |
+
+The GPU-state contract passed actual GLSL-to-WGSL/Metal compilation, 14 source/descriptor/prepared cases with 1,280 assertions, and a focused numeric GPU test with eleven hidden 64 × 64 frames. The numeric check covers state retention, reset, unchanged time, capped delta, age, cross-row indexing above 1,024 grains, and shader/count/seed changes. It completed in 1.043 seconds through Cocoa/Metal. The first offscreen-driver attempt could not initialize on this host and is not counted as passed. A separate 96-grain DriftingGrains fixture rendered without Tetris mechanics at 320 × 180 using two warmup frames and one saved frame; it completed in 1.055 seconds.
+
+Browser work exposed two host issues: a zero-sized initial surface reached a null WebGPU canvas, and later CSS-only size changes did not notify SDL. The player now skips presentation while its surface is absent; both web shells observe canvas layout and notify SDL's existing resize handler. The graphics regression failed before the guard and passed afterward in 0.984 seconds. The actual-shell callback regression failed before its fix, then passed 14 cases / 64 assertions in 0.861 seconds. The final reviewed engine passed native checks (299 cases / 178,924 assertions, 11.167 seconds), language checks (178 / 10,518, 0.952 seconds), tooling checks (93 / 22,586, 24.555 seconds), formatting and diff checks.
+
+Production assets and fixtures are formatted; validation reports 144 assets with zero errors or warnings. Clean pinned native and web exports completed. The final macOS application ran four hidden frames and three fixed simulation steps in 1.864 seconds under a 30-second deadline. A browser fixture started with zero CSS canvas area and automatically recovered to 1,591 × 2,350 pixels after layout restoration, with no manual resize notification; the temporary fixture was removed and the clean page reloaded.
+
+Local play confirmed movement, rotation, hold, independent Duet drops, pause, restart and the visible upward whole-block departure. The restored camera framing and full-height backdrop were inspected in the narrow browser panel. At normal 1,589 × 2,350 pixels (662 × 979 CSS), Duet with the full 147,456-grain background measured 58.81 FPS, 16.7 ms median and 24.7 ms p95 after 120 warmup callbacks and a 2.5-second sample. No viewport override was applied. This is a short local observation, not sustained or cross-device performance. Publication and public play are verified separately after committing the clean source.
+
+All test commands retain a 60-second production deadline. The previous game-wide aggregate remains incomplete and was not reconstructed. Full and quarantined native/render/Studio suites remain unexecuted. Direct and hemisphere light response is retained for particles; this change does not add particle shadows or Radiance Cascades. Completed external music capture, service authentication and human listening are not established by these visual checks.
+
+Reference media, extracted frames and build logs remain in ignored `build/particula`; engine evidence remains in `.chibi/particle-state`. Disposable comparison projects and the unused loss-preview clone were removed.
+
 ## GLSL particles, music response and compact controls — October 11, 2026
 
 The reviewed engine is `9fff00c8c371a5a09ac01fe455b7f8d23e5893d2`. The four production particle entrypoints now use ordinary GLSL with typed KDL descriptors and shared source includes. They compile directly through the renderer compiler; they do not pass through the graph's 1,024-node IR. Material graphs remain supported. The initial source-authoring contract covers particle shaders, not general surface or compute shaders, HLSL or WGSL input. The engine embeds source and includes in prepared artifacts and preserves the last valid runtime program if replacement compilation fails.

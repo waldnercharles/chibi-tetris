@@ -12,6 +12,10 @@ parameters {
     Life type="float" default=0.0
     Quiet type="float" default=0.0
     Hue type="float" default=0.0
+    Pivot {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
     Point0 {
         type "vec3"
         (array)default 0.0 0.0 0.0

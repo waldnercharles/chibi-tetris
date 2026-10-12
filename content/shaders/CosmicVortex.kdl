@@ -3,6 +3,7 @@ name "CosmicParticles.Vortex"
 kind "particle"
 source "CosmicVortex.glsl"
 entry "vortex"
+update "advect"
 (array)includes "CosmicCommon.glsl"
 parameters {
     Energy type="float" default=0.0

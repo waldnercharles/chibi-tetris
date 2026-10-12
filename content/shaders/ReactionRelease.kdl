@@ -5,6 +5,8 @@ source "ReactionRelease.glsl"
 entry "release"
 (array)includes "ReactionCommon.glsl"
 parameters {
+    Loss type="float" default=0.0
+    RowMask type="float" default=1023.0
     Pattern type="float" default=0.0
     Direction type="float" default=0.0
     Travel type="float" default=0.0

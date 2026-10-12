@@ -98,7 +98,10 @@ behavior ModeChecks {
                 second.BoardState.topout = true
             }
             case 80 {
-                Check(world.Session.screen == 3, "both topouts without reserve end Duet")
+                Check(world.Session.screen == 4, "both topouts without reserve begin the loss release")
+            }
+            case 248 {
+                Check(world.Session.screen == 3, "both topouts reveal a result after the loss release")
                 self.TestReport.done = true
             }
         }

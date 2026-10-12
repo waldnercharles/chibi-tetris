@@ -13,14 +13,23 @@ behavior CameraMotion {
             return
         }
         pan := 0
+        width := 700
+        if world.Session.mode == 3 {
+            width = 1208.8889
+        }
         if world.Session.attract {
             pan = -240
+            width = 1208.8889
         }
         if world.Session.entering && !world.Session.reduced_motion {
             progress := clamp((world.Session.intro_time - 0.15) / 1.75, 0, 1)
             eased := progress * progress * progress * (progress * (progress * 6 - 15) + 10)
             pan = -240 * (1 - eased)
+            if world.Session.selected_mode != 3 {
+                width = 1208.8889 + (700 - 1208.8889) * eased
+            }
         }
+        self.Camera.width = width
         x := 90
         y := 50
         z := 1080

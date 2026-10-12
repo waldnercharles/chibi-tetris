@@ -1,134 +1,159 @@
 #include "ReactionCommon.glsl"
 
-// A lower occupied cell suppresses the upper cell's landing grains.
-float cue_cell_below(vec3 point, vec3 cell)
+float cue_neighbor(vec3 point, vec3 cell, vec2 normal)
 {
-    return (1.0 - step(0.5, abs(point.x - cell.x))) *
-        (1.0 - step(0.5, abs(point.y - cell.y - 24.0)));
+    return 1.0 - step(0.5, length(cell.xy - point.xy - normal * 24.0));
+}
+
+// Emit from the piece silhouette, never from the seam between occupied cells.
+float cue_exposed(vec3 point, vec2 normal, ChibiParameters u)
+{
+    return 1.0 - max(
+        max(cue_neighbor(point, u.Point0, normal), cue_neighbor(point, u.Point1, normal)),
+        max(cue_neighbor(point, u.Point2, normal), cue_neighbor(point, u.Point3, normal))
+    );
 }
 
 ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
 {
     vec3 random = reaction_random(p.index, p.seed);
-    float cell = fract(p.index * 0.25) * 4.0;
-    vec3 point = u.Point0 * (1.0 - step(0.5, cell)) +
-        u.Point1 * (step(0.5, cell) - step(1.5, cell)) +
-        u.Point2 * (step(1.5, cell) - step(2.5, cell)) +
-        u.Point3 * step(2.5, cell);
-    vec3 center = (u.Point0 + u.Point1 + u.Point2 + u.Point3) * 0.25;
-
     float quantile = reaction_quantile(p.index, p.seed);
-    float birth = reaction_birth(u.Life * 0.2, quantile);
-    float duration = u.Life * (0.62 + random.z * 0.14);
-    float elapsed = max(0.0, p.time - u.Delay - birth);
+    int cell = int(mod(p.index, 4.0));
+    vec3 point = u.Point0;
+    if (cell == 1) point = u.Point1;
+    if (cell == 2) point = u.Point2;
+    if (cell == 3) point = u.Point3;
+    vec3 center = (u.Point0 + u.Point1 + u.Point2 + u.Point3) * 0.25;
+    int pattern = int(u.Pattern + 0.5);
+    float age = max(0.0, p.time - u.Delay);
+    float birth = reaction_birth(min(u.Life * 0.12, 0.045), quantile);
+    float duration = u.Life * (0.70 + random.z * 0.16);
+    if (pattern == 4 || pattern == 8) birth = quantile * 0.006;
+    float elapsed = max(0.0, age - birth);
     float phase = clamp(elapsed / max(duration, 0.001), 0.0, 1.0);
-    float envelope = smoothstep(0.0, min(0.05, duration * 0.22), elapsed) *
-        (1.0 - smoothstep(duration * 0.18, duration, elapsed)) * u.Fade;
-
+    float envelope = smoothstep(0.0, min(0.012, duration * 0.12), elapsed) *
+        (1.0 - smoothstep(duration * 0.12, duration, elapsed)) * u.Fade;
     float motion = elapsed * (1.0 - u.Quiet);
-    float drag = reaction_drag(4.2, motion);
-    float gravity_time = (motion - drag) / 4.2;
-    vec3 edge = vec3(
-        mix((random.x - 0.5) * 21.0,
-            (step(0.5, random.z) * 2.0 - 1.0) * 10.7, step(0.5, random.y)),
-        mix((step(0.5, random.z) * 2.0 - 1.0) * 10.7,
-            (random.x - 0.5) * 21.0, step(0.5, random.y)),
-        0.35
-    );
-    vec3 radial = point - center + vec3(edge.xy, 0.0);
-    float angle = -u.Direction * (0.35 + random.z * 0.25) *
-        (1.0 - exp(-4.2 * motion));
-    float fleck = step(0.78, random.y);
-    float wake = step(0.48, random.y) * (1.0 - fleck);
+    float drag = reaction_drag(3.6, motion);
+    float gravity_time = (motion - drag) / 3.6;
+    float fleck = step(0.76, random.z);
+    float mist = 1.0 - step(0.28, random.z);
+    float side = floor(random.y * 4.0);
+    vec2 normal = vec2(1.0, 0.0);
+    if (side == 1.0) normal = vec2(0.0, 1.0);
+    if (side == 2.0) normal = vec2(-1.0, 0.0);
+    if (side == 3.0) normal = vec2(0.0, -1.0);
+    vec2 tangent = vec2(-normal.y, normal.x);
+    vec3 edge = vec3(normal * 10.7 + tangent * (random.x - 0.5) * 21.0, 0.6);
+    vec3 position = point + edge;
+    float exposed = cue_exposed(point, normal, u);
+    float stretch = 1.0;
+    float orientation = random.x * 6.283185;
+    float lighting = 0.18;
 
-    // Each position is in the captured piece's coordinate frame.
-    vec3 fracture = point + edge + vec3(
-        (random.x - 0.5) * 100.0, 25.0 + random.y * 55.0,
-        (random.z - 0.5) * 12.0
-    ) * drag - vec3(0.0, motion * motion * 110.0, 0.0);
-    vec3 move_edge = point + vec3(
-        -u.Direction * 10.7, (random.y - 0.5) * 19.0, 0.35
-    ) + vec3(
-        -u.Direction * (12.0 + random.z * 18.0),
-        (random.y - 0.5) * 8.0, (random.z - 0.5) * 6.0
-    ) * drag;
-    vec3 turn = center + vec3(
-        radial.x * cos(angle) - radial.y * sin(angle),
-        radial.x * sin(angle) + radial.y * cos(angle), radial.z
-    ) + vec3(
-        (random.x - 0.5) * 4.0 * drag, -12.0 * gravity_time,
-        0.35 + (random.z - 0.5) * 5.0 * drag
-    );
-    vec3 soft_fall = point + vec3(
-        (random.x - 0.5) * 16.0, -10.7 - 18.0 * drag,
-        0.35 + (random.z - 0.5) * drag * 8.0
-    );
-    vec3 contact = point + vec3((random.x - 0.5) * 20.0, -10.7, 0.35) + vec3(
-        (random.x - 0.5) * (25.0 + fleck * 24.0),
-        fleck * (18.0 + random.z * 22.0),
-        (random.z - 0.5) * (12.0 + fleck * 18.0)
-    ) * drag - vec3(0.0, 50.0 * gravity_time, 0.0);
-    vec3 hold = point + edge + (center - point) * drag * 0.65 +
-        vec3(0.0, 12.0 * drag, 8.0 * drag);
-    vec3 blocked = point + vec3(
-        u.Direction * 10.7, (random.y - 0.5) * 18.0, 0.35
-    ) + vec3(
-        -u.Direction * 9.0 * drag, -8.0 * gravity_time,
-        (random.z - 0.5) * drag * 3.0
-    );
-    float progress = smoothstep(0.0, 0.16, max(0.0, p.time - u.Delay)) *
-        (1.0 - u.Quiet);
-    float tail = min(u.Travel * 24.0 * progress, 12.0) *
-        (1.0 - smoothstep(0.16, 0.32, max(0.0, p.time - u.Delay)));
-    vec3 packet = point + vec3(
-        (random.y - 0.5) * 2.0,
-        -u.Travel * 24.0 * progress + tail * random.z * (0.2 + wake * 0.6),
-        0.35 + (random.x - 0.5) * 1.2
-    );
-    vec3 settling = point + vec3((random.x - 0.5) * 20.0, -10.7, 0.6) + vec3(
-        (random.x - 0.5) * 32.0, 6.0 + random.y * 12.0, 5.0 + random.z * 10.0
-    ) * drag - vec3(0.0, 18.0 * gravity_time, 0.0) + vec3(
-        sin(random.z * 6.283185 + motion * 3.0) - sin(random.z * 6.283185),
-        sin(random.x * 6.283185 + motion * 2.0) - sin(random.x * 6.283185),
-        sin(random.y * 6.283185 + motion * 2.5) - sin(random.y * 6.283185)
-    ) * (1.0 - exp(-2.4 * motion)) * 2.5;
+    if (pattern == 0) {
+        position += vec3((random.x - 0.5) * 100.0, 25.0 + random.y * 55.0,
+                         (random.z - 0.5) * 12.0) * drag;
+        position.y -= motion * motion * 110.0;
+    }
+    if (pattern == 1) {
+        normal = vec2(-u.Direction, 0.0);
+        exposed = cue_exposed(point, normal, u);
+        // The record is the destination. Distribute the wake over the vacated cell.
+        float trail = u.Travel * 24.0 * quantile;
+        position = point + vec3(-u.Direction * (10.7 + trail),
+            (random.y - 0.5) * 20.0, 0.6);
+        position += vec3(-u.Direction * (12.0 + random.z * 22.0),
+            (random.y - 0.5) * 14.0, 3.0 + random.x * 8.0) * drag;
+        stretch = 1.6 + fleck * 1.8;
+        orientation = 0.0;
+    }
+    if (pattern == 2) {
+        vec3 radial = point + edge - u.Pivot;
+        float angle = -u.Direction * (0.28 + random.z * 0.52) *
+            (1.0 - exp(-5.0 * motion));
+        position = u.Pivot + vec3(
+            radial.x * cos(angle) - radial.y * sin(angle),
+            radial.x * sin(angle) + radial.y * cos(angle), radial.z);
+        position += vec3(normal * (5.0 + random.z * 10.0) * drag,
+            (2.0 + random.x * 7.0) * drag);
+        orientation = atan(-u.Direction * radial.x, u.Direction * radial.y) + angle;
+        stretch = 1.4 + fleck * 2.0;
+    }
+    if (pattern == 3) {
+        normal = vec2(0.0, 1.0);
+        exposed = cue_exposed(point, normal, u);
+        // A soft-step record keeps the source row; its wake reaches the new row.
+        float travel = u.Travel * 24.0;
+        position = point + vec3((random.x - 0.5) * 19.0,
+            10.7 - travel * (1.0 - quantile), 0.6);
+        position += vec3((random.y - 0.5) * 10.0, -18.0 - random.z * 12.0,
+            2.0 + random.x * 6.0) * drag;
+        stretch = 1.3 + fleck * 1.6;
+        orientation = 1.5707963;
+    }
+    if (pattern == 4 || pattern == 12) {
+        normal = vec2(0.0, -1.0);
+        exposed = cue_exposed(point, normal, u);
+        position = point + vec3((random.x - 0.5) * 21.0, -10.7, 0.7);
+        vec3 velocity = vec3((random.x - 0.5) * (100.0 + fleck * 95.0),
+            14.0 + random.y * 48.0, 12.0 + random.z * 22.0);
+        float gravity = 125.0;
+        lighting = 0.35;
+        if (pattern == 12) {
+            velocity = vec3((random.x - 0.5) * 55.0, 5.0 + random.y * 13.0,
+                7.0 + random.z * 12.0);
+            gravity = 20.0;
+            lighting = 0.48;
+        }
+        position += velocity * drag - vec3(0.0, gravity * gravity_time, 0.0);
+        orientation = atan(velocity.y - gravity * drag, velocity.x);
+        stretch = 1.0 + fleck * 1.4;
+    }
+    if (pattern == 6) {
+        position += (center - point) * drag * 0.65 + vec3(0.0, 12.0, 8.0) * drag;
+    }
+    if (pattern == 7) {
+        // Travel carries the rejected action kind: wall, down, or perimeter.
+        if (u.Travel == 1.0) normal = vec2(u.Direction, 0.0);
+        if (u.Travel == 3.0) normal = vec2(0.0, -1.0);
+        tangent = vec2(-normal.y, normal.x);
+        exposed = cue_exposed(point, normal, u);
+        position = point + vec3(normal * 10.7 + tangent * (random.x - 0.5) * 20.0, 0.7);
+        position += vec3(-normal * 12.0 * drag, 3.0 * drag);
+        orientation = atan(tangent.y, tangent.x);
+        stretch = 1.4;
+    }
+    if (pattern == 8) {
+        // One brief granular wash occupies the traveled cells as contact begins.
+        // Horizontal scatter and unequal lengths prevent four parallel rails.
+        float progress = smoothstep(0.0, 0.06, age) * (1.0 - u.Quiet);
+        position = point + vec3((random.x - 0.5) * 19.0,
+            -u.Travel * 24.0 * (1.0 - quantile * (1.0 - progress)),
+            0.7 + random.y * 2.0);
+        exposed = 1.0;
+        envelope *= 1.0 - smoothstep(0.02, 0.075, age);
+        stretch = 1.4 + random.y * 2.0;
+        orientation = 1.5707963;
+        lighting = 0.0;
+    }
 
-    float move_weight = reaction_pattern(u.Pattern, 1.0);
-    float contact_weight = reaction_pattern(u.Pattern, 4.0);
-    float settling_weight = reaction_pattern(u.Pattern, 12.0);
-    float exposed = 1.0 - max(
-        max(cue_cell_below(point, u.Point0), cue_cell_below(point, u.Point1)),
-        max(cue_cell_below(point, u.Point2), cue_cell_below(point, u.Point3))
-    );
-    float visibility = mix(1.0, exposed, max(contact_weight, settling_weight));
-    envelope = envelope * visibility;
-    vec3 palette = mix(
-        mix(vec3(0.17, 0.65, 0.88), vec3(0.66, 0.3, 0.9), clamp(u.Hue, 0.0, 1.0)),
-        vec3(1.0, 0.34, 0.065), clamp(u.Hue - 1.0, 0.0, 1.0)
-    );
-
+    envelope *= exposed;
+    float hot = exp(-elapsed * 20.0);
+    vec3 cool = mix(vec3(0.14, 0.48, 0.88), vec3(0.40, 0.63, 0.86), random.y);
+    cool = mix(cool, vec3(0.78, 0.36, 0.13), clamp(u.Hue - 1.0, 0.0, 1.0));
+    float brightness = 0.52 + u.Strength * 0.5 + fleck * 0.35;
+    if (pattern == 4) brightness += hot * 0.8;
+    if (pattern == 12) brightness *= 0.62;
     ChibiParticle result;
-    result.position = fracture * reaction_pattern(u.Pattern, 0.0) +
-        move_edge * move_weight + turn * reaction_pattern(u.Pattern, 2.0) +
-        soft_fall * reaction_pattern(u.Pattern, 3.0) + contact * contact_weight +
-        hold * reaction_pattern(u.Pattern, 6.0) + blocked * reaction_pattern(u.Pattern, 7.0) +
-        packet * reaction_pattern(u.Pattern, 8.0) + settling * settling_weight;
-    result.size = (0.9 + random.z * 0.65 + wake * 0.35) *
-        (0.78 + u.Strength * 0.35) * (1.0 - phase * 0.24) * envelope *
-        (2.0 - envelope) * (1.0 + contact_weight * 0.3) *
-        (1.0 - settling_weight * 0.25);
-    result.color = vec4(
-        mix(vec3(0.85, 1.1, 1.25), palette, smoothstep(0.0, 0.42, phase)) *
-            (0.62 + u.Strength * 0.32),
-        envelope * (0.42 + random.z * 0.18) * (1.0 - wake * 0.45) *
-            (1.0 - u.Quiet * 0.25) * (1.0 - settling_weight * 0.3)
-    );
-    result.scale = mix(vec3(1.0), vec3(1.7, 0.65, 0.65), move_weight) *
-        mix(vec3(1.0), vec3(0.8, 0.8, 0.65), settling_weight) *
-        vec3(0.8 + random.x * 0.35, 0.85 + random.y * 0.3, 0.8 + random.z * 0.3);
-    result.rotation = vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) *
-        (1.4 + motion * 1.6);
-    result.lighting = (0.18 + contact_weight * 0.3 + settling_weight * 0.28) *
-        (1.0 - u.Quiet);
+    result.position = position;
+    result.size = (0.65 + random.z * 0.95 + fleck * 0.45) *
+        (0.88 + u.Strength * 0.28) * (1.0 - phase * 0.20) *
+        sqrt(max(envelope, 0.0));
+    result.color = vec4(mix(cool * brightness, vec3(1.6, 1.85, 2.1), hot),
+        envelope * (0.42 + fleck * 0.32 - mist * 0.17) * (1.0 - u.Quiet * 0.3));
+    result.scale = vec3(stretch, 0.65 + random.x * 0.3, 0.65 + random.y * 0.3);
+    result.rotation = vec3((random.x - 0.5) * 0.7, (random.y - 0.5) * 0.7, orientation);
+    result.lighting = lighting * (1.0 - u.Quiet);
     return result;
 }

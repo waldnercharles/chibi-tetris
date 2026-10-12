@@ -1,4 +1,4 @@
-// Screen 0 offers Play or Connect audio; 1 plays, 2 pauses, 3 holds a result.
+// Screen 0 offers Play or Connect audio; 1 plays, 2 pauses, 3 holds a result; 4 releases a lost board.
 behavior Shell {
     board1: entity
     board2: entity
@@ -153,6 +153,9 @@ behavior Shell {
     }
 
     function SelectMode(mode: int) {
+        if self.Session.screen == 4 {
+            return
+        }
         if self.Session.attract {
             previous := self.Session.selected_mode
             self.Session.selected_mode = mode
@@ -163,6 +166,9 @@ behavior Shell {
     }
 
     function RestartRun() {
+        if self.Session.screen == 4 {
+            return
+        }
         if !self.Session.audio_ready {
             self.Session.screen = 0
             return
@@ -176,6 +182,7 @@ behavior Shell {
         self.Session.rescue2 = 0
         self.Session.charge = 0
         self.Session.screen = 1
+        self.Session.loss_time = 0
         self.Session.won = false
         self.Session.disconnected = false
         self.Session.chapter_lines = 0
@@ -198,6 +205,9 @@ behavior Shell {
     }
 
     function ResumePlay() {
+        if self.Session.screen == 4 {
+            return
+        }
         if !self.Session.audio_ready {
             self.Session.screen = 0
             return
@@ -210,6 +220,9 @@ behavior Shell {
     }
 
     function ChangeChapter(direction: int) {
+        if self.Session.screen == 4 {
+            return
+        }
         if !self.Session.audio_ready || self.Session.mode != 0 || self.Session.screen == 1 {
             ReactionRules.Emit(self, 17, 0, self.Session.stage, self.Session.stage, direction, self.Session.stage, 0)
             return
@@ -230,6 +243,10 @@ behavior Shell {
         ReactionRules.Emit(self, 19, ReactionRules.Flag(success), self.Session.stage, self.Session.stage, 0, self.Session.mode, 0)
         self.Session.won = success
         self.Session.screen = 3
+        if !success {
+            self.Session.screen = 4
+            self.Session.loss_time = 0
+        }
         score := board1.BoardState.score
         if self.Session.mode == 3 {
             score += board2.BoardState.score
@@ -369,6 +386,21 @@ behavior Shell {
         }
         clock += dt
         Preferences()
+        if self.Session.screen == 4 {
+            self.Session.loss_time += min(dt, 0.1)
+            duration := 2.8
+            if self.Session.reduced_motion || self.Session.effects == 0 {
+                duration = 0.4
+            }
+            self.Session.mode_request = 0
+            if self.Session.loss_time >= duration {
+                self.Session.screen = 3
+            }
+            return
+        }
+        if self.Session.screen == 3 && !self.Session.won && self.Session.loss_time > 0 {
+            self.Session.loss_time = min(4, self.Session.loss_time + min(dt, 0.1))
+        }
         if self.Session.entering {
             self.Session.play_request = false
             Intro()

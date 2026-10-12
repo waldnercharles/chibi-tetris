@@ -1,0 +1,206 @@
+// Real board top-out must release occupied cells before its result is shown.
+behavior LossChecks {
+    world: entity
+    board: entity
+    partner: entity
+    vortex: entity
+    tiles: entity[]
+    positions: CF_V3[]
+    colors: uint[]
+    previews: entity[]
+    preview_positions: CF_V3[]
+    started: int = -1
+    frame: int = 0
+    score: int = 0
+    pieces: int = 0
+    run: int = 0
+    elapsed := 0
+    field_time := 0
+    quiet := false
+    duet := false
+    seen: int[] = [0, 0]
+    released: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        partner = get_global_variable("Board2")
+        vortex = get_global_variable("Vortex")
+        quiet = read_saved_number("test_quiet", 0).Number != 0
+        duet = read_saved_number("test_duet", 0).Number != 0
+    }
+
+    function VisibleTiles() -> (count: int) {
+        count = 0
+        for tile in tiles {
+            if !tile.RenderState.hidden {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function VisiblePreviews() -> (count: int) {
+        count = 0
+        for tile in previews {
+            if !tile.RenderState.hidden {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function CheckPreviews() {
+        expected: int = 24
+        if duet {
+            expected = 48
+        }
+        Check(length(previews) == expected && VisiblePreviews() == expected, "Hold and Next remain visible while the original blocks depart")
+        for i in 0..length(previews) - 1 {
+            tile := get(previews, i)
+            before := get(preview_positions, i)
+            p := tile.Transform3D.position
+            Check(abs(p.x - before.x) + abs(p.y - before.y) + abs(p.z - before.z) < 0.01, "loss keeps every Hold and Next preview fixed")
+        }
+    }
+
+    function ReleaseFields() -> (count: int) {
+        count = 0
+        for field in find_entities_with_component("ParticleField3D") {
+            if field.Shader.material == "ReactionParticles.Release" && field.ParticleField3D.count > 0 {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function RowRecords(source: entity, index: int) {
+        serial := get(seen, index) + 1
+        while serial <= source.ReactionQueue.serial {
+            record := ReactionRules.Read(source, serial)
+            if record.ReactionEvent.kind == 22 {
+                expected: int = 0
+                for p in positions {
+                    if abs(p.y - record.ReactionEvent.y) < 0.01 && abs(p.x - record.ReactionEvent.x) < 120 {
+                        column := cast<int>(round((p.x - record.ReactionEvent.x + 108) / 24))
+                        expected = expected | 1 << column
+                    }
+                }
+                Check(expected != 0 && record.ReactionEvent.detail == expected, "loss fragments capture only the original occupied cells")
+                Check(record.ReactionEvent.point0.z > 0, "loss captures the actual settled block front")
+                released += 1
+            }
+            serial += 1
+        }
+        seen[index] = source.ReactionQueue.serial
+    }
+
+    on Tick {
+        if frame == 1 && duet {
+            send_event<"Duet">(world)
+        }
+        if started < 0 && board.BoardState.topout {
+            started = frame
+            score = board.BoardState.score
+            pieces = board.BoardState.pieces
+            run = world.Session.run
+            for tile in find_entities_with_component("MeshAsset") {
+                p := tile.Transform3D.position
+                if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 16 {
+                    previews = array_add(previews, tile)
+                    preview_positions = array_add(preview_positions, p)
+                }
+                if tile.MeshAsset.source == "content/meshes/Block.mesh" && !tile.RenderState.hidden && tile.Geometry3D.width == 22 {
+                    tiles = array_add(tiles, tile)
+                    positions = array_add(positions, p)
+                    colors = array_add(colors, tile.Material.scene)
+                }
+            }
+            Check(length(tiles) > 20, "real legal drops leave an occupied stack at top-out")
+        }
+        if started >= 0 {
+            RowRecords(board, 0)
+            if duet {
+                RowRecords(partner, 1)
+            }
+            age := frame - started
+            if age == 2 {
+                elapsed = world.Session.elapsed
+                field_time = vortex.ParticleField3D.time
+                Check(world.Session.screen == 4, "loss defers the result while the stack begins its release")
+                Check(VisibleTiles() == length(tiles), "loss preserves the occupied board before the fracture wave")
+                CheckPreviews()
+            }
+            if age == 20 && quiet {
+                Check(VisibleTiles() == 0, "quiet loss retires the board without outward travel")
+                Check(ReleaseFields() == 0, "quiet loss emits no drifting release fields")
+                Check(world.Session.screen == 4, "quiet board settles before results appear")
+                CheckPreviews()
+            }
+            if age == 55 && !quiet {
+                Check(VisibleTiles() == length(tiles), "loss detaches the original blocks without replacing their bodies")
+                Check(ReleaseFields() > 0, "actual occupied rows release particle geometry")
+                Check(vortex.ParticleField3D.time > field_time, "loss keeps scenery moving while gameplay is frozen")
+            }
+            if (age == 88 || age == 130) && !quiet {
+                Check(VisibleTiles() == length(tiles), "original colored blocks remain whole through the upward departure")
+                for i in 0..length(tiles) - 1 {
+                    tile := get(tiles, i)
+                    before := get(positions, i)
+                    p := tile.Transform3D.position
+                    q := tile.Transform3D.rotation
+                    Check(p.y > before.y + 20 && abs(p.x - before.x) < 60, "loss lifts actual blocks with restrained sideways spread")
+                    Check(p.z > before.z && abs(q.x) + abs(q.y) + abs(q.z) > 0.01, "original block meshes tumble through depth")
+                    Check(tile.Transform3D.scale.x > 0.99 && tile.Geometry3D.width == 22, "block bodies retain their recognizable size before the tail")
+                    Check(tile.Material.scene == get(colors, i), "each released block retains its original piece color")
+                }
+                Check(ReleaseFields() > 0, "quiet ember trails accompany the colored block bodies")
+                Check(world.Session.screen == 4, "results wait for the loss choreography")
+                CheckPreviews()
+            }
+            if age == 230 && !quiet {
+                Check(VisibleTiles() == 0, "released bodies retire smoothly after their upward flight")
+                Check(world.Session.elapsed == elapsed, "decorative retirement after results keeps the game clock frozen")
+            }
+            if !quiet && age == 235 || quiet && age == 34 {
+                world.Session.audio_request = 2
+            }
+            if !quiet && age == 237 || quiet && age == 36 {
+                Check(world.Session.screen == 0 && VisibleTiles() == 0, "audio selection hides the retired loss board")
+            }
+            if !quiet && age == 239 || quiet && age == 38 {
+                world.Session.audio_request = 1
+            }
+            if !quiet && age == 242 || quiet && age == 41 {
+                Check(world.Session.screen == 3 && world.Session.run == run, "returning from audio selection preserves the completed run")
+                Check(VisibleTiles() == 0, "returning from audio selection never resurrects retired blocks")
+                Check(board.BoardState.score == score && world.Session.elapsed == elapsed, "audio selection preserves the frozen result")
+            }
+            if age == 182 || quiet && age == 28 {
+                Check(world.Session.screen == 3 && !world.Session.won, "loss eventually reveals the preserved result")
+                Check(VisiblePreviews() == 0, "Hold and Next hide once the result appears")
+                Check(world.Session.elapsed == elapsed, "loss animation never advances the game clock")
+                Check(board.BoardState.score == score && board.BoardState.pieces == pieces, "loss preserves score and ignores gameplay input")
+                Check(board.ReactionQueue.dropped == 0, "row release fits the immutable event queue")
+                if !quiet {
+                    Check(released > 0 && ReleaseFields() == released, "each occupied row owns one quiet continuing ember field")
+                    Check(world.VisualState.cue_dropped == 0, "both occupied boards fit the fixed field pool without losing cells")
+                    Check(ReleaseFields() > 0, "dim fragment tails continue after the result appears")
+                }
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

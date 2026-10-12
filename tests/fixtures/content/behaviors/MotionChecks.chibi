@@ -26,6 +26,11 @@ behavior MotionChecks {
     settled_emission := 0
     paused_emission := 0
     paused_color: uint = 0
+    action_position: CF_V3 = { x: 0, y: 0, z: 0 }
+    action_column: int = 0
+    action_emission := 0
+    landing_tile: entity
+    landing_position: CF_V3 = { x: 0, y: 0, z: 0 }
 
     on Begin {
         world = get_global_variable("World")
@@ -120,6 +125,8 @@ behavior MotionChecks {
                 world.Session.effects = 2
             }
             case 3 {
+                camera: entity = get_global_variable("Camera")
+                Check(camera.Camera.width > 1200, "Duet preserves the full authored two-board framing")
                 active = Active()
                 initial_position = active.Transform3D.position
                 initial_emission = active.Material.emission_intensity
@@ -153,6 +160,40 @@ behavior MotionChecks {
             case 24 {
                 Check(active.Transform3D.position.z == 3 && Same(active.Transform3D.scale, vec3(1, 1, 1)), "reduced motion restores the stable piece transform")
                 Check(abs(active.Material.emission_intensity - initial_emission) < 0.001 && active.Material.scene == initial_color, "reduced motion restores the stable coat finish and opacity")
+            }
+            case 26 {
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                world.VisualState.beat = 0
+                world.Session.reduced_motion = false
+                action_position = active.Transform3D.position
+                action_column = board.BoardState.column
+                action_emission = active.Material.emission_intensity
+            }
+            case 29 {
+                Check(board.BoardState.column == action_column - 1 && active.Transform3D.position.x == action_position.x - 24, "move feedback keeps the rendered cell centered on the immediate logical move")
+                Check(abs(active.Transform3D.rotation.y) > 0.001 && active.Material.emission_intensity > action_emission, "accepted movement adds a visible lean and highlight without audio")
+                Check(active.Transform3D.position.y == action_position.y && Same(ghost.Transform3D.scale, vec3(1, 1, 1)), "input feedback leaves gravity and landing ghost geometry unchanged")
+            }
+            case 31 {
+                Check(board.BoardState.column == action_column && active.Transform3D.position.x == action_position.x, "opposing moves return to the same logical cell without accumulating visual displacement")
+                Check(abs(active.Transform3D.rotation.y) < 0.04 && active.Material.emission_intensity < 0.2, "opposing impulses remain bounded while their highlight continues")
+            }
+            case 33 {
+                active = Active()
+                Check(board.BoardState.rotation == 1 && abs(active.Transform3D.rotation.z) > 0.001, "rotation feedback follows a real accepted turn")
+                Check(active.Transform3D.scale.z < 1 && active.Material.emission_intensity > action_emission, "rotation briefly compresses depth and lifts emission without music")
+            }
+            case 35 {
+                active = Active()
+                Check(board.BoardState.rotation == 0 && board.BoardState.column == action_column, "counterrotation preserves the piece state and grid position")
+                Check(abs(active.Transform3D.rotation.z) < 0.03 && active.Transform3D.scale.z > 0.9, "counterrotation retains a bounded continuous response")
+            }
+            case 38 {
+                world.Session.reduced_motion = true
+            }
+            case 39 {
+                Check(Same(active.Transform3D.scale, vec3(1, 1, 1)) && abs(active.Transform3D.rotation.y) + abs(active.Transform3D.rotation.z) == 0, "reduced motion clears active input deformation")
             }
             case 40 {
                 soft_row = board.BoardState.row
@@ -234,6 +275,8 @@ behavior MotionChecks {
                 world.Session.screen = 1
             }
             case 146 {
+                camera: entity = get_global_variable("Camera")
+                Check(camera.Camera.width == 700, "single-board framing preserves a readable board in narrow windows")
                 Check(board.BoardState.level == 20 && board.BoardState.row >= 18, "soft drop never slows faster high-level gravity")
                 Check(board.BoardState.pieces == 0, "high-level gravity retains the half-second lock delay")
             }
@@ -251,6 +294,33 @@ behavior MotionChecks {
                 Check(board.BoardState.score == tap_score + 8 && board.BoardState.pieces == 0, "each short Down tap scores exactly one traveled cell without locking")
                 world.Session.reduced_motion = true
                 world.StageState.style = 0
+            }
+            case 174 {
+                world.Session.reduced_motion = false
+            }
+            case 177 {
+                record := Last(8)
+                landing_tile = self
+                meshes := find_entities_with_component("MeshAsset")
+                for tile in meshes {
+                    position := tile.Transform3D.position
+                    if !tile.RenderState.hidden && tile.Geometry3D.width == 22 && position.z == 0 && abs(position.x - record.ReactionEvent.point0.x) < 0.001 && abs(position.y - record.ReactionEvent.point0.y) < 0.001 {
+                        landing_tile = tile
+                        landing_position = position
+                        break
+                    }
+                }
+                Check(landing_tile != self && board.BoardState.pieces == 1, "hard drop places the captured piece immediately before its contact response")
+                if landing_tile != self {
+                    Check(landing_tile.Transform3D.scale.z < 1 && landing_tile.Material.emission_intensity > 0.04, "newly settled cells compress and brighten at contact")
+                    Check(board.BoardState.row < 3, "settling feedback never delays the next falling piece")
+                }
+            }
+            case 186 {
+                if landing_tile != self {
+                    Check(Same(landing_tile.Transform3D.position, landing_position) && landing_tile.Transform3D.scale.z > 0.99, "contact depth settles while occupied cell centers remain fixed")
+                }
+                world.Session.reduced_motion = true
             }
             case 188 {
                 settled = Settled()

@@ -440,7 +440,7 @@ behavior Hud {
             plate.RenderState.hidden = true
         }
         timer_backing.RenderState.hidden = world.Session.mode != 2 || world.Session.screen == 0
-        panel.RenderState.hidden = world.Session.screen == 1 || world.Session.entering
+        panel.RenderState.hidden = world.Session.screen == 1 || world.Session.screen == 4 || world.Session.entering
         panel.Transform3D.position = vec3(0, 0, 64)
         if world.Session.entering && world.Session.attract {
             RememberState()
@@ -474,7 +474,7 @@ behavior Hud {
         if world.Session.screen == 1 {
             Label(13, "pause_hint", 0, -294, 8)
         }
-        if world.Session.screen >= 2 {
+        if world.Session.screen == 2 || world.Session.screen == 3 {
             for i in 0..96 {
                 Hide(i)
             }
@@ -489,7 +489,11 @@ behavior Hud {
             }
         }
         if world.Session.save_failed {
-            Label(16, "saving_failed", -375, 287, 9)
+            x := -245
+            if world.Session.mode == 3 {
+                x = -375
+            }
+            Label(16, "saving_failed", x, 287, 9)
         }
         if setting_time > 0 {
             DrawSetting()
@@ -529,7 +533,10 @@ behavior Hud {
     }
 
     function DrawSetting() {
-        x := -375
+        x := -245
+        if world.Session.mode == 3 {
+            x = -375
+        }
         y := 267
         if world.Session.attract {
             x = -440

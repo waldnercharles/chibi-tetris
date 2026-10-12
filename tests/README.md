@@ -21,3 +21,12 @@ A small 3D scene runs the same production World and Hud with test boards so the 
 These are bounded simulation checks. They do not claim GPU rendering, physical-controller input, audio output, browser playability, or full engine-suite coverage.
 
 `--motion` covers a single-row soft tap, controlled held repeats, no stored-gravity burst, repeated short taps, high gravity, four solid block finishes with a shared bevel, a camera depth-precision margin for their thinnest preview coating, restrained idle emission, music-reactive settled and active coat opacity, physical reaction origins and cosmetic beat motion. `--stage` covers seeded starts, musical/chapter transitions, ten-second morphs through every family including wraparound, removal of surrounding facets, stage-light freeze and reduced motion. `--vfx` covers birth/delay/retirement, physical front-face and landing positions, contact-light timing, four clear layers with exact instance budgets and shader bindings, and saturation without overwriting live cues.
+
+`--loss` drives real boards into top-out in Solo and Duet. It verifies sparse
+row occupancy, original colored blocks lifting and tumbling intact, the fixed
+field budget, frozen controls and clock, preserved scoring, quiet settings,
+fixed visible Hold and Next previews and delayed results. It also checks
+rescue priority, winning final clears and chapter selection after the loss
+phase. Returning from the audio chooser preserves the completed result and
+leaves retired blocks hidden. A loss snapshot is simulation evidence;
+rendered drift, shader compilation and browser frame time are separate checks.

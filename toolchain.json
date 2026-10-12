@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "9fff00c8c371a5a09ac01fe455b7f8d23e5893d2",
-    "source_snapshot_sha256": "321ec9a6ccec25b6fbbeaa449558e8607232d35eab3583fe7a83cf3cb451dda5",
+    "revision": "d18cebe9f134c8c12f4e4bb5908ac8697f900232",
+    "source_snapshot_sha256": "74fe749947c9d6765ae727ca8ec68dbdfd684e1f21aeb243b9365aa1ede96334",
     "project_format": 22,
     "player_prepared_format": 12,
     "local_branch": "cwaldner/stillwater-3d-sdk"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "035c7953f54eee7c45a8cfabb128518257e4820420f9fc23f56dceff64110e4e",
-    "manifest_sha256": "f678d7d8027fc48d13f3375a56c030d2aa9a6af23d90e3aaab1a37dae14c5066",
+    "build_id": "fac5ded199776596140fda3e9680bb256ea4f6ee57e21d3b7c9855f91b96f688",
+    "manifest_sha256": "f213f09d95b4d780ffb6f3876901fac27d7dbf5fd1425045247476bb6934cc1f",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,13 +22,13 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "9fff00c8c371a5a09ac01fe455b7f8d23e5893d2",
+    "source_revision": "d18cebe9f134c8c12f4e4bb5908ac8697f900232",
     "files": {
-      "chibi-player.js": "67f8db76860b99a1dcffd9390cf3fc2af1d09423a36c287869da8eb6c993b942",
-      "chibi-player.wasm": "232992db3e780c4cd11ce6ff0668287fb2c94a71fe88f09764e35191f817c5de",
-      "compiler/chibi-compile.js": "f7edb1b13d5d6e9ef738f6c6ffd8e673c086b38efa0fb3a5a15668fccbb4f9b2",
-      "compiler/chibi-compile.wasm": "eba5170dbce228b4938731e858009ed31a17391584149fa8da15c1f6726dd914",
-      "index.html": "6311f1efd7cf0dfea0fcb96fbef452b64f6c8712f05a1f1d2293e6655eff965e"
+      "chibi-player.js": "0f4f1b920aa3dea3ca836bb7356ab18e58ddc1e2e973eda71d770faa8c296282",
+      "chibi-player.wasm": "f04206bafdd57d05279f13e02a4b54394e692fadd75d2d4c1dd64e100993b924",
+      "compiler/chibi-compile.js": "c574d91e45e74ac12dbd07080042699451bd6c3023c3e92dd1f74ba263c948cd",
+      "compiler/chibi-compile.wasm": "73f35fecf7d0db93bc5859cff4bc2d3d5e6281480ce89965c478c013314a7192",
+      "index.html": "039ddc45202bcc909e1e405b593121dabd128d47aca0ff8020a30a629ca4de73"
     }
   }
 }

@@ -1,12 +1,20 @@
-// Stable particle identities and continuous forces shared by both depth layers.
+// Stable identities, a continuous divergence-free flow, and board-space forces.
 const float COSMIC_TAU = 6.28318530718;
+
+uint cosmic_hash(uint value)
+{
+    value = (value ^ (value >> 16u)) * 2146121005u;
+    value = (value ^ (value >> 15u)) * 2221713035u;
+    return value ^ (value >> 16u);
+}
 
 vec3 cosmic_random(float index, float seed, float variation)
 {
-    vec3 phase = index * vec3(0.731, 0.593, 0.419)
-        + seed * vec3(0.113, 0.317, 0.713)
-        + variation * vec3(0.017, 0.029, 0.043);
-    return fract(sin(phase) * vec3(4375.585, 2257.145, 1964.267));
+    uint identity = uint(index) ^ cosmic_hash(uint(seed) + 19u)
+        ^ cosmic_hash(uint(variation) + 127u);
+    return vec3(float(cosmic_hash(identity) >> 8u),
+        float(cosmic_hash(identity + 1013u) >> 8u),
+        float(cosmic_hash(identity + 7919u) >> 8u)) / 16777216.0;
 }
 
 vec4 cosmic_stage_weights(float style)
@@ -15,13 +23,6 @@ vec4 cosmic_stage_weights(float style)
     return 1.0 - smoothstep(0.0, 1.0, distance);
 }
 
-float cosmic_phase(ChibiParameters u)
-{
-    return u.Flow + u.Turn * 0.45 + fract(u.Variation * 0.0017) * COSMIC_TAU;
-}
-
-// Intersect the eye-to-particle ray with the board's world plane, z = 0.
-// This remains correct during intro translation and camera rotation.
 vec2 cosmic_board_projection(vec3 position, vec3 eye)
 {
     return eye.xy + (position.xy - eye.xy) * eye.z / max(eye.z - position.z, 1.0);
@@ -31,25 +32,32 @@ float cosmic_board_quiet(vec2 projected, float duet)
 {
     float horizontal = mix(abs(projected.x), abs(abs(projected.x) - 254.0), duet) / 148.0;
     float vertical = abs(projected.y - 20.0) / 268.0;
-    return mix(0.075, 1.0, smoothstep(0.78, 1.65, max(horizontal, vertical)));
+    return mix(0.055, 1.0, smoothstep(0.78, 1.65, max(horizontal, vertical)));
 }
 
-vec3 cosmic_music_motion(vec3 position, ChibiParameters u, float amount)
+// Curl of a trigonometric vector potential, with zero divergence. Rotated
+// octaves break axis alignment. The GPU integrates velocity through this field;
+// this function never prescribes a particle's final position or a surface.
+vec3 cosmic_curl(vec3 q, float phase)
 {
-    float radius = length(position.xy);
-    float compression = 1.0 + amount * u.Bass * (0.11 * sin(radius * 0.0035 - u.Pulse) - 0.065);
-    vec3 curl = vec3(
-        sin(position.y * 0.0019 + u.Wind),
-        cos(position.x * 0.0017 - u.Wind * 0.7),
-        sin((position.x + position.y) * 0.0013 + u.Wind * 0.55));
-    vec3 displaced = vec3(position.xy * compression,
-        position.z + amount * u.Bass * 150.0 * sin(radius * 0.0024 - u.Pulse));
-    return displaced + curl * amount * u.Mid * (45.0 + u.Bass * 35.0);
+    vec3 a = q + vec3(phase * 0.071, -phase * 0.053, phase * 0.037);
+    vec3 first = vec3(sin(a.z) + cos(a.y), sin(a.x) + cos(a.z), sin(a.y) + cos(a.x));
+    mat3 basis = mat3(0.0, 0.8, 0.6, -0.8, 0.36, -0.48, -0.6, -0.48, 0.64);
+    vec3 b = basis * q * 2.13 + vec3(-phase * 0.041, phase * 0.033, phase * 0.027);
+    vec3 second = transpose(basis) * vec3(sin(b.z) + cos(b.y), sin(b.x) + cos(b.z), sin(b.y) + cos(b.x));
+    vec3 c = q * 4.31 + vec3(1.7, -2.1, 4.3) + phase * 0.017;
+    vec3 detail = vec3(sin(c.z) + cos(c.y), sin(c.x) + cos(c.z), sin(c.y) + cos(c.x));
+    return first * 0.62 + second * 0.26 + detail * 0.09;
 }
 
-// Source.xy is the recorded board-plane origin; Source.z is a continuous age.
-// Drive carries radial, tangential, and vertical momentum. Drag and endpoint
-// easing keep reuse invisible: displacement is zero at age 0 and age 2.6.
+vec3 cosmic_ball(vec3 random)
+{
+    float z = random.y * 2.0 - 1.0;
+    float ring = sqrt(max(0.0, 1.0 - z * z));
+    float angle = random.x * COSMIC_TAU;
+    return vec3(cos(angle) * ring, sin(angle) * ring, z) * pow(random.z, 0.3333333333);
+}
+
 vec3 cosmic_impulse(vec2 projected, vec3 source, vec3 drive)
 {
     if (source.z <= 0.0 || source.z >= 2.6) return vec3(0.0);
@@ -59,11 +67,11 @@ vec3 cosmic_impulse(vec2 projected, vec3 source, vec3 drive)
     float decay = source.z * exp(-source.z * 1.7) * (1.0 - smoothstep(1.8, 2.6, source.z));
     vec2 radial = delta * drive.x * 300.0 / max(radius, 1.0) / (1.0 + front * front);
     vec2 tangent = vec2(-delta.y, delta.x) * drive.y * 0.40;
-    vec3 force = vec3(radial + tangent + vec2(0.0, drive.z * 70.0), drive.x * 55.0);
-    return force * decay / (1.0 + radius * 0.003);
+    return vec3(radial + tangent + vec2(0.0, drive.z * 70.0), drive.x * 55.0)
+        * decay / (1.0 + radius * 0.003);
 }
 
-vec3 cosmic_event_motion(vec3 position, ChibiParameters u, float amount)
+vec3 cosmic_event_force(vec3 position, ChibiParameters u)
 {
     vec2 projected = cosmic_board_projection(position, u.Eye);
     vec3 force = cosmic_impulse(projected, u.Source0, u.Drive0)
@@ -71,41 +79,20 @@ vec3 cosmic_event_motion(vec3 position, ChibiParameters u, float amount)
         + cosmic_impulse(projected, u.Source2, u.Drive2)
         + cosmic_impulse(projected, u.Source3, u.Drive3);
     float depth_scale = (u.Eye.z - position.z) / max(u.Eye.z, 1.0);
-    return position + force * vec3(depth_scale, depth_scale, 1.0) * amount;
+    return force * vec3(depth_scale, depth_scale, 1.0);
 }
 
-vec3 cosmic_palette(vec3 random, vec4 weights)
+vec3 cosmic_tint(vec3 random, vec3 position, vec4 weights, ChibiParameters u)
 {
-    vec3 nebula = mix(vec3(0.20, 0.10, 0.85), vec3(0.20, 0.88, 1.12), random.z);
-    vec3 disk = mix(vec3(1.25, 0.84, 0.30), vec3(0.72, 0.15, 0.07), random.y);
-    vec3 cells = mix(vec3(0.12, 0.95, 0.57), vec3(0.90, 0.19, 0.54), random.y);
-    vec3 current = mix(vec3(0.25, 0.52, 1.10), vec3(0.94, 1.02, 1.18), random.z);
-    return nebula * weights.x + disk * weights.y + cells * weights.z + current * weights.w;
-}
-
-vec3 cosmic_band_tint(vec3 tint, vec3 position, ChibiParameters u)
-{
-    vec3 spectrum = vec3(0.82 + u.Bass * 0.52 + u.Treble * 0.12,
-        0.82 + u.Mid * 0.30 + u.Bass * 0.18,
-        0.90 + u.Treble * 0.38 + u.Mid * 0.12);
-    float band = sin(position.y * 0.0018 + u.Pulse * 0.18) * u.Mid * 0.08;
-    return tint * (spectrum + band);
-}
-
-float cosmic_music_size(float size, vec3 random, ChibiParameters u)
-{
-    return size * (1.0 + u.Bass * 0.16
-        + u.Treble * (0.15 + 0.9 * pow(random.z, 6.0)) + u.Beat * 0.14);
-}
-
-vec4 cosmic_color(vec3 random, vec3 position, vec4 weights, float density, ChibiParameters u)
-{
-    vec3 tint = cosmic_band_tint(cosmic_palette(random, weights), position, u);
-    float radiance = 0.38 + u.Energy * 0.20 + u.Treble * 0.12 + u.Beat * 0.18 + u.Reaction * 0.12;
-    float opacity = (0.10 + 0.68 * pow(random.z, 3.0))
-        * cosmic_board_quiet(cosmic_board_projection(position, u.Eye), u.Duet)
-        * (mix(0.08, 0.86, density) * weights.x
-            + (0.28 + 0.5 * pow(1.0 - random.y, 2.0)) * weights.y
-            + (0.3 + 0.5 * random.y) * weights.z + 0.8 * weights.w);
-    return vec4(tint * radiance, opacity);
+    // The reference's ivory highlights emerge from density, with colored shadow
+    // grains. Separate frequency bands color different depths and populations.
+    float hot = smoothstep(0.38, 0.94, random.y + u.Bass * 0.14);
+    vec3 swarm = mix(vec3(0.26, 0.49, 0.62), vec3(1.04, 0.91, 0.65), hot);
+    vec3 filament = mix(vec3(0.31, 0.13, 0.46), vec3(1.18, 0.62, 0.27), hot);
+    vec3 volume = mix(vec3(0.17, 0.40, 0.59), vec3(0.64, 0.91, 0.80), hot);
+    vec3 wind = mix(vec3(0.24, 0.34, 0.57), vec3(0.90, 0.76, 0.65), hot);
+    vec3 tint = swarm * weights.x + filament * weights.y + volume * weights.z + wind * weights.w;
+    vec3 spectrum = vec3(0.88 + u.Bass * 0.36, 0.91 + u.Mid * 0.27, 0.94 + u.Treble * 0.48);
+    float depth = 1.0 - smoothstep(1850.0, 3500.0, -position.z);
+    return tint * spectrum * mix(0.17, 1.0, depth);
 }
