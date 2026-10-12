@@ -1,4 +1,5 @@
 behavior Board {
+    old_portrait := false
     world: entity
     tiles: entity[] = []
     settled_tiles: entity[] = []
@@ -588,6 +589,17 @@ behavior Board {
             ccw = input.P2CCW.pressed
             hold = input.P2Hold.pressed
         }
+        if self.BoardState.index == 0 && world.PhoneState.enabled {
+            left = left || world.PhoneState.direction < 0
+            right = right || world.PhoneState.direction > 0
+            left_pressed = left_pressed || world.PhoneState.move_pressed && world.PhoneState.direction < 0
+            right_pressed = right_pressed || world.PhoneState.move_pressed && world.PhoneState.direction > 0
+            soft = soft || world.PhoneState.soft
+            drop = drop || world.PhoneState.button == 5
+            cw = cw || world.PhoneState.button == 3
+            ccw = ccw || world.PhoneState.button == 2
+            hold = hold || world.PhoneState.button == 6
+        }
         soft_pressed := soft && !soft_held
         if soft != soft_held {
             soft_held = soft
@@ -634,6 +646,12 @@ behavior Board {
         record := self.ReactionQueue.write
         ReactionRules.Emit(self, kind, result, self.BoardState.impact_x, self.BoardState.impact_y, direction, amount, detail)
         CapturePiece(record, row)
+        if world.PhoneState.enabled && world.PhoneState.active && world.PhoneState.haptics && !world.Session.attract && self.BoardState.index == 0 {
+            milliseconds := PhoneRules.Haptic(kind, result)
+            if milliseconds > 0 {
+                vibrate_device(milliseconds)
+            }
+        }
     }
 
     function CapturePiece(record: entity, action_row: int) {
@@ -1266,6 +1284,10 @@ behavior Board {
     }
 
     function Preview(first: int, kind: int, x: number, y: number, dim: bool) {
+        spacing := 18
+        if world.PhoneState.portrait && world.Session.mode != 3 {
+            spacing = 11
+        }
         for (i in 0..3) {
             Hide(first + i)
             if kind > 0 {
@@ -1282,7 +1304,7 @@ behavior Board {
                 if dim {
                     color = (color & 4294967040) | 100
                 }
-                Tile(first + i, x + (cell.x - center_x) * 18, y + (cell.y - center_y) * 18, 16, color, false)
+                Tile(first + i, x + (cell.x - center_x) * spacing, y + (cell.y - center_y) * spacing, spacing - 2, color, false)
                 preview_tiles = array_add(preview_tiles, get(tiles, first + i))
             }
         }
@@ -1293,6 +1315,14 @@ behavior Board {
         if (world.Session.screen != 1 && world.Session.screen != 4) || world.Session.entering {
             for i in 208..231 {
                 Hide(i)
+            }
+            preview_dirty = false
+            return
+        }
+        if world.PhoneState.portrait && world.Session.mode != 3 {
+            Preview(208, held, -155, -263, hold_used)
+            for i in 0..4 {
+                Preview(212 + i * 4, get(queue, i), -83 + i * 54, -263, false)
             }
             preview_dirty = false
             return
@@ -1366,6 +1396,10 @@ behavior Board {
     }
 
     function Render(seconds: number) {
+        if old_portrait != world.PhoneState.portrait {
+            preview_dirty = true
+            old_portrait = world.PhoneState.portrait
+        }
         show := world.Session.attract || world.Session.screen >= 1 && world.Session.screen <= 4
         if world.Session.journey && world.Session.journey_time >= 0.8 && world.Session.journey_time <= 1.8 {
             show = false

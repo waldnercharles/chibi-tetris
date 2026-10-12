@@ -1,0 +1,4 @@
+name "TextPhoneHapticsUnavailable"
+components {
+    MeshAsset source="content/meshes/text/phone_haptics_unavailable.mesh"
+}

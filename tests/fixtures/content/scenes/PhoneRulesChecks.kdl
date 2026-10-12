@@ -1,0 +1,9 @@
+version 1
+name "PhoneRulesChecks"
+(array)entities {
+    - {
+        name "Report"
+        prototype "TestReport"
+        (array)behaviors "PhoneRulesChecks"
+    }
+}

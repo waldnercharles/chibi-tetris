@@ -1,0 +1,4 @@
+name "TextPhoneTiltUnavailable"
+components {
+    MeshAsset source="content/meshes/text/phone_tilt_unavailable.mesh"
+}

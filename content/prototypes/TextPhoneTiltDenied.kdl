@@ -1,0 +1,4 @@
+name "TextPhoneTiltDenied"
+components {
+    MeshAsset source="content/meshes/text/phone_tilt_denied.mesh"
+}

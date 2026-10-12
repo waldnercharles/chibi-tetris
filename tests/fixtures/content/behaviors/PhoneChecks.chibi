@@ -1,0 +1,204 @@
+// Real device snapshots and pointer rays exercise the shipped controls and board.
+behavior PhoneChecks {
+    world: entity
+    board: entity
+    camera: entity
+    frame: int = 0
+    initial_column: int = 0
+    left_column: int = 0
+    soft_row: int = 0
+    held_piece: int = 0
+    paused_row: int = 0
+    paused_pieces: int = 0
+    clear_pool: entity[] = []
+    retained: entity[] = []
+    retained_positions: CF_V3[] = []
+    retained_colors: uint[] = []
+
+    function Same(a: CF_V3, b: CF_V3) -> (equal: bool) {
+        return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z) < 0.001
+    }
+
+    function VisibleClears() -> (count: int) {
+        count = 0
+        for tile in clear_pool {
+            if !tile.RenderState.hidden {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure != "" {
+            self.TestReport.first_failure = format_text("{}; {}", self.TestReport.first_failure, message)
+            return
+        }
+        self.TestReport.first_failure = message
+    }
+
+    function VisibleLabel(name: string) -> (visible: bool) {
+        source := format_text("content/meshes/text/{}.mesh", name)
+        for label in find_entities_with_component("MeshAsset") {
+            if label.MeshAsset.source == source && !label.RenderState.hidden {
+                return true
+            }
+        }
+        return false
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+        board = get_global_variable("Board1")
+        camera = get_global_variable("Camera")
+    }
+
+    on Tick {
+        match (frame) {
+            case 4 {
+                Check(world.PhoneState.enabled && world.PhoneState.portrait, "390 logical pixels choose portrait despite display density")
+                Check(camera.Camera.width < 500 && camera.Camera.height > 850, "portrait camera frames the well and reachable controls")
+                Check(VisibleLabel("ui_play") && VisibleLabel("phone_enable"), "phone menu exposes Play and opt-in tilt")
+                Check(world.Session.screen == 0 && world.Session.run == 0, "opening phone controls do not start a run")
+            }
+            case 9 {
+                Check(world.PhoneState.motion_status == 1 && world.Session.screen == 0, "motion permission can wait without starting gameplay")
+            }
+            case 13 {
+                Check(world.PhoneState.motion_status == 2 && world.PhoneState.haptics, "ready motion and optional haptics reach the authored state")
+            }
+            case 48 {
+                Check(world.Session.screen == 1 && !world.Session.entering && world.Session.run == 1, "phone Play starts one fresh run")
+                Check(VisibleLabel("phone_drop") && VisibleLabel("phone_pause"), "gameplay has reachable action buttons")
+                Check(VisibleLabel("score") && VisibleLabel("hold") && VisibleLabel("next"), "portrait retains score and piece preview labels")
+                initial_column = board.BoardState.column
+            }
+            case 68 {
+                left_column = board.BoardState.column
+                Check(left_column < initial_column, "device tilt moves the real active piece left")
+                Check(world.PhoneState.direction == 0, "neutral sensor sample releases steering")
+            }
+            case 73 {
+                Check(board.BoardState.column == left_column + 1, "touch direction shares the board move rules")
+            }
+            case 77 {
+                Check(board.BoardState.rotation == 1, "touch clockwise rotates the real piece")
+            }
+            case 81 {
+                Check(board.BoardState.rotation == 0, "touch counterclockwise reverses the turn")
+                soft_row = board.BoardState.row
+            }
+            case 85 {
+                Check(board.BoardState.row > soft_row, "a soft-drop tap advances a row")
+                held_piece = board.BoardState.current
+            }
+            case 93 {
+                Check(board.BoardState.held == held_piece && board.BoardState.hold_serial == 1, "touch hold obeys once-per-piece rejection")
+            }
+            case 98 {
+                Check(board.BoardState.pieces == 1 && board.BoardState.drop_serial == 1, "touch hard drop locks exactly once")
+            }
+            case 103 {
+                Check(world.Session.screen == 2 && VisibleLabel("phone_resume"), "touch pause shows a touch resume path")
+                paused_row = board.BoardState.row
+                paused_pieces = board.BoardState.pieces
+            }
+            case 109 {
+                Check(board.BoardState.row == paused_row && board.BoardState.pieces == paused_pieces, "paused gameplay rejects old drop-button positions")
+            }
+            case 117 {
+                Check(world.PhoneState.motion_status == 0 && world.PhoneState.direction == 0, "turning motion off clears steering")
+            }
+            case 121 {
+                Check(world.Session.screen == 1, "touch resume restarts the existing run")
+            }
+            case 131 {
+                Check(board.BoardState.pieces == paused_pieces, "dragging a held move across Drop never activates Drop")
+                Check(world.PhoneState.direction == 0, "pointer release clears held controls")
+            }
+            case 137 {
+                Check(world.Session.screen == 2 && world.PhoneState.direction == 0, "backgrounding pauses play and clears phone input")
+            }
+            case 141 {
+                Check(world.Session.screen == 2, "foregrounding waits for deliberate resume")
+            }
+            case 153 {
+                Check(world.PhoneState.enabled && !world.PhoneState.portrait && world.Session.screen == 1, "landscape resize retains the run and phone controls")
+                Check(camera.Camera.width > 1000 && camera.Camera.height < 800, "landscape restores wide framing")
+            }
+            case 160 {
+                Check(world.Session.screen == 2, "landscape Pause uses its visible button location")
+            }
+            case 225 {
+                Check(world.Session.run == 2 && board.BoardState.pieces == 0, "touch restart replaces the run through the normal departure path")
+                Check(world.Session.screen == 1 && !world.Session.entering && VisibleLabel("phone_drop"), "touch restart enters a playable fresh run like keyboard restart")
+            }
+            case 228 {
+                // Repeat the known clear route with full effects and real touch drops.
+                world.Session.mode = 1
+                world.Session.seed = 73129
+                world.Session.run += 1
+                world.Session.reduced_motion = false
+                world.Session.effects = 2
+                for tile in find_entities_with_component("MeshAsset") {
+                    if tile.MeshAsset.source == "content/meshes/ClearBlock.mesh" {
+                        clear_pool = array_add(clear_pool, tile)
+                    }
+                }
+                Check(length(clear_pool) == 160 && VisibleClears() == 0, "phone play retains the two fixed clear pools across restart")
+            }
+            case 232 {
+                Check(world.PhoneState.enabled && world.PhoneState.portrait && world.Session.screen == 1 && world.Session.run == 3 && !world.Session.reduced_motion && world.Session.effects == 2, "the seeded clear route starts in full-effects portrait play")
+            }
+            case 303 {
+                Check(board.BoardState.lines == 2 && board.BoardState.pieces == 6 && board.BoardState.drop_serial == 6 && board.BoardState.combo == 1, "six phone drops perform the real consecutive clears and immediate scoring")
+                Check(world.Session.screen == 2 && VisibleLabel("phone_resume"), "touch pauses while both full-effects clear releases are active")
+                fading := true
+                for tile in clear_pool {
+                    if tile.RenderState.hidden {
+                        continue
+                    }
+                    retained = array_add(retained, tile)
+                    retained_positions = array_add(retained_positions, tile.Transform3D.position)
+                    retained_colors = array_add(retained_colors, tile.Material.scene)
+                    alpha := cast<number>(tile.Material.scene & 255)
+                    fading = fading && alpha > 0 && alpha < 255 && tile.Geometry3D.width == 22 && tile.Geometry3D.height == 22 && Same(tile.Transform3D.scale, vec3(1, 1, 1))
+                }
+                Check(length(retained) == 20 && fading, "both rows retain full-size cells partway through their fade")
+            }
+            case 313 {
+                Check(world.Session.screen == 2 && !world.PhoneState.portrait && camera.Camera.width > 1000 && camera.Camera.height < 800, "orientation changes the phone camera without resuming the paused run")
+                frozen := length(retained) == 20 && VisibleClears() == 20
+                for i in 0..length(retained) - 1 {
+                    tile := get(retained, i)
+                    frozen = frozen && !tile.RenderState.hidden && Same(tile.Transform3D.position, get(retained_positions, i)) && tile.Material.scene == get(retained_colors, i)
+                }
+                Check(frozen, "landscape keeps the same paused clear entities at identical poses and opacity")
+            }
+            case 326 {
+                advancing := length(retained) == 20 && VisibleClears() == 20
+                for i in 0..length(retained) - 1 {
+                    tile := get(retained, i)
+                    advancing = advancing && !tile.RenderState.hidden && !Same(tile.Transform3D.position, get(retained_positions, i)) && cast<number>(tile.Material.scene & 255) < cast<number>(get(retained_colors, i) & 255)
+                }
+                Check(world.Session.screen == 1 && advancing, "landscape touch resume advances the retained cells from their paused fade")
+            }
+            case 370 {
+                count: int = 0
+                for tile in find_entities_with_component("MeshAsset") {
+                    if tile.MeshAsset.source == "content/meshes/ClearBlock.mesh" {
+                        count += 1
+                    }
+                }
+                Check(count == length(clear_pool) && VisibleClears() == 0 && board.BoardState.lines == 2 && board.BoardState.clear_visual_dropped == 0, "resumed phone clears retire within the original fixed pools")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

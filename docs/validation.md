@@ -1,5 +1,31 @@
 # Validation record
 
+## Main integration — October 12, 2026
+
+The combined source includes `2350591` (varied particle births and retained
+clears), `2c27d7d` (Phone controls), and `a6d976f` (the previous main).
+It preserves main's atomic game/editor publication and ignores retired saved
+music/sound channel preferences while retaining master volume. The tested
+Phone SDK remains pinned to engine `88c5dac` and project format 22.
+
+Independent review found no conflicts between retained clears, Phone input,
+responsive camera framing, departure transitions and the audio preference fix.
+The Phone fixture now performs consecutive full-effects touch drops, pauses
+the two fading rows, changes orientation while checking their entity identity,
+position and opacity, then resumes their retirement within the original pools.
+Its focused check passed 5 C/pico_unit cases / 109 dispatcher assertions,
+including 38 authored Phone interaction checks, in 14.808 seconds under the
+production 60-second supervisor. This does not test a physical phone's sensors
+or vibration motor.
+
+The first merge's audio-preference and publishing checks passed 7 cases / 89
+assertions with project validation in 19.751 seconds. Final acceptance uses the
+combined clear, VFX, Phone, loss, audio-preference and publishing selections;
+the game-wide aggregate and full engine/Studio suites remain quarantined.
+The matching browser editor supports this engine's GLSL loading and project
+audio. Its Play view uses desktop input; Phone sensor/vibration integration and
+creating or editing raw GLSL shaders in Studio remain unavailable.
+
 ## Varied particle births and retained clears — October 12, 2026
 
 Every reaction now captures independent shape and appearance variation; each
@@ -45,6 +71,83 @@ Compact captures, a contact sheet, requests and logs remain in ignored
 `.chibi/clear-variation`. Disposable project copies and probe binaries are
 removed after validation. The work uses an isolated game checkout and matching
 clean engine checkout to preserve concurrent Phone work in the original trees.
+
+## Phone controls and responsive play — October 12, 2026
+
+The engine pin is `88c5dac493a650dd035e3e05ac0ab3323a7a36fa`.
+Its additive device API supplies logical viewport size, foreground state,
+touch capability, calibrated screen-relative tilt and optional vibration.
+Permission requests use a real browser button. Screen rotation, focus changes
+and stale sensor readings establish a new neutral; replay suppresses external
+sensor and vibration requests. Concurrent feedback retains the longest pulse.
+No project-format migration is required.
+
+Tetris owns tilt smoothing, the dead zone, movement repeat and pulse strengths.
+Touch buttons remain available when motion permission is denied or no sensor
+is present. Phone View follows the viewport and touch capability, with a manual
+menu toggle and H binding. Portrait keeps the score, hold and five previews
+above the well; landscape places larger controls alongside it. The phone camera
+stays stable while the existing 3D effects continue. Leaving the foreground
+pauses play and returning waits for Resume. Cute already enables high DPI;
+logical viewport dimensions determine layout and pixel density determines the
+render target. The web shell accounts for safe areas and dynamic viewport height.
+
+Independent reviews covered the browser lifecycle, axis conversion, input
+recording, authored control interactions and haptic event ordering. The final
+engine source passed these admitted production-supervised checks:
+
+| Check | Result |
+| --- | --- |
+| Engine native | 323 cases / 179,550 assertions; 18.904 s. |
+| Engine language | 178 cases / 10,526 assertions; 0.967 s. |
+| Engine tooling | 93 cases / 22,588 assertions; 24.442 s. |
+| Viewport resize and explicit pointer projection | Admitted GPU selector; 0.977 s. |
+
+The native group includes the independent Device feature-coverage scene,
+VM/SLJIT service checks, invalid-input rejection, scenario round trips and replay
+isolation. Native authoring/player and Wasm player/compiler builds passed.
+The engine and game use matching clean SDK and browser-player packages.
+
+Browser play exposed quick pointer presses that SDL could consume between
+rendered frames. The player now retains the press and its original position
+until gameplay advances, including frames with no fixed simulation step. UI
+pointer sampling keeps its existing semantics. C regressions cover quick
+press/release, drag position, delayed consumption, focus loss and event ordering.
+
+The authored game checks passed under the same production deadline: phone
+rules, device input, touch actions, permission fallback, expanded options and
+Sprint timers (5 cases / 109 dispatcher assertions; 12.447 s), plus the existing
+desktop UI, motion and HUD checks (10 cases / 1,609 assertions; 53.660 s).
+Production asset validation reports 170 assets, zero errors and zero warnings
+(5.156 s). Hand-edited assets and C sources are formatted.
+
+Browser checks use the exported production scene, with synthetic sensor readings
+for permission denial/grant, neutral calibration and steering. Portrait at
+390 × 844 CSS pixels retains its layout at device pixel ratios 1 and 3; the
+latter produces a 1170 × 2532 render target. Resizing the same run to landscape
+keeps the board and provides controls beside it. Browser instrumentation confirms
+accepted-action pulses of 8, 12 and 28 ms. These are API calls, not measured motor
+output. The web API has no spatial vibration control, and Safari does not expose
+`navigator.vibrate`. Physical sensor accuracy, actuator feel and real phone
+performance remain unverified.
+
+The final clean browser player accepts ordinary quick clicks for Play, movement,
+rotation, drop and pause in both phone layouts. With no concurrent builds or
+tests, two-second warmups followed by 2.5-second gameplay samples measured:
+
+| Browser viewport | Canvas | FPS | Median / p95 frame time |
+| --- | --- | --- | --- |
+| Normal display, 782 × 979 CSS, DPR 2 | 1564 × 1958 | 57.63 | 16.7 / 24.8 ms |
+| Portrait, 390 × 844 CSS, DPR 3 | 1170 × 2532 | 57.58 | 16.7 / 25.0 ms |
+| Landscape, 844 × 390 CSS, DPR 2 | 1688 × 780 | 57.43 | 16.7 / 25.0 ms |
+
+These desktop-browser samples exercise phone layouts and pixel density; they
+are not sustained-performance or physical-phone guarantees. Publication checks
+the committed revision, public checksums and actual browser play separately.
+
+Focused logs and browser evidence remain in ignored `.chibi/phone-controls`.
+Temporary project copies and probe binaries are removed after verification.
+Full/quarantined native, render, Studio and game-wide suites were not run.
 
 ## Sound-driven forms and organic flow — October 12, 2026
 
@@ -634,7 +737,7 @@ Use the engine revision and SDK identified in [toolchain.json](../toolchain.json
 ```sh
 make authoring ENGINE=/path/to/pinned/chibi
 make test-build ENGINE=/path/to/pinned/chibi
-make test ENGINE=/path/to/pinned/chibi
+# Run the affected focused selectors from tests/README.md under the supervisor.
 make format ENGINE=/path/to/pinned/chibi
 make validate ENGINE=/path/to/pinned/chibi
 make native

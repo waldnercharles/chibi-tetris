@@ -1,0 +1,32 @@
+// Query the complete authored HUD instead of a truncated entity snapshot.
+behavior MenuShortcutChecks {
+    frame: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Tick {
+        if frame == 42 {
+            visible: string[] = []
+            for label in find_entities_with_component("MeshAsset") {
+                if !label.RenderState.hidden {
+                    visible = array_add(visible, label.MeshAsset.source)
+                }
+            }
+            Check(contains(visible, "content/meshes/text/ui_journey.mesh"), "menu shortcuts leave the Journey choice visible")
+            for name in ["ui_endless", "ui_sprint", "ui_duet", "ui_enter", "ui_m", "ui_v", "ui_f", "ui_g", "play_controls", "settings_controls", "chapter_controls"] {
+                Check(!contains(visible, format_text("content/meshes/text/{}.mesh", name)), "menu shortcuts do not expose unavailable modes or keyboard legends")
+            }
+            self.TestReport.done = true
+        }
+        frame += 1
+    }
+}

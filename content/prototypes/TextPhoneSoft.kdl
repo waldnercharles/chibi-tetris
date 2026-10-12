@@ -1,0 +1,4 @@
+name "TextPhoneSoft"
+components {
+    MeshAsset source="content/meshes/text/phone_soft.mesh"
+}

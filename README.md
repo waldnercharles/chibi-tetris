@@ -49,6 +49,16 @@ Chapter selection starts a fresh run at the selected chapter and stays paused. P
 
 External music uses browser audio sharing or a native loopback device. Click **Connect audio** on the menu, or press M during a run. The scene responds to its measured sound. See [audio capture](docs/audio.md#music-reaction-and-capture) for setup.
 
+### Phone controls
+
+Open the [browser release](https://waldnercharles.github.io/chibi-tetris/) on your phone. Phone View appears automatically on touch devices and narrow windows; **Phone view** on the opening menu or **H** toggles it manually. Portrait puts the score and piece previews above the well and the controls below it. Landscape puts the controls alongside the board. The 3D blocks, particles, music response and effect settings remain available. Screen rotation keeps the current run.
+
+Tap **Enable tilt**, allow motion access if the browser asks, and hold the phone in a comfortable position while it centers. Tilt left or right to move. Rotation, soft drop, hard drop and hold have separate touch buttons, along with pause and restart. Left and Right also work without a sensor. Pause to **Recenter tilt** or turn tilt off. Switching away from the game pauses play; returning waits for Resume.
+
+**Vibration** on the opening or pause screen enables short pulses for successful moves, turns, holds, drops, locks and clears. The browser exposes pulse duration, not directional or spatial haptics. Safari on iPhone currently does not expose this vibration API; unsupported browsers show **Vibration unavailable** and retain the game's visual feedback. Motion requires HTTPS (the published site uses it), browser permission and a working sensor. Denying permission leaves touch controls usable. See the engine's [device API and browser constraints](https://github.com/waldnercharles/chibi/blob/cwaldner/phone-device-controls/docs/device-input.md).
+
+Layout uses logical viewport dimensions. Cute's default high-DPI support scales the render target separately, preserving sharp text and blocks without changing control size. The browser shell follows its visible height and keeps controls clear of the notch and home indicator. Physical sensor feel and vibration still need a check on your actual phone.
+
 ## Build from source
 
 This game consumes the Chibi SDK. KDL owns scene composition and material graphs, `.chibi` owns game rules and presentation, and ordinary GLSL files in `content/shaders` own particle motion and appearance. Blocks, scenery and text use the 3D renderer. There is no game-specific native module or separate browser implementation.

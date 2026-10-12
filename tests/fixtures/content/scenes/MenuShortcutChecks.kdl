@@ -1,0 +1,29 @@
+version 1
+name "MenuShortcutChecks"
+presentation "3d"
+(array)entities {
+    - name="World" prototype="World"
+    - name="Camera" prototype="Camera"
+    - name="Hud" prototype="Hud"
+    - {
+        name "Board1"
+        prototype "Board"
+        components {
+            GlobalBinding name="Board1"
+            BoardState index=0
+        }
+    }
+    - {
+        name "Board2"
+        prototype "Board"
+        components {
+            GlobalBinding name="Board2"
+            BoardState index=1
+        }
+    }
+    - {
+        name "Report"
+        prototype "TestReport"
+        (array)behaviors "MenuShortcutChecks"
+    }
+}

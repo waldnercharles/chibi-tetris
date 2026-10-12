@@ -1,0 +1,20 @@
+// Device controls feed the same board rules as keyboard and controller input.
+component PhoneState {
+    enabled: bool
+    portrait: bool
+    active: bool
+    options_open: bool
+    width: number
+    height: number
+    override: int
+    motion_status: int
+    haptics_available: bool
+    haptics: bool
+    direction: int
+    move_pressed: bool
+    soft: bool
+    // One-shot buttons: 2 counterclockwise, 3 clockwise, 5 drop, 6 hold.
+    button: int
+    pause_request: bool
+    restart_request: bool
+}

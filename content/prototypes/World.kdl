@@ -12,8 +12,9 @@ components {
     (object)Input
     (object)MusicCharacterState
     (object)MusicDynamics
+    PhoneState button=-1
     Session arr=0.035 das=0.15 effects=2 ghost=#true master=0.8 music=0.65 seed=73129 sound=0.75
     (object)StageState
     VisualState beat_period=0.5
 }
-(array)behaviors "AudioReactive" "Shell"
+(array)behaviors "AudioReactive" "Phone" "Shell"

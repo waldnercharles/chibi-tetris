@@ -1,0 +1,4 @@
+name "TextPhoneRestart"
+components {
+    MeshAsset source="content/meshes/text/phone_restart.mesh"
+}

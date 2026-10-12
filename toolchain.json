@@ -2,16 +2,16 @@
   "format": 1,
   "engine": {
     "repository": "https://github.com/waldnercharles/chibi.git",
-    "revision": "1b6fddf7f4c42f7c632916c2d33c0bdad0aaa205",
-    "source_snapshot_sha256": "a3e9cc0d17a4787357f5938215d6f06ecec33aacc91b6db75112db313b73f612",
+    "revision": "88c5dac493a650dd035e3e05ac0ab3323a7a36fa",
+    "source_snapshot_sha256": "7e29a54f80d38b7e9913650cbe68780ebb1c1c1ae9cc45a49cba10bfda996081",
     "project_format": 22,
     "player_prepared_format": 12,
-    "local_branch": "cwaldner/tetris-render-polish"
+    "local_branch": "cwaldner/phone-device-controls"
   },
   "tested_native_sdk": {
     "kind": "sdk",
-    "build_id": "0a5ec8185deb7fd1f3121812bd32d67b9963d42f0ab03f6e3447a2835728db89",
-    "manifest_sha256": "1143249a0fa66574a380c5eb8bddca425674c780663f708626b3bb5e555a0e46",
+    "build_id": "eecfc7981c51581665a9df156963b6853503a7780a7f167dddf54e64dca6bcc4",
+    "manifest_sha256": "47a819fdb46829630ffe5d224e1f2df064387c221a8c25e9202e638f0734ae58",
     "system": "Darwin",
     "processor": "arm64",
     "compiler": {
@@ -22,13 +22,13 @@
     }
   },
   "tested_web_player": {
-    "source_revision": "1b6fddf7f4c42f7c632916c2d33c0bdad0aaa205",
+    "source_revision": "88c5dac493a650dd035e3e05ac0ab3323a7a36fa",
     "files": {
-      "chibi-player.js": "dba48a72ee0aa55116989facd3ecc3e5645abcc9fef983485e5fa97144dd0bf2",
-      "chibi-player.wasm": "63f1deb2a367c1914d395df0d219742f9102d2bd890ed98967394cbfbfbc71fc",
-      "compiler/chibi-compile.js": "5abb448fd4d54a836c55540dfebec885965a1b243b6dcd29091e8cdd488ecab1",
-      "compiler/chibi-compile.wasm": "b3c8b33d4b8f0698fa99788c7f1e29e0ddcf43c7a00b7670bb44a8d42eff862f",
-      "index.html": "039ddc45202bcc909e1e405b593121dabd128d47aca0ff8020a30a629ca4de73"
+      "chibi-player.js": "2fad3bc6d74d322c1dd5be7ba861b6df6bb8df0e267fcf7889a179a2ce7d3284",
+      "chibi-player.wasm": "6b3ba3a1322177e2c56f3aac0120cb244ec789b92b476ce2884769c763ff4bc6",
+      "compiler/chibi-compile.js": "22ab571686d325196558738019b7cfee5c33bcff99e4bb569e96269cc632e6c5",
+      "compiler/chibi-compile.wasm": "03f831bec10d50542af5e9fbb1419d88b61b296b5d1b365eb33d55434492bf62",
+      "index.html": "2c5c0c4d95ad6c6892c517cc71ae52dd7dd572e5eae74cd3ee13aae50c0e3cfb"
     }
   }
 }

@@ -3,6 +3,7 @@ name "TestWorld"
 components {
     GlobalBinding name="World"
     (object)MusicCharacterState
+    (object)PhoneState
     Session arr=0.035 audio_ready=#true das=0.15 ghost=#true mode=3 reduced_motion=#true run=1 screen=1 seed=73129
     (object)StageState
     (object)VisualState

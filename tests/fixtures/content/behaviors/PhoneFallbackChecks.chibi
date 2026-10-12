@@ -1,0 +1,43 @@
+// The world query sees all labels even when a serialized snapshot truncates entities.
+behavior PhoneFallbackChecks {
+    world: entity
+    frame: int = 0
+
+    function VisibleLabel(name: string) -> (visible: bool) {
+        source := format_text("content/meshes/text/{}.mesh", name)
+        for label in find_entities_with_component("MeshAsset") {
+            if label.MeshAsset.source == source && !label.RenderState.hidden {
+                return true
+            }
+        }
+        return false
+    }
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+    }
+
+    on Tick {
+        if frame == 4 {
+            label := "phone_tilt_unavailable"
+            if world.PhoneState.motion_status == 4 {
+                label = "phone_tilt_denied"
+            }
+            Check(VisibleLabel(label), "the menu explains motion permission denial or unavailable hardware")
+            Check(VisibleLabel("phone_haptics_unavailable"), "the menu explains unavailable vibration")
+            self.TestReport.done = true
+        }
+        frame += 1
+    }
+}

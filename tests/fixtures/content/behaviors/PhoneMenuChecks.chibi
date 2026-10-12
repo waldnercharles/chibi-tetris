@@ -1,0 +1,90 @@
+// Reach the production settings through the extra touch area around each label.
+behavior PhoneMenuChecks {
+    world: entity
+    frame: int = 0
+
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function VisibleLabel(name: string) -> (visible: bool) {
+        source := format_text("content/meshes/text/{}.mesh", name)
+        for label in find_entities_with_component("MeshAsset") {
+            if label.MeshAsset.source == source && !label.RenderState.hidden {
+                return true
+            }
+        }
+        return false
+    }
+
+    function TouchTarget(x: number, y: number, width: number, height: number) -> (large: bool) {
+        for plate in find_entities_with_component("Shader") {
+            if plate.Shader.material != "UiPlate" || plate.RenderState.hidden {
+                continue
+            }
+            position := plate.Transform3D.position
+            if abs(position.x - x) < 0.01 && abs(position.y - y) < 0.01 {
+                return plate.Geometry3D.width >= width && plate.Geometry3D.height >= height
+            }
+        }
+        return false
+    }
+
+    on Begin {
+        world = get_global_variable("World")
+    }
+
+    on Tick {
+        match (frame) {
+            case 4 {
+                Check(VisibleLabel("ui_play") && VisibleLabel("phone_enable"), "closed menu keeps Play and optional tilt visible")
+                Check(TouchTarget(0, -86, 300, 54), "closed Play has a finger-sized target")
+                Check(TouchTarget(0, 135, 280, 50), "Connect audio has a finger-sized target")
+            }
+            case 20 {
+                Check(world.PhoneState.options_open && VisibleLabel("ui_effects"), "opening Game options exposes the portrait settings")
+                Check(!VisibleLabel("phone_enable") && !VisibleLabel("phone_haptics_unavailable"), "expanded options hide sensor controls that would overlap Play")
+                Check(VisibleLabel("ui_play"), "Play remains visible with settings expanded")
+                for i in 0..2 {
+                    Check(TouchTarget(62, -86 - i * 60, 150, 48), "each setting has a finger-sized target")
+                }
+                Check(TouchTarget(-15, -266, 50, 50) && TouchTarget(126, -266, 50, 50), "both volume buttons have finger-sized targets")
+            }
+            case 26 {
+                Check(world.Session.effects == 0, "touch near the effects button edge changes effect density")
+            }
+            case 32 {
+                Check(world.Session.reduced_motion, "touch near the motion button edge changes reduced motion")
+            }
+            case 38 {
+                Check(!world.Session.ghost, "touch near the ghost button edge changes ghost visibility")
+            }
+            case 44 {
+                Check(abs(world.Session.master - 0.7) < 0.001, "touch near the minus button edge lowers volume once")
+            }
+            case 50 {
+                Check(abs(world.Session.master - 0.8) < 0.001, "touch near the plus button edge restores volume once")
+            }
+            case 56 {
+                Check(!world.PhoneState.options_open && !VisibleLabel("ui_effects"), "collapse removes the expanded settings")
+                Check(VisibleLabel("phone_enable") && VisibleLabel("phone_haptics_unavailable"), "collapse restores tilt and vibration controls")
+            }
+            case 62 {
+                Check(world.Session.reduced_motion && world.Session.effects == 0 && !world.Session.ghost, "collapsed controls no longer react at their old positions")
+            }
+            case 99 {
+                Check(world.Session.screen == 1 && world.Session.run == 1 && !world.Session.entering, "the expanded Play button starts the run")
+                Check(!world.PhoneState.options_open && VisibleLabel("phone_drop"), "gameplay controls replace the expanded menu")
+                self.TestReport.done = true
+            }
+        }
+        frame += 1
+    }
+}

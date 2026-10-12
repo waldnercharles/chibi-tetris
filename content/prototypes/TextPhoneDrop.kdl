@@ -1,0 +1,4 @@
+name "TextPhoneDrop"
+components {
+    MeshAsset source="content/meshes/text/phone_drop.mesh"
+}

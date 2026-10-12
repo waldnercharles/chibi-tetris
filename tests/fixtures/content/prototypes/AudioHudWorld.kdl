@@ -2,6 +2,7 @@ name "AudioHudWorld"
 (array)includes "ReactionQueue"
 components {
     GlobalBinding name="World"
+    (object)PhoneState
     (object)Session
 }
 (array)behaviors "AudioHudChecks"

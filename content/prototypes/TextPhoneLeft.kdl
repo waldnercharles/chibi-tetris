@@ -1,0 +1,4 @@
+name "TextPhoneLeft"
+components {
+    MeshAsset source="content/meshes/text/phone_left.mesh"
+}

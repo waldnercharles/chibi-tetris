@@ -1,0 +1,4 @@
+name "TextPhonePauseHint"
+components {
+    MeshAsset source="content/meshes/text/phone_pause_hint.mesh"
+}

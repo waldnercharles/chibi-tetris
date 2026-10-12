@@ -1,0 +1,4 @@
+name "TextPhoneEnable"
+components {
+    MeshAsset source="content/meshes/text/phone_enable.mesh"
+}
