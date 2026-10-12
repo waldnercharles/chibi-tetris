@@ -1,0 +1,5 @@
+name "MusicShapeEnvironment"
+components {
+    Environment ambient_ground=0x030811ff ambient_intensity=0.65 ambient_sky=0x365474ff bloom_radius=0.012 bloom_strength=0.34 bloom_threshold=0.65 exposure=-0.6 tone_mapping="Neutral"
+}
+(array)behaviors "MusicShapes"

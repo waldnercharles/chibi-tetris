@@ -1,4 +1,4 @@
-// Four cyclic scene families: cyan swarms, ivory orbits, amber lattice and teal currents.
+// Four music-selected families: orbital swarms, tonal streams, airy sheets and dense knots.
 // Set a positive seed before Begin for a reproducible startup without save writes.
 component StageState {
     style: number
@@ -7,6 +7,11 @@ component StageState {
     target: int
     clock: number
     transition: number
-    // 1 startup, 2 chapter, 3 resumed signal, 4 sustained spectrum, 5 phrase/source.
+    // 1 seeded opening, 2 initial musical identity, 4 sustained section change.
     reason: int
+    // Independent normalized percussive, sustained/tonal and airy/noisy traits.
+    character: CF_V3
+    // Density, rhythmic regularity and a smoothly cooling section-change envelope.
+    structure: CF_V3
+    section_serial: int
 }

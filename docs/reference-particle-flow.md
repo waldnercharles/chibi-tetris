@@ -1,6 +1,6 @@
 # Particula and the Tetris Spheres particle film
 
-Studied on October 11, 2026. The source comparison uses [Particula commit 9c05c66](https://github.com/Humprt/particula/tree/9c05c6664dd318eeeefd14457fa15862c72ae8c3). Visual inspection used selected passages of its [linked demonstration](https://www.youtube.com/watch?v=AroTkLpfSSA), including the opening, 1:27 and 2:53–3:21, and the [30-second film used behind Tetris Spheres](https://dcts-tetris-spheres.web.app/video/background-particles.mp4). Neither reference's code or media is copied into the game.
+Studied on October 11, 2026, with a further source comparison on October 12. The source comparison uses [Particula commit 9c05c66](https://github.com/Humprt/particula/tree/9c05c6664dd318eeeefd14457fa15862c72ae8c3). Visual inspection used selected passages of its [linked demonstration](https://www.youtube.com/watch?v=AroTkLpfSSA), including the opening, 1:27 and 2:53–3:21, and the [30-second film used behind Tetris Spheres](https://dcts-tetris-spheres.web.app/video/background-particles.mp4). Neither reference's code or media is copied into the game.
 
 ## What the references actually show
 
@@ -24,12 +24,12 @@ The main field now uses GPU-resident position, velocity and age. Ordinary GLSL d
 
 Four force regimes replace the prescribed geometric formations:
 
-- Clustered swarms distribute dense births across an irregular volume, with shared turbulent flow between the knots.
-- Filaments concentrate births near a warm core and give outer populations longer routes through rotating flow.
-- Nested volumes use different confinement radii and turbulence frequencies within a common cloud.
-- Drifting dust adds directional transport through broad vortices and quieter depth layers.
+- Percussive sound favors broad orbital swarms with radial beat pressure and depth motion.
+- Sustained tonal sound favors elongated filled volumes and coherent circulation that stretches knots into streams.
+- Airy sound favors folded thin volumes with stronger fine turbulence along their ragged edges.
+- Dense sound favors nested knots with strong broad and fine turbulent transport.
 
-Transitions change future forces and birth distributions. Existing particles keep their positions and velocities. Bass and onsets push the interior outward, midrange changes flow curvature, and treble accents a small population of fine highlights. Recorded gameplay impulses add acceleration at the projected action origin. No audio value directly teleports the whole cloud into a new shape.
+Transitions change future forces and birth distributions. Existing particles keep their positions and velocities. Five overlapping populations respond to bass, bass/mid, mid, mid/treble and treble. Bass and onsets push the interior outward; each population's band changes transport, and accepted sections briefly broaden the volumes and strengthen fine turbulence. Recorded gameplay impulses add acceleration at the projected action origin. No audio value directly teleports the whole cloud into a new shape. The October 12 comparison rejected an intermediate implementation whose strong per-grain springs produced exact parallel curves; confinement now acts only near each filled volume's boundary.
 
 The flow uses rotated, multiscale divergence-free trigonometric fields. Velocity relaxation follows `1 - exp(-rate * dt)`; the position update uses the resulting velocity. This is persistent particle advection through authored force fields. It does not solve fluid pressure, particle collisions or mutual gravity. Birth and retirement envelopes fade size and alpha; pause freezes the simulation clock. Distant grains remain quiet and sparse. Most main grains are nearly isotropic, with only a small fast foreground population stretched along its velocity.
 

@@ -1,0 +1,8 @@
+name "MusicShapeCamera"
+components {
+    Camera far_clip=6000.0 fov=0.88 height=720.0 near_clip=40.0 width=1280.0
+    Transform3D {
+        position z=1080.0
+        scale x=1.0 y=1.0 z=1.0
+    }
+}

@@ -1,5 +1,5 @@
-// Cyan streams, ivory orbits, amber geometry and teal lattice share stable grains.
-// External song boundaries are inferred from sound, never provider metadata.
+// Music selects orbital swarms, tonal streams, airy sheets or dense knots.
+// Continuous traits reshape each family without cycling by elapsed time.
 behavior StageDirector {
     world: entity
     vortex: entity
@@ -8,19 +8,9 @@ behavior StageDirector {
     ready := false
     origin := 0
     phase := 0
-    age := 0
-    quiet := 0
-    signal := 0
-    spectrum_age := 0
+    span := 0
     stage_audio: CF_V3 = { x: 0, y: 0, z: 0 }
     stage_reaction := 0
-    heard := false
-    gap := false
-    baseline_bass := 0
-    baseline_mid := 0
-    baseline_treble := 0
-    previous_stage: int = 0
-    previous_source: int = 0
     action writer = commit_save()
 
     on Begin {
@@ -42,8 +32,6 @@ behavior StageDirector {
         world.StageState.reason = 1
         phase = fract(world.StageState.seed * 0.0017) * 6.2831853
         origin = world.StageState.style
-        previous_stage = world.Session.stage
-        previous_source = world.Session.audio_source
         for i in 0..2 {
             light := await spawn(StageLight)
             lights = array_add(lights, light)
@@ -69,75 +57,34 @@ behavior StageDirector {
         return cast<uint>(cast<int>(clamp(r, 0, 255))) << 24 | cast<uint>(cast<int>(clamp(g, 0, 255))) << 16 | cast<uint>(cast<int>(clamp(b, 0, 255))) << 8 | cast<uint>(255)
     }
 
-    function Advance(reason: int) {
-        if world.StageState.transition < 1 {
+    function Listen(delta: number) {
+        if !world.MusicCharacterState.ready {
+            return
+        }
+        blend := 1 - exp(-delta * 1.6)
+        world.StageState.character += (world.MusicCharacterState.character - world.StageState.character) * blend
+        dynamics := world.MusicCharacterState.dynamics
+        structure := vec3(dynamics.y, dynamics.z, world.MusicCharacterState.envelope)
+        world.StageState.structure += (structure - world.StageState.structure) * blend
+        world.StageState.section_serial = world.MusicCharacterState.section_serial
+        target := world.MusicCharacterState.selected
+        if target == world.StageState.target || world.StageState.transition < 1 {
             return
         }
         origin = world.StageState.style
-        world.StageState.target = (world.StageState.target + 1) % 4
+        span = cast<number>(target) - origin
+        if span > 2 {
+            span -= 4
+        }
+        if span < -2 {
+            span += 4
+        }
+        world.StageState.target = target
         world.StageState.transition = 0
         world.StageState.revision += 1
-        world.StageState.reason = reason
-        age = 0
-        spectrum_age = 0
-        baseline_bass = world.VisualState.bass
-        baseline_mid = world.VisualState.mid
-        baseline_treble = world.VisualState.treble
-    }
-
-    function Listen(delta: number) {
-        age += delta
-        energy := world.VisualState.energy
-        if energy < 0.025 {
-            quiet += delta
-            signal = 0
-            if heard && quiet > 1.4 {
-                gap = true
-            }
-        } else {
-            quiet = 0
-            signal += delta
-            if signal > 0.3 {
-                heard = true
-                if gap && age > 8 {
-                    gap = false
-                    Advance(3)
-                }
-            }
-        }
-        if world.Session.stage != previous_stage {
-            previous_stage = world.Session.stage
-            Advance(2)
-        }
-        if world.Session.audio_source != previous_source {
-            previous_source = world.Session.audio_source
-            if age > 8 {
-                Advance(5)
-            }
-        }
-        // Three seconds of changed spectral balance suggests a new section.
-        // A refractory interval prevents individual beats from changing scenes.
-        total := max(0.08, world.VisualState.bass + world.VisualState.mid + world.VisualState.treble)
-        bass := world.VisualState.bass / total
-        mid := world.VisualState.mid / total
-        treble := world.VisualState.treble / total
-        difference := abs(bass - baseline_bass) + abs(mid - baseline_mid) + abs(treble - baseline_treble)
-        if age < 4 {
-            baseline_bass = bass
-            baseline_mid = mid
-            baseline_treble = treble
-        }
-        if energy > 0.05 && difference > 0.55 && age > 18 {
-            spectrum_age += delta
-            if spectrum_age > 3 {
-                Advance(4)
-            }
-        } else {
-            spectrum_age = max(0, spectrum_age - delta * 2)
-        }
-        // Long continuous songs still unfold into new visual phrases.
-        if age > 38 + cast<int>(floor(world.StageState.seed)) % 13 && energy > 0.04 {
-            Advance(5)
+        world.StageState.reason = 4
+        if world.StageState.section_serial == 1 {
+            world.StageState.reason = 2
         }
     }
 
@@ -160,16 +107,18 @@ behavior StageDirector {
         bass := stage_audio.y
         treble := stage_audio.z
         reaction := stage_reaction
+        density := world.StageState.structure.x
+        section := world.StageState.structure.z
         clock := world.StageState.clock
         key_color := Color(126 * cyan + 237 * ivory + 255 * amber + 104 * teal, 221 * cyan + 235 * ivory + 170 * amber + 240 * teal, 250 * cyan + 218 * ivory + 84 * amber + 207 * teal)
         rim_color := Color(48 * cyan + 185 * ivory + 224 * amber + 41 * teal, 126 * cyan + 199 * ivory + 75 * amber + 141 * teal, 219 * cyan + 220 * ivory + 33 * amber + 168 * teal)
         world.DirectionalLight.color = key_color
-        world.DirectionalLight.intensity = 2.35 + energy * 0.2
+        world.DirectionalLight.intensity = 2.35 + energy * 0.2 + section * 0.12
         world.DirectionalLight.direction = vec3(0.52 + sin(clock * 0.055 + phase) * 0.1, -0.65, -0.48)
         self.Environment.ambient_intensity = 0.2
         self.Environment.ambient_sky = Color(15 + 14 * amber + 8 * ivory, 18 + 9 * cyan + 10 * teal, 24 + 12 * cyan - 8 * amber)
         self.Environment.ambient_ground = Color(3 + 4 * amber, 4, 7 + 4 * cyan)
-        self.Environment.bloom_strength = 0.2 + energy * 0.025 + reaction * 0.025
+        self.Environment.bloom_strength = 0.2 + energy * 0.025 + reaction * 0.025 + section * 0.02
         self.Environment.bloom_threshold = 1.15
         self.Environment.exposure = -0.45
         for i in 0..2 {
@@ -179,7 +128,7 @@ behavior StageDirector {
             // PointLight uses Transform=(world X, world Z), elevation=world Y.
             light.Transform = vec2(cos(angle) * 450, 130 + sin(angle) * 170)
             light.PointLight.elevation = sin(angle) * 300
-            light.PointLight.intensity = 3.2 + energy * 0.65 + bass * 0.8
+            light.PointLight.intensity = 3.2 + energy * 0.65 + bass * 0.8 + density * 0.3
             if i == 1 {
                 light.PointLight.color = rim_color
                 light.Transform = vec2(-360 + sin(angle) * 100, -190)
@@ -216,7 +165,7 @@ behavior StageDirector {
                 world.StageState.transition = min(1, world.StageState.transition + delta / 10)
                 blend := world.StageState.transition
                 blend = blend * blend * blend * (blend * (blend * 6 - 15) + 10)
-                world.StageState.style = origin + blend
+                world.StageState.style = fract((origin + span * blend) / 4) * 4
                 if world.StageState.transition == 1 {
                     world.StageState.style = cast<number>(world.StageState.target)
                 }

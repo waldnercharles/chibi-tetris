@@ -28,7 +28,7 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
     vec3 random = reaction_random(p.index, p.seed);
     vec3 event = reaction_event(p.seed);
     vec3 source = release_source(p.index, random, u);
-    float birth = u.Delay + release_birth(source.x, reaction_quantile(p.index, p.seed), u);
+    float birth = u.Timing.x + release_birth(source.x, reaction_quantile(p.index, p.seed), u);
     if (p.reset) {
         state.position = source;
         float depth = mix(-180.0 - random.x * 230.0, 250.0 + random.x * 170.0, step(0.73, random.z));
@@ -36,8 +36,10 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
         state.velocity = vec3((random.x - 0.5) * fan,
             40.0 + (event.x - 0.5) * 90.0 + (random.y - 0.5) * 270.0, depth);
         if (u.Pattern == 11.0) state.velocity.xy *= 1.45;
+        state.velocity = reaction_launch(state.velocity, vec2(random.x < 0.5 ? -1.0 : 1.0, 0.12),
+            random, event, clamp(u.Character, 0.0, 1.0));
         if (u.Loss > 0.5) state.velocity *= 0.28;
-        float elapsed = max(0.0, p.time - birth) * (1.0 - u.Quiet);
+        float elapsed = max(0.0, p.time - birth) * (1.0 - u.Timing.z);
         state.position += state.velocity * reaction_drag(0.45, elapsed);
         state.age = p.time;
         return state;
@@ -59,21 +61,23 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     float birth = release_birth(source.x, quantile, u);
     float duration = u.Life * (0.56 + random.z * 0.16 +
         (layers.z + layers.w) * (0.16 + random.z * 0.02));
-    duration *= 0.82 + event.z * 0.18;
+    vec3 character = clamp(u.Character, 0.0, 1.0);
+    duration *= (0.82 + event.z * 0.18) * reaction_cooling(character);
     // Loss adds a sparse ember tail behind the departing original block meshes.
     duration = mix(duration, u.Life * (0.78 + random.z * 0.14), u.Loss);
-    float elapsed = max(0.0, p.time - u.Delay - birth);
+    duration = min(duration, max(0.001, u.Life - birth - 0.015));
+    float elapsed = max(0.0, p.time - u.Timing.x - birth);
     float phase = clamp(elapsed / max(duration, 0.001), 0.0, 1.0);
     float envelope = smoothstep(0.0, min(0.016, duration * 0.16), elapsed) *
-        (1.0 - smoothstep(duration * 0.28, duration, elapsed)) * u.Fade;
+        (1.0 - smoothstep(duration * 0.28, duration, elapsed)) * u.Timing.y;
     float loss_envelope = smoothstep(0.0, 0.045, elapsed) *
-        (1.0 - smoothstep(duration * 0.42, duration, elapsed)) * u.Fade;
+        (1.0 - smoothstep(duration * 0.42, duration, elapsed)) * u.Timing.y;
     envelope = mix(envelope, loss_envelope, u.Loss);
     int cell = int(mod(p.index, 10.0));
     float occupied = float((int(u.RowMask) >> cell) & 1);
     envelope *= occupied * reaction_population(p.index, p.seed, event);
-    float motion = elapsed * (1.0 - u.Quiet);
-    float spread = 0.7 + event.y * 0.75;
+    float motion = elapsed * (1.0 - u.Timing.z);
+    float spread = (0.7 + event.y * 0.75) * (1.0 + character.x * 0.5 + character.z * 0.25);
 
     // Heavy fragments use exact exponential drag and gravity.
     float drag_rate = 4.5 - layers.y * 2.7;
@@ -117,19 +121,19 @@ ChibiParticle release(ChibiParticleInput p, ChibiParameters u)
     ChibiParticle result;
     result.position = fracture * layers.x + debris * layers.y;
     if (u.Pattern == 10.0 || u.Pattern == 11.0) result.position = p.position;
-    result.size = mix(clear_size * spread, envelope, u.Quiet);
-    result.color = mix(clear_color, vec4(0.4, 0.8, 1.0, envelope * 0.4), u.Quiet);
-    result.scale = mix(vec3(1.0), vec3(2.2, 0.38, 0.6), layers.x * (1.0 - u.Quiet)) *
+    result.size = mix(clear_size * spread, envelope, u.Timing.z);
+    result.color = mix(clear_color, vec4(0.4, 0.8, 1.0, envelope * 0.4), u.Timing.z);
+    result.scale = mix(vec3(1.0), vec3(2.2, 0.38, 0.6), layers.x * (1.0 - u.Timing.z)) *
         mix(vec3(1.0), vec3(
             1.2 + random.x * 0.8, 0.5 + random.y * 0.55, 0.65 + random.z * 0.55
-        ), layers.y * (1.0 - u.Quiet));
+        ), layers.y * (1.0 - u.Timing.z));
     result.rotation = vec3(random.x - 0.5, random.y - 0.5, random.z - 0.5) *
-        (2.2 + motion * 8.0) * layers.y * (1.0 - u.Quiet);
+        (2.2 + motion * 8.0) * layers.y * (1.0 - u.Timing.z);
     if (u.Pattern == 10.0 || u.Pattern == 11.0) {
         float streak = (1.0 - coarse) * step(0.80, random.x);
         result.scale = vec3(1.0 + streak * 2.2, 0.9, 0.9);
         result.rotation = vec3(0.0, 0.0, atan(p.velocity.y, p.velocity.x));
     }
-    result.lighting = (layers.y * 0.85 + layers.z * 0.35) * (1.0 - u.Quiet);
-    return reaction_illuminate(result, u);
+    result.lighting = (layers.y * 0.85 + layers.z * 0.35) * (1.0 - u.Timing.z);
+    return reaction_illuminate(result, u, random);
 }

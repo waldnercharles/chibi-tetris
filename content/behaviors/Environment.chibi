@@ -10,6 +10,7 @@ behavior Environment {
     lights: entity[]
     lives: number[]
     retires: number[]
+    timings: CF_V3[]
     gameplay: bool[]
     light_ages: number[]
     light_peaks: number[]
@@ -89,6 +90,7 @@ behavior Environment {
             fields = array_add(fields, field)
             lives = array_add(lives, 0)
             retires = array_add(retires, -1)
+            timings = array_add(timings, vec3(0, 1, 0))
             gameplay = array_add(gameplay, true)
         }
         for i in 0..7 {
@@ -371,7 +373,9 @@ behavior Environment {
         }
         set_material_parameter(field, "Pattern", cast<number>(pattern))
         set_material_parameter(field, "Life", life)
-        set_material_parameter(field, "Quiet", cast<number>(ReactionRules.Flag(quiet)))
+        // Keep the sound that launched a trail for its whole lifetime. Only the
+        // shared forces follow later music and actions, so old paths stay intact.
+        set_material_parameter(field, "Character", world.StageState.character)
         set_material_parameter(field, "Point0", cue_point0)
         if field.Shader.material == "ReactionParticles.Cue" {
             set_material_parameter(field, "Pivot", cue_pivot)
@@ -384,8 +388,8 @@ behavior Environment {
         set_material_parameter(field, "Origin", vec3(x, y, cue_depth))
         set_material_parameter(field, "Current", vec3(flow, turn_velocity, min(1, energy + beat * 0.6)))
         FieldForces(field)
-        set_material_parameter(field, "Delay", cue_delay)
-        set_material_parameter(field, "Fade", 1)
+        timings[slot] = vec3(cue_delay, 1, cast<number>(ReactionRules.Flag(quiet)))
+        set_material_parameter(field, "Timing", get(timings, slot))
         lives[slot] = cue_delay + life
         retires[slot] = -1
         gameplay[slot] = cue_gameplay
@@ -661,9 +665,10 @@ behavior Environment {
         set_material_parameter(field, "Beat", world.VisualState.field_response.y)
         set_material_parameter(field, "Reaction", world.VisualState.flow_energy)
         set_material_parameter(field, "Flow", flow)
-        set_material_parameter(field, "Turn", turn)
+        set_material_parameter(field, "Section", world.StageState.structure.z)
         set_material_parameter(field, "Pulse", pulse)
         set_material_parameter(field, "Wind", wind)
+        set_material_parameter(field, "Character", world.StageState.character)
         FieldForces(field)
     }
 
@@ -743,7 +748,10 @@ behavior Environment {
                 if get(retires, i) >= 0 {
                     retires[i] = max(0, get(retires, i) - delta)
                     fade := get(retires, i) / 0.06
-                    set_material_parameter(field, "Fade", fade * fade * (3 - 2 * fade))
+                    timing := get(timings, i)
+                    timing.y = fade * fade * (3 - 2 * fade)
+                    timings[i] = timing
+                    set_material_parameter(field, "Timing", timing)
                     if get(retires, i) == 0 {
                         field.ParticleField3D.count = 0
                     }

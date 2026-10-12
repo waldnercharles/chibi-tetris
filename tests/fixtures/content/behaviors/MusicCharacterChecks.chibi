@@ -1,0 +1,121 @@
+// Synthetic descriptor sequences exercise the production authored detector.
+behavior MusicCharacterChecks {
+    function Check(condition: bool, message: string) {
+        self.TestReport.checks += 1
+        if condition {
+            return
+        }
+        self.TestReport.failures += 1
+        if self.TestReport.first_failure == "" {
+            self.TestReport.first_failure = message
+        }
+    }
+
+    function Feed(seconds: number, level: number, spectrum: CF_V3, texture: CF_V3, energy: number, rhythm: number) {
+        self.VisualState.energy = energy
+        self.VisualState.beat_confidence = rhythm
+        frames := cast<int>(round(seconds * 20))
+        for i in 0..frames - 1 {
+            MusicCharacter.Step(self, level, spectrum, texture, 0.05)
+        }
+    }
+
+    function Tone(seconds: number) {
+        Feed(seconds, 0.1, vec3(900, 0.00001, 0.004), vec3(0.12, 0.4, 0.3), 0.65, 0.05)
+    }
+
+    on Begin {
+        MusicCharacter.Reset(self)
+        Feed(4, 0, vec3(7000, 1, 1), vec3(1, 1, 1), 1, 1)
+        Check(!self.MusicCharacterState.ready && self.MusicCharacterState.section_serial == 0, "silence cannot establish a song or a section")
+        Check(self.MusicCharacterState.character.x + self.MusicCharacterState.character.y + self.MusicCharacterState.character.z == 0, "silent descriptors never invent musical traits")
+        Tone(4)
+        Check(self.MusicCharacterState.ready && self.MusicCharacterState.section_serial == 1, "sustained audible evidence establishes one initial song identity")
+        Check(self.MusicCharacterState.selected == 1, "steady tonal sound selects coherent ribbons")
+        Check(self.MusicCharacterState.character.y > 0.85 && self.MusicCharacterState.character.x < 0.05, "tonal sustain separates from attacks")
+        Check(self.MusicCharacterState.character.z < 0.3, "low-centroid tonal sound is not called airy noise")
+        serial := self.MusicCharacterState.section_serial
+        Tone(60)
+        Check(self.MusicCharacterState.section_serial == serial && self.MusicCharacterState.selected == 1, "a stable song never changes section just because time passes")
+        identity := self.MusicCharacterState.character
+        Feed(6, 0, vec3(0, 0, 0), vec3(0, 0, 0), 0, 0)
+        Check(self.MusicCharacterState.character.x == identity.x && self.MusicCharacterState.character.y == identity.y && self.MusicCharacterState.character.z == identity.z, "quiet passages preserve the established timbre exactly")
+        Check(self.MusicCharacterState.dynamics.y < 0.001 && self.MusicCharacterState.dynamics.z < 0.001, "density and rhythm settle during quiet passages")
+        Check(self.MusicCharacterState.selected == 1 && self.MusicCharacterState.section_serial == serial, "silence cannot rotate the composition")
+        Tone(4)
+        Check(self.MusicCharacterState.section_serial == serial, "returning to the same quiet song does not invent a new section")
+        Feed(0.3, 0.5, vec3(7000, 0.95, 0.95), vec3(0.1, 0.9, 0.9), 1, 1)
+        Tone(4)
+        Check(self.MusicCharacterState.section_serial == serial, "one bright transient cannot pass the section dwell")
+
+        Feed(6, 0.18, vec3(550, 0.06, 0.08), vec3(0.7, 0.1, 0.85), 0.8, 0.9)
+        Check(self.MusicCharacterState.section_serial == serial + 1, "a sustained new spectral and rhythmic balance creates one section")
+        Check(self.MusicCharacterState.selected == 0 && self.MusicCharacterState.character.x > self.MusicCharacterState.character.y, "percussive regular music selects ordered orbits")
+        Check(self.MusicCharacterState.envelope > 0.1, "a detected section leaves a cooling response for authored form changes")
+        serial = self.MusicCharacterState.section_serial
+        for i in 0..239 {
+            hit := 0.01
+            if i % 10 == 0 {
+                hit = 0.4
+            }
+            MusicCharacter.Step(self, 0.18, vec3(550, 0.06, hit), vec3(0.7, 0.1, 0.85), 0.05)
+        }
+        Check(self.MusicCharacterState.section_serial == serial, "regular beat attacks do not repeatedly create sections")
+        Check(self.MusicCharacterState.selected == 0, "small variations retain the winning family through selection hysteresis")
+
+        MusicCharacter.Reset(self)
+        Feed(4, 0.06, vec3(6200, 0.5, 0.01), vec3(0.02, 0.6, 0.45), 0.2, 0.1)
+        Check(self.MusicCharacterState.selected == 2 && self.MusicCharacterState.character.z > 0.85, "bright sparse noisy sound selects branching sheets")
+        MusicCharacter.Reset(self)
+        Feed(4, 0.25, vec3(4000, 0.95, 0.12), vec3(0.3, 0.8, 0.65), 1, 0.5)
+        Check(self.MusicCharacterState.selected == 3 && self.MusicCharacterState.dynamics.y > 0.8, "dense energetic sound selects turbulent clustered clouds")
+
+        MusicCharacter.Reset(self)
+        Feed(4, 0.12, vec3(600, 0.0001, 0.08), vec3(0.36, 0.06, 0.52), 0.7, 0.65)
+        light_bass := self.MusicCharacterState.character.x
+        MusicCharacter.Reset(self)
+        Feed(4, 0.12, vec3(600, 0.0001, 0.08), vec3(0.57, 0.06, 0.52), 0.7, 0.65)
+        Check(self.MusicCharacterState.character.x > light_bass + 0.03, "measured low-weight differences give attacks continuously different body")
+        Check(self.MusicCharacterState.selected == 1, "bass-weighted attacks need not force tonal arrangements into another family")
+        MusicCharacter.Reset(self)
+        Feed(4, 0.12, vec3(450, 0.00003, 0.07), vec3(0.5, 0.06, 0.52), 0.7, 0.65)
+        dark_tone := self.MusicCharacterState.character.z
+        MusicCharacter.Reset(self)
+        Feed(4, 0.12, vec3(650, 0.00024, 0.07), vec3(0.5, 0.06, 0.52), 0.7, 0.65)
+        Check(self.MusicCharacterState.character.z > dark_tone + 0.04, "actual bundled-track centroid and flatness ranges affect continuous morphology")
+        Check(self.MusicCharacterState.selected == 1, "perceptual descriptor scaling preserves the shared tonal identity")
+
+        MusicCharacter.Reset(self)
+        Feed(12, 0.1, vec3(900, 0.00001, 0.004), vec3(0.12, 0.4, 0.3), 0.65, 0.9)
+        serial = self.MusicCharacterState.section_serial
+        Feed(6, 0.1, vec3(900, 0.00001, 0.004), vec3(0.12, 0.4, 0.95), 0.65, 0.9)
+        Check(self.MusicCharacterState.section_serial == serial + 1, "sustained crest changes create a section even when spectrum energy and beat timing stay fixed")
+        Check(self.MusicCharacterState.selected == 0, "new attack character can select percussion without a spectral change")
+
+        MusicCharacter.Reset(self)
+        Tone(12)
+        serial = self.MusicCharacterState.section_serial
+        Feed(5, 0.1, vec3(5200, 0.00002, 0.004), vec3(0.9, 0.4, 0.3), 0.9, 0.5)
+        Check(self.MusicCharacterState.section_serial == serial + 1 && self.MusicCharacterState.selected == 1, "a meaningful change within tonal music updates the section without forcing another family")
+        Check(self.MusicCharacterState.envelope > 0.15, "same-family sections still reshape the form through their envelope")
+        serial = self.MusicCharacterState.section_serial
+        Feed(2, 0.25, vec3(4000, 0.95, 0.12), vec3(0.3, 0.8, 0.65), 1, 0.5)
+        Check(self.MusicCharacterState.section_serial == serial, "the refractory interval rejects immediate competing sections")
+        identity = self.MusicCharacterState.character
+        MusicCharacter.Step(self, 0.2, vec3(7000, 1, 1), vec3(1, 1, 1), 4)
+        Check(self.MusicCharacterState.section_serial == serial && self.MusicCharacterState.character.x == identity.x, "a suspended frame never fabricates intermediate section evidence")
+        MusicCharacter.Reset(self)
+        Check(!self.MusicCharacterState.ready && self.MusicCharacterState.section_serial == serial, "source reset clears history while preserving monotonic section ownership")
+        // Small tonal changes stay within the measured score descriptor ranges.
+        MusicCharacter.Reset(self)
+        Feed(12, 0.0535, vec3(357, 0.0000015, 0.065), vec3(0.6, 0.055, 0.524), 0.7, 0.5)
+        serial = self.MusicCharacterState.section_serial
+        Feed(6, 0.0579, vec3(481, 0.00024, 0.07), vec3(0.5, 0.043, 0.529), 0.7, 0.8)
+        Check(self.MusicCharacterState.section_serial == serial + 1, "modest sustained timbre changes in a tonal arrangement create a section")
+        Check(self.MusicCharacterState.selected == 1, "tonal layering preserves its established form family")
+        serial = self.MusicCharacterState.section_serial
+        Feed(20, 0.0579, vec3(481, 0.00024, 0.07), vec3(0.5, 0.043, 0.529), 0.7, 0.8)
+        Check(self.MusicCharacterState.section_serial == serial, "the established fuller arrangement does not repeatedly create sections")
+        self.TestReport.done = true
+    }
+}

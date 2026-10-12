@@ -1,0 +1,9 @@
+name "MusicShapeField"
+components {
+    Geometry3D depth=20.8 height=20.8 primitive=5 width=20.8
+    ParticleField3D additive=#true count=16384 seed=37
+    Shader material="CosmicParticles.Vortex"
+    Transform3D {
+        scale x=0.19 y=0.19 z=0.19
+    }
+}

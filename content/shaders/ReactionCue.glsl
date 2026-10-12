@@ -39,7 +39,7 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
     vec3 random = reaction_random(p.index, p.seed);
     vec3 event = reaction_event(p.seed);
     float quantile = reaction_quantile(p.index, p.seed);
-    float birth = u.Delay + cue_birth(pattern, u.Life, quantile);
+    float birth = u.Timing.x + cue_birth(pattern, u.Life, quantile);
     if (p.reset) {
         vec3 point = cue_point(p.index, u);
         vec2 normal = cue_normal(random);
@@ -67,8 +67,15 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
             // Near grains grow through depth while lingering beside the well.
             state.velocity.xy *= 1.0 - smoothstep(0.92, 0.99, random.z) * 0.28;
         }
+        vec2 direction = vec2(-u.Action.x, (event.x - 0.5) * 0.35);
+        if (pattern == 2) {
+            vec2 radial = state.position.xy - u.Pivot.xy;
+            direction = vec2(radial.y, -radial.x) * u.Action.x;
+        }
+        if (pattern == 13) direction = vec2(event.x < 0.5 ? -1.0 : 1.0, 0.8);
+        state.velocity = reaction_launch(state.velocity, direction, random, event, clamp(u.Character, 0.0, 1.0));
         // A late first draw preserves the event's age without replaying frames.
-        float elapsed = max(0.0, p.time - birth) * (1.0 - u.Quiet);
+        float elapsed = max(0.0, p.time - birth) * (1.0 - u.Timing.z);
         state.position += state.velocity * reaction_drag(0.55, elapsed);
         state.age = p.time;
         return state;
@@ -80,11 +87,12 @@ ChibiParticleState advect(ChibiParticleInput p, ChibiParameters u, ChibiParticle
 // The visible tail cools slowly while the short beam has already disappeared.
 ChibiParticle drop_wake(ChibiParticleInput p, ChibiParameters u, vec3 random, float quantile)
 {
-    float elapsed = max(0.0, p.time - u.Delay - cue_birth(13, u.Life, quantile));
+    float birth = cue_birth(13, u.Life, quantile);
+    float elapsed = max(0.0, p.time - u.Timing.x - birth);
     vec3 event = reaction_event(p.seed);
-    float duration = reaction_duration(u.Life, random, event);
+    float duration = reaction_duration(u.Life, random, event, clamp(u.Character, 0.0, 1.0), birth);
     float envelope = smoothstep(0.0, 0.065, elapsed) *
-        (1.0 - smoothstep(duration * 0.52, duration, elapsed)) * u.Fade * reaction_population(p.index, p.seed, event);
+        (1.0 - smoothstep(duration * 0.52, duration, elapsed)) * u.Timing.y * reaction_population(p.index, p.seed, event);
     float hot = exp(-elapsed * 7.0);
     float coarse = smoothstep(0.92, 0.99, random.z);
     float grain = (1.65 + random.y * 1.8 + coarse * 6.5) * (0.8 + event.y * 0.6);
@@ -98,7 +106,7 @@ ChibiParticle drop_wake(ChibiParticleInput p, ChibiParameters u, vec3 random, fl
     result.scale = vec3(1.0 + streak * (0.7 + hot * 2.0), 0.90, 0.90);
     result.rotation = vec3(0.0, 0.0, atan(p.velocity.y, p.velocity.x));
     result.lighting = 0.2;
-    return reaction_illuminate(result, u);
+    return reaction_illuminate(result, u, random);
 }
 
 float cue_neighbor(vec3 point, vec3 cell, vec2 normal)
@@ -128,15 +136,16 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     vec3 center = (u.Point0 + u.Point1 + u.Point2 + u.Point3) * 0.25;
     int pattern = int(u.Pattern + 0.5);
     if (pattern == 13) return drop_wake(p, u, random, quantile);
-    float age = max(0.0, p.time - u.Delay);
+    float age = max(0.0, p.time - u.Timing.x);
     float birth = cue_birth(pattern, u.Life, quantile);
-    float duration = reaction_duration(u.Life, random, event);
+    float duration = reaction_duration(u.Life, random, event, clamp(u.Character, 0.0, 1.0), birth);
     float elapsed = max(0.0, age - birth);
     float phase = clamp(elapsed / max(duration, 0.001), 0.0, 1.0);
     float envelope = smoothstep(0.0, min(0.012, duration * 0.12), elapsed) *
-        (1.0 - smoothstep(duration * 0.12, duration, elapsed)) * u.Fade;
-    float motion = elapsed * (1.0 - u.Quiet);
-    float spread = 0.65 + event.y * 0.8;
+        (1.0 - smoothstep(duration * 0.12, duration, elapsed)) * u.Timing.y;
+    float motion = elapsed * (1.0 - u.Timing.z);
+    vec3 character = clamp(u.Character, 0.0, 1.0);
+    float spread = (0.65 + event.y * 0.8) * (1.0 + character.x * 0.45 + character.z * 0.25);
     float drag = reaction_drag(3.6, motion);
     float gravity_time = (motion - drag) / 3.6;
     float fleck = step(0.76, random.z);
@@ -189,6 +198,8 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
             gravity = 20.0;
             lighting = 0.48;
         }
+        velocity = reaction_launch(velocity, vec2(random.x < 0.5 ? -1.0 : 1.0, 0.35),
+            random, event, character);
         position += velocity * drag * spread - vec3(0.0, gravity * gravity_time, 0.0);
         orientation = atan(velocity.y - gravity * drag, velocity.x);
         stretch = 1.0 + fleck * 1.4;
@@ -210,12 +221,12 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
     if (pattern == 8) {
         // Thin blue shafts fill the traveled volume. Different depths and
         // lengths make a column of light, without a flat screen-space strip.
-        position = point + vec3((random.x - 0.5) * (14.0 + event.y * 14.0),
+        position = point + vec3((random.x - 0.5) * (14.0 + event.y * 14.0) * (1.0 + character.x * 0.65 - character.y * 0.25),
             -u.Action.y * 24.0 * quantile + (1.0 - quantile) * 42.0,
-            2.0 + (random.y - 0.5) * 12.0);
+            2.0 + (random.y - 0.5) * (12.0 + character.x * 18.0));
         exposed = 1.0;
         envelope = smoothstep(0.0, 0.025 + event.x * 0.015, age) *
-            (1.0 - smoothstep(0.07, u.Life * (0.8 + event.z * 0.2), age)) * u.Fade;
+            (1.0 - smoothstep(0.07, u.Life * (0.8 + event.z * 0.2), age)) * u.Timing.y;
         stretch = 7.0 + random.y * 20.0;
         orientation = 1.5707963;
         lighting = 0.0;
@@ -226,7 +237,7 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
         orientation = atan(p.velocity.y, p.velocity.x);
         stretch = 1.2 + fleck * 1.4;
         envelope = smoothstep(0.0, 0.025, elapsed) *
-            (1.0 - smoothstep(duration * 0.28, duration, elapsed)) * u.Fade;
+            (1.0 - smoothstep(duration * 0.28, duration, elapsed)) * u.Timing.y;
     }
     envelope *= exposed * reaction_population(p.index, p.seed, event);
     float hot = exp(-elapsed * 20.0);
@@ -242,13 +253,13 @@ ChibiParticle cue(ChibiParticleInput p, ChibiParameters u)
         (0.88 + u.Action.z * 0.28) * (1.0 - phase * 0.20) *
         sqrt(max(envelope, 0.0));
     result.color = vec4(mix(cool * brightness, vec3(1.6, 1.85, 2.1), hot),
-        envelope * (0.42 + fleck * 0.32 - mist * 0.17) * (1.0 - u.Quiet * 0.3));
+        envelope * (0.42 + fleck * 0.32 - mist * 0.17) * (1.0 - u.Timing.z * 0.3));
     result.scale = vec3(stretch, 0.65 + random.x * 0.3, 0.65 + random.y * 0.3);
     result.rotation = vec3((random.x - 0.5) * 0.7, (random.y - 0.5) * 0.7, orientation);
     if (pattern == 8) {
         result.color = vec4(0.16, 0.7, 1.6, envelope * 0.14);
         result.scale = vec3(stretch, 1.3 + random.x, 1.8 + random.y * 1.8);
     }
-    result.lighting = lighting * (1.0 - u.Quiet);
-    return reaction_illuminate(result, u);
+    result.lighting = lighting * (1.0 - u.Timing.z);
+    return reaction_illuminate(result, u, random);
 }

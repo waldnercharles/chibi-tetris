@@ -1,3 +1,6 @@
+#ifndef COSMIC_COMMON_GLSL
+#define COSMIC_COMMON_GLSL
+
 #include "ParticleFlow.glsl"
 
 // Stable identities, a continuous divergence-free flow, and board-space forces.
@@ -14,6 +17,12 @@ vec4 cosmic_stage_weights(float style)
 {
     vec4 distance = abs(fract((style - vec4(0.0, 1.0, 2.0, 3.0) + 2.0) * 0.25) * 4.0 - 2.0);
     return 1.0 - smoothstep(0.0, 1.0, distance);
+}
+
+float cosmic_heading(vec3 velocity)
+{
+    if (dot(velocity.xy, velocity.xy) < 0.0001) return 0.0;
+    return atan(velocity.y, velocity.x);
 }
 
 float cosmic_board_quiet(vec2 projected, float duet)
@@ -79,3 +88,5 @@ vec3 cosmic_tint(vec3 random, vec3 position, vec4 weights, ChibiParameters u)
     float depth = 1.0 - smoothstep(1850.0, 3500.0, -position.z);
     return tint * spectrum * mix(0.17, 1.0, depth);
 }
+
+#endif

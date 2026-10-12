@@ -6,11 +6,18 @@ entry "release"
 update "advect"
 (array)includes "ReactionCommon.glsl" "ParticleFlow.glsl"
 parameters {
+    Timing {
+        type "vec3"
+        (array)default 0.0 1.0 0.0
+    }
+    Character {
+        type "vec3"
+        (array)default 0.0 0.0 0.0
+    }
     Loss type="float" default=0.0
     RowMask type="float" default=1023.0
     Pattern type="float" default=0.0
     Life type="float" default=0.0
-    Quiet type="float" default=0.0
     Point0 {
         type "vec3"
         (array)default 0.0 0.0 0.0
@@ -59,8 +66,6 @@ parameters {
         type "vec3"
         (array)default 90.0 50.0 1080.0
     }
-    Delay type="float" default=0.0
-    Fade type="float" default=1.0
     Wave0 {
         type "vec3"
         (array)default 0.0 0.0 1.6

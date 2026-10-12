@@ -12,6 +12,9 @@ behavior StageChecks {
     transition_baseline := 0
     transition_clock := 0
     wrap_revision: int = 0
+    frozen_character := vec3(0, 0, 0)
+    frozen_structure := vec3(0, 0, 0)
+    section_baseline := 0
 
     function Check(condition: bool, message: string) {
         self.TestReport.checks += 1
@@ -43,6 +46,8 @@ behavior StageChecks {
     }
 
     function Frozen() {
+        Check(world.StageState.character.x == frozen_character.x && world.StageState.character.y == frozen_character.y && world.StageState.character.z == frozen_character.z, "musical traits freeze at their rendered values while stopped")
+        Check(world.StageState.structure.x == frozen_structure.x && world.StageState.structure.y == frozen_structure.y && world.StageState.structure.z == frozen_structure.z, "section shape and density freeze while stopped")
         Check(world.StageState.style == frozen_style, "stage morph retains its exact position while stopped")
         Check(world.StageState.clock == frozen_clock, "stage lighting and particle flow retain their clock while stopped")
         Check(world.StageState.seed == frozen_seed, "stopped state and new run never reseed stable particle identities")
@@ -59,16 +64,16 @@ behavior StageChecks {
         blue := cast<number>(color >> 8 & cast<uint>(255))
         match (family) {
             case 0 {
-                Check(blue > red + 70 && green > red + 60, "the stream stage lights the well with a cyan palette")
+                Check(blue > red + 70 && green > red + 60, "ordered orbits light the well with a cyan palette")
             }
             case 1 {
-                Check(abs(red - green) < 12 && abs(green - blue) < 30, "the orbital stage uses pale ivory light instead of warm orange")
+                Check(abs(red - green) < 12 && abs(green - blue) < 30, "tonal ribbons use pale ivory light")
             }
             case 2 {
-                Check(red > green + 60 && green > blue + 60, "the geometric stage has a distinct amber palette")
+                Check(red > green + 60 && green > blue + 60, "airy branches have a distinct amber palette")
             }
             case 3 {
-                Check(green > red + 90 && blue > red + 70, "the lattice stage uses teal light")
+                Check(green > red + 90 && blue > red + 70, "dense clouds use teal light")
             }
         }
     }
@@ -103,14 +108,23 @@ behavior StageChecks {
                 world.Session.stage = 1
             }
             case 6 {
-                Check(world.StageState.revision == 2 && world.StageState.reason == 2, "an owned chapter change begins one stage transition")
-                Check(world.StageState.target == 2 && world.StageState.style > 1 && world.StageState.style < 1.01, "the new scene starts a slow continuous morph instead of switching geometry")
+                Check(world.StageState.revision == 1 && world.StageState.style == 1, "chapter progress never overrides the measured musical form")
+                world.MusicCharacterState.ready = true
+                world.MusicCharacterState.character = vec3(0.9, 0.1, 0.1)
+                world.MusicCharacterState.dynamics = vec3(0.6, 0.45, 0.9)
+                world.MusicCharacterState.envelope = 0.55
+                world.MusicCharacterState.selected = 0
+                world.MusicCharacterState.section_serial = 1
                 world.VisualState.energy = 0.75
                 world.VisualState.bass = 0.8
                 world.VisualState.mid = 0.3
                 world.VisualState.treble = 0.2
             }
             case 9 {
+                Check(world.StageState.target == 0 && world.StageState.style < 1 && world.StageState.style > 0.99, "percussive identity begins the shorter backward morph toward ordered orbits")
+                Check(world.StageState.revision == 2 && world.StageState.reason == 2, "initial audible identity owns the first musical morph")
+                frozen_character = world.StageState.character
+                frozen_structure = world.StageState.structure
                 frozen_style = world.StageState.style
                 frozen_clock = world.StageState.clock
                 frozen_seed = world.StageState.seed
@@ -129,6 +143,8 @@ behavior StageChecks {
                 world.VisualState.energy = 0.1
                 world.VisualState.bass = 0.1
                 world.VisualState.treble = 0.95
+                world.MusicCharacterState.character = vec3(0.7, 0.25, 0.15)
+                world.MusicCharacterState.envelope = 0.9
             }
             case 17 {
                 Frozen()
@@ -147,13 +163,13 @@ behavior StageChecks {
                 world.Session.effects = 2
             }
             case 28 {
-                Check(world.StageState.style > frozen_style && world.StageState.style - frozen_style < 0.02, "resume continues the in-flight stage transition without a jump")
+                Check(world.StageState.style < frozen_style && frozen_style - world.StageState.style < 0.02, "resume continues the in-flight stage transition without a jump")
                 Check(world.StageState.clock > frozen_clock && world.StageState.clock - frozen_clock < 0.1, "resume advances only the new frame deltas")
                 Check(world.StageState.seed == frozen_seed && world.StageState.revision == frozen_revision, "resume and session restart retain the in-flight stage and stable seed")
                 Check(LightSum() > 8, "resume restores the lit scene")
             }
             case 42 {
-                Check(world.StageState.style > frozen_style && world.StageState.style < 1.15, "scene evolution remains smooth through subsequent audio frames")
+                Check(world.StageState.style < frozen_style && world.StageState.style > 0.85, "scene evolution remains smooth through subsequent audio frames")
                 Check(world.StageState.revision == 2, "ordinary beats never masquerade as repeated song boundaries")
                 world.Session.screen = 2
                 world.StageState.style = 3
@@ -164,10 +180,12 @@ behavior StageChecks {
                 StageGeometry()
                 Palette(3)
                 world.Session.screen = 1
-                world.Session.stage += 1
+                world.MusicCharacterState.selected = 0
+                world.MusicCharacterState.section_serial = 2
+                world.MusicCharacterState.envelope = 0.7
             }
             case 46 {
-                Check(world.StageState.target == 0 && world.StageState.style > 3 && world.StageState.style < 3.01, "teal lattice starts a continuous final-family morph toward cyan streams")
+                Check(world.StageState.target == 0 && world.StageState.style > 3 && world.StageState.style < 3.01, "dense clouds take the shorter wrap toward ordered cyan orbits")
                 Check(world.StageState.transition > 0 && world.StageState.transition < 0.01, "the final-family morph begins gradually")
                 transition_baseline = world.StageState.transition
                 transition_clock = world.StageState.clock
@@ -187,11 +205,28 @@ behavior StageChecks {
                 Check(world.StageState.transition == 1 && world.StageState.revision == wrap_revision, "wrap completion settles once without creating another transition")
                 Check(world.StageState.seed == frozen_seed, "the complete cycle retains every stable particle identity")
                 Check(LightSum() > 8, "the complete cycle retains the actual lit scene")
-                world.Session.screen = 2
-                world.StageState.style = 2
+                section_baseline = world.StageState.structure.z
+                world.MusicCharacterState.section_serial = 3
+                world.MusicCharacterState.envelope = 1
             }
             case 82 {
+                Check(world.StageState.section_serial == 3 && world.StageState.revision == wrap_revision && world.StageState.style == 0, "a same-family section updates ownership without rotating the composition")
+                Check(world.StageState.structure.z > section_baseline, "a same-family section continuously changes the form envelope")
+                world.Session.screen = 2
+                world.StageState.style = 2
+                world.StageState.target = 2
+            }
+            case 84 {
                 Palette(2)
+                world.StageState.style = 0
+                world.StageState.target = 0
+                world.StageState.transition = 1
+                world.MusicCharacterState.selected = 3
+                world.MusicCharacterState.section_serial = 4
+                world.Session.screen = 1
+            }
+            case 87 {
+                Check(world.StageState.target == 3 && world.StageState.style > 3.99 && world.StageState.style < 4, "the inverse wrap follows the adjacent family instead of visiting two unrelated forms")
                 self.TestReport.done = true
             }
         }

@@ -1,0 +1,34 @@
+// Visual comparison only: the four production forms share seed, clock and
+// intensity. Panels are 1 orbits, 2 ribbons, 3 branches and 4 complex clouds.
+behavior MusicShapes {
+    fields: entity[]
+    characters := [vec3(0.95, 0.1, 0.1), vec3(0.1, 0.95, 0.15), vec3(0.15, 0.2, 0.95), vec3(0.8, 0.8, 0.8)]
+    time := 0
+
+    on Begin {
+        fields = [get_global_variable("Shape0"), get_global_variable("Shape1"), get_global_variable("Shape2"), get_global_variable("Shape3")]
+        for i in 0..3 {
+            field := get(fields, i)
+            set_material_parameter(field, "Style", cast<number>(i))
+            set_material_parameter(field, "Character", get(characters, i))
+            set_material_parameter(field, "Variation", 17)
+            set_material_parameter(field, "Eye", vec3(0, 0, 1080))
+            set_material_parameter(field, "Energy", 0.7)
+            set_material_parameter(field, "Bass", 0.65)
+            set_material_parameter(field, "Mid", 0.6)
+            set_material_parameter(field, "Treble", 0.55)
+        }
+    }
+
+    on Tick(dt) {
+        time += min(dt, 0.05)
+        beat := max(0, cos(time * 12.5663706))
+        for i in 0..3 {
+            field := get(fields, i)
+            field.ParticleField3D.time = time
+            set_material_parameter(field, "Flow", time * 0.8)
+            set_material_parameter(field, "Pulse", time * 12.5663706)
+            set_material_parameter(field, "Beat", beat * beat * 0.8)
+        }
+    }
+}

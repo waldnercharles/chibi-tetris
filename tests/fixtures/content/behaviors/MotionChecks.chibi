@@ -43,6 +43,17 @@ behavior MotionChecks {
     prior_ripple := 0
     paused_ripple := 0
     paused_sink := 0
+    quiet_emission := 0
+    neutral_emission := 0
+    neutral_color: uint = 0
+    tonal_emission := 0
+    tonal_lift := 0
+    tonal_depth := 0
+    tonal_settled := 0
+    character_row: int = 0
+    character_column: int = 0
+    character_score: int = 0
+    character_pieces: int = 0
 
     on Begin {
         world = get_global_variable("World")
@@ -130,6 +141,16 @@ behavior MotionChecks {
         Check(active.Shader.material == "BlockSurface", "stage blocks use a lit material")
         alpha := cast<number>(active.Material.scene & 255)
         Check(alpha >= 214 && alpha <= 246, "each stage retains a translucent coat over its stable dark body")
+    }
+
+    function UniformHue() -> (uniform: bool) {
+        palette := Pieces.Color(1) & 4294967040
+        for tile in find_entities_with_component("MeshAsset") {
+            if !tile.RenderState.hidden && (tile.Material.scene & 4294967040) != palette {
+                return false
+            }
+        }
+        return true
     }
 
     on Tick {
@@ -430,6 +451,74 @@ behavior MotionChecks {
             }
             case 390 {
                 Check(near_tile.Material.emission_intensity < 0.1, "expired or cleared waves never replay on old settled cells")
+                // Hold the logical run still while contrasting the same sound level.
+                world.Session.journey = true
+                active = Active()
+                quiet_emission = active.Material.emission_intensity
+                character_row = board.BoardState.row
+                character_column = board.BoardState.column
+                character_score = board.BoardState.score
+                character_pieces = board.BoardState.pieces
+                world.VisualState.energy = 0.6
+                world.VisualState.bass = 0.1
+                world.VisualState.mid = 0.4
+                world.VisualState.treble = 0.2
+            }
+            case 450 {
+                neutral_emission = active.Material.emission_intensity
+                neutral_color = active.Material.scene
+                world.StageState.character = vec3(0, 1, 0)
+                world.StageState.structure = vec3(0.35, 0.25, 0)
+            }
+            case 540 {
+                tonal_emission = active.Material.emission_intensity
+                tonal_lift = active.Transform3D.position.z
+                tonal_depth = active.Transform3D.scale.z
+                tonal_settled = near_tile.Material.emission_intensity
+                Check(tonal_emission > neutral_emission + 0.015, "sustained character adds a calm luminous finish at the same sound level")
+                Check(tonal_lift > 3.4 && tonal_lift < 4.4 && tonal_depth < 1.04, "sustained character adds only a shallow rendered lift and depth change")
+                Check(board.BoardState.row == character_row && board.BoardState.column == character_column && board.BoardState.score == character_score && board.BoardState.pieces == character_pieces, "song character leaves logical cells and score untouched")
+                Check(active.Material.scene == neutral_color && active.Geometry3D.width == 22 && active.Geometry3D.height == 22, "character changes preserve hue opacity and occupied footprint")
+                world.StageState.character = vec3(1, 0, 1)
+                world.StageState.structure = vec3(0.9, 0.85, 0.8)
+            }
+            case 630 {
+                Check(active.Material.emission_intensity < tonal_emission - 0.005, "percussive airy character retains less sustained glow at equal loudness")
+                Check(near_tile.Material.emission_intensity < tonal_settled - 0.005, "contrasting characters also change the finish of settled cells")
+                Check(active.Transform3D.position.z < tonal_lift - 0.15, "percussive character follows attacks instead of sustained hover")
+                Check(active.Transform3D.scale.z < tonal_depth - 0.002, "airy percussive depth stays distinct from a sustained body")
+                Check(UniformHue(), "song character keeps every active settled and preview tetromino in one palette")
+                Check(active.Material.scene == neutral_color, "character never increases coat opacity or occlusion")
+                paused_position = active.Transform3D.position
+                paused_scale = active.Transform3D.scale
+                paused_emission = active.Material.emission_intensity
+                paused_color = active.Material.scene
+                settled_emission = near_tile.Material.emission_intensity
+                world.Session.screen = 2
+                world.StageState.character = vec3(0, 1, 0)
+                world.StageState.structure = vec3(0, 0, 0)
+                world.VisualState.energy = 0
+                world.VisualState.bass = 0
+                world.VisualState.mid = 0
+                world.VisualState.treble = 0
+            }
+            case 650 {
+                Check(Same(active.Transform3D.position, paused_position) && Same(active.Transform3D.scale, paused_scale), "pause freezes the character-driven piece pose")
+                Check(active.Material.scene == paused_color && active.Material.emission_intensity == paused_emission && near_tile.Material.emission_intensity == settled_emission, "pause freezes active and settled character finishes")
+                world.Session.screen = 1
+            }
+            case 740 {
+                Check(abs(active.Material.emission_intensity - quiet_emission) < 0.001, "silence returns the coat to its quiet finish despite retained song identity")
+                Check(abs(active.Transform3D.position.z - 3) < 0.001 && abs(active.Transform3D.scale.z - 1) < 0.001, "silence settles the character-driven lift without a snap")
+                world.Session.reduced_motion = true
+                world.StageState.character = vec3(1, 0, 1)
+                world.VisualState.energy = 1
+                world.VisualState.bass = 1
+                world.VisualState.beat = 1
+            }
+            case 744 {
+                Check(active.Transform3D.position.z == 3 && Same(active.Transform3D.scale, vec3(1, 1, 1)), "reduced motion keeps character-driven transforms stable")
+                Check(abs(active.Material.emission_intensity - quiet_emission) < 0.001, "reduced motion keeps the quiet material finish under a new character")
                 self.TestReport.done = true
             }
         }

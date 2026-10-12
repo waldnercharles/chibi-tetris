@@ -1,5 +1,80 @@
 # Validation record
 
+## Sound-driven forms and organic flow — October 12, 2026
+
+The clean engine pin is `1b6fddf7f4c42f7c632916c2d33c0bdad0aaa205`.
+Its additive audio-character API measures centroid, flatness, flux, low-frequency
+weight, stereo width and crest from the existing BTT transform and PCM. Native
+and Wasm checks cover tonal/noisy and stereo contrasts, complete-window startup,
+silence, source/format resets, chunk independence and Nyquist-bin handling.
+The audio callback and processing introduce no new allocation or FFT.
+
+Authored sound traits now select and continuously reshape orbital swarms,
+tonal streams, airy sheets and dense turbulent knots. Fixed scene cycling is
+removed. Four comparison fields use the same seed, clock and intensity, making
+their sound-profile differences visible without changing the input level.
+Visual review rejected an intermediate exact-curve implementation. The final
+fields use filled birth volumes, retained momentum, shared curl and soft
+boundary pressure, informed by the [Particula study](reference-particle-flow.md).
+Five populations respond across bass, midrange and treble. New action effects
+capture the sound character at birth; older effects retain their trajectories
+and bounded lifetime. Blocks retain a common color while their finish and
+restrained depth motion respond to the passage.
+
+Three complete score traces were replayed through the production analyzer and
+the actual authored response. The earlier detector accepted only initial
+identity. The final detector accepts Shore's 20-second arrangement entry at
+22.983 seconds without forcing a different family. Current and Aurora retain
+continuous variation without additional discrete events. The regression for
+a modest sustained tonal change fails the former detector. These are measured
+sound traits, not genre, instrument or universal song-section recognition.
+
+Independent source reviews covered analyzer ownership, reset behavior,
+authored smoothing and section hysteresis, GPU state, shader parameter limits,
+reaction retirement and reduced motion. Relevant checks passed within each
+command group's production 60-second deadline:
+
+| Check | Result |
+| --- | --- |
+| Engine native, Release without sanitizers | 317 cases / 179,233 assertions; 13.843 s. |
+| Engine language | 178 cases / 10,518 assertions; 0.942 s. |
+| Engine tooling | 93 cases / 22,588 assertions; 21.494 s. |
+| Wasm audio character | 7 cases / 37 assertions; 0.200 s. |
+| Generic feature-coverage scene | 2 cases / 8 assertions; 1.322 s. |
+| Character, stage, motion, VFX, music field, consumer and onboarding | 9 case executions / 94 dispatcher assertions plus production validation; 21.431 s. |
+| Final section calibration and stage regression | 2 cases / 16 dispatcher assertions; 3.644 s. |
+| Final shader VFX/consumer contracts and production validation | 2 cases / 19 dispatcher assertions; 9.478 s; 146 assets, zero diagnostics. |
+
+The authored cases include 33 character checks, 66 stage checks, 141 motion
+checks, 216 VFX checks and 44 music-field checks. Earlier Board and StageDirector
+implementations fail the new contrasts and measured-selection regressions.
+The final authored assets and C dispatcher are formatted; diff checks pass.
+No project migration is required for the additive API. Matching clean native
+SDK and browser-player packages produced native and web exports.
+
+A final hidden Cocoa/Metal preview rendered the four-profile fixture at
+640 × 360, with 60 CPU steps, two GPU warmup frames and one saved frame:
+65,536 grains and 10 entities, completed in 1.776 seconds. It establishes
+compilation and rendering, not a native frame-rate guarantee. Browser checks
+used the production scene: pointer Play, movement, rotation, drops, overlapping
+trails, direct loss-to-menu recovery, pause and reduced motion. Two captures
+separated while paused were byte-identical. A disposable shell confirmed the
+actual GLES 3.0 fallback and was removed after testing. No product console or
+shader errors appeared; font-loading information uses the console's error level.
+
+At the normal 2560 × 1440 canvas (1280 × 720 CSS), two-second warmups followed
+by 2.5-second samples measured WebGPU at 58.80 FPS, 16.7 ms median and 24.9 ms
+p95, and WebGL at 57.62 FPS, 16.7 ms median and 24.8 ms p95. These short samples
+are not sustained or cross-device guarantees. Publication checks the committed
+revision, public checksums and actual browser play separately.
+
+Focused logs, compact screenshots, traces and scratch probe source remain in
+ignored `.chibi/music-shape`; disposable project/reference clones, decoded PCM
+and probe binaries were removed. Full/quarantined native, render, Studio and
+game-wide suites were not run. External capture routing and human listening
+remain unverified. The [audio notes](audio.md#sound-character-and-section-changes)
+record the library evaluation; no additional dependency was imported this pass.
+
 ## Traveling light, varied tails and tracked rhythm — October 11, 2026
 
 The third pass keeps the reference boundary at 9:00. It adds one slate-cyan

@@ -1453,7 +1453,7 @@ TEST_CASE(authored_environment_consumer)
 
 TEST_CASE(controlled_soft_drop_and_piece_motion)
 {
-    yyjson_mut_doc *doc = request("MotionChecks", 392);
+    yyjson_mut_doc *doc = request("MotionChecks", 746);
     key(doc, 0, 0);
     tap(doc, 28, KEY_LEFT);
     tap(doc, 30, KEY_RIGHT);
@@ -1472,7 +1472,7 @@ TEST_CASE(controlled_soft_drop_and_piece_motion)
     tap(doc, 270, KEY_SPACE);
     tap(doc, 278, KEY_SPACE);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(125));
+    REQUIRE(report(141));
     return true;
 }
 
@@ -1481,7 +1481,7 @@ TEST_CASE(evolving_stage_direction)
     yyjson_mut_doc *doc = request("StageChecks", 126);
     key(doc, 0, 0);
     REQUIRE(snapshot(doc));
-    REQUIRE(report(54));
+    REQUIRE(report(66));
     return true;
 }
 
@@ -1625,6 +1625,15 @@ TEST_CASE(musical_spatial_forces)
     return true;
 }
 
+TEST_CASE(musical_character_and_sections)
+{
+    yyjson_mut_doc *doc = request("MusicCharacterChecks", 2);
+    key(doc, 0, 0);
+    REQUIRE(snapshot(doc));
+    REQUIRE(report(33));
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     const char *selection = getenv("STILLWATER_REACTIONS") ? "--reactions" : "--all";
@@ -1652,17 +1661,18 @@ int main(int argc, char **argv)
     bool loss = !strcmp(selection, "--loss");
     bool music_response = !strcmp(selection, "--music-response");
     bool music_field = !strcmp(selection, "--music-field");
+    bool music_character = !strcmp(selection, "--music-character");
     if ((argc != 1 && argc != 4) || !controller_path || !project_path ||
         !(all || reactions || consumer || hud || onboarding || attract || ui ||
           menu || menu_camera || rules || previews || motion || stage || vfx ||
-          loss || music_response || music_field)) {
+          loss || music_response || music_field || music_character)) {
         fprintf(
             stderr,
             "Usage: %s "
             "--all|--rules|--reactions|--consumer|--hud|--onboarding|--attract|"
             "--ui|--menu|--menu-camera|--"
             "previews|--motion|--stage|--vfx|--loss|--music-response|--music-"
-            "field "
+            "field|--music-character "
             "/path/to/chibi_ctl /path/to/game\n",
             argv[0]
         );
@@ -1749,6 +1759,9 @@ int main(int argc, char **argv)
     }
     if (all || music_field) {
         RUN_TEST_CASE(musical_spatial_forces);
+    }
+    if (all || music_character) {
+        RUN_TEST_CASE(musical_character_and_sections);
     }
     pu_print_stats();
     yyjson_doc_free(reply);

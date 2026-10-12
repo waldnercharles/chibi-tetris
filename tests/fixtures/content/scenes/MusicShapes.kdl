@@ -1,0 +1,99 @@
+version 1
+name "MusicShapes"
+presentation "3d"
+(array)entities {
+    - name="Camera" prototype="MusicShapeCamera"
+    - name="Forms" prototype="MusicShapeEnvironment"
+    - {
+        name "Shape0"
+        prototype "MusicShapeField"
+        components {
+            GlobalBinding name="Shape0"
+            Transform3D {
+                position x=-430.0 y=250.0 z=0.0
+                scale x=0.19 y=0.19 z=0.19
+            }
+        }
+    }
+    - {
+        name "Label1"
+        prototype "HudText"
+        components {
+            MeshAsset source="content/meshes/text/digit_1.mesh"
+            RenderState hidden=#false
+            Transform3D {
+                position x=-430.0 y=395.0 z=0.0
+                scale x=16.0 y=16.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Shape1"
+        prototype "MusicShapeField"
+        components {
+            GlobalBinding name="Shape1"
+            Transform3D {
+                position x=430.0 y=250.0 z=0.0
+                scale x=0.19 y=0.19 z=0.19
+            }
+        }
+    }
+    - {
+        name "Label2"
+        prototype "HudText"
+        components {
+            MeshAsset source="content/meshes/text/digit_2.mesh"
+            RenderState hidden=#false
+            Transform3D {
+                position x=430.0 y=395.0 z=0.0
+                scale x=16.0 y=16.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Shape2"
+        prototype "MusicShapeField"
+        components {
+            GlobalBinding name="Shape2"
+            Transform3D {
+                position x=-430.0 y=-250.0 z=0.0
+                scale x=0.19 y=0.19 z=0.19
+            }
+        }
+    }
+    - {
+        name "Label3"
+        prototype "HudText"
+        components {
+            MeshAsset source="content/meshes/text/digit_3.mesh"
+            RenderState hidden=#false
+            Transform3D {
+                position x=-430.0 y=-105.0 z=0.0
+                scale x=16.0 y=16.0 z=1.0
+            }
+        }
+    }
+    - {
+        name "Shape3"
+        prototype "MusicShapeField"
+        components {
+            GlobalBinding name="Shape3"
+            Transform3D {
+                position x=430.0 y=-250.0 z=0.0
+                scale x=0.19 y=0.19 z=0.19
+            }
+        }
+    }
+    - {
+        name "Label4"
+        prototype "HudText"
+        components {
+            MeshAsset source="content/meshes/text/digit_4.mesh"
+            RenderState hidden=#false
+            Transform3D {
+                position x=430.0 y=-105.0 z=0.0
+                scale x=16.0 y=16.0 z=1.0
+            }
+        }
+    }
+}

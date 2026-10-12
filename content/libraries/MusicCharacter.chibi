@@ -1,0 +1,125 @@
+// Audible traits, not genre labels. Native descriptors describe the selected PCM.
+library MusicCharacter {
+    function Reset(world: entity) {
+        serial := world.MusicCharacterState.section_serial
+        world.MusicCharacterState = { section_serial: serial, selected: -1 }
+    }
+
+    function Score(character: CF_V3, dynamics: CF_V3, family: int) -> (score: number) {
+        density := dynamics.y
+        match (family) {
+            case 0 {
+                return character.x * (0.6 + dynamics.z * 0.4) + dynamics.z * 0.2 - density * 0.1
+            }
+            case 1 {
+                return character.y * (1 - character.x * 0.25) * (1 - density * 0.2)
+            }
+            case 2 {
+                return character.z * (1 - density * 0.25)
+            }
+        }
+        return density * (0.5 + character.z * 0.4 + character.x * 0.3)
+    }
+
+    function Select(world: entity) {
+        selected := world.MusicCharacterState.selected
+        best: int = 0
+        strongest := -1
+        for family in 0..3 {
+            score := Score(world.MusicCharacterState.character, world.MusicCharacterState.dynamics, family)
+            if score > strongest {
+                strongest = score
+                best = family
+            }
+        }
+        if selected < 0 || strongest > Score(world.MusicCharacterState.character, world.MusicCharacterState.dynamics, selected) + 0.12 {
+            world.MusicCharacterState.selected = best
+        }
+    }
+
+    function Section(world: entity, strength: number) {
+        Select(world)
+        world.MusicCharacterState.section_serial += 1
+        world.MusicCharacterState.envelope = strength
+        world.MusicCharacterState.cooldown = 0
+        world.MusicCharacterState.dwell = 0
+        world.MusicCharacterState.baseline_features = world.MusicCharacterState.features
+        world.MusicCharacterState.baseline_dynamics = world.MusicCharacterState.dynamics
+        world.MusicCharacterState.baseline_character = world.MusicCharacterState.character
+    }
+
+    // spectrum=(centroid Hz, flatness, positive spectral flux), texture=(low weight, stereo width, crest).
+    function Step(world: entity, level: number, spectrum: CF_V3, texture: CF_V3, dt: number) {
+        if dt > 0.1 {
+            world.MusicCharacterState.dwell = 0
+            return
+        }
+        delta := clamp(dt, 0, 0.1)
+        world.MusicCharacterState.envelope *= exp(-delta * 0.45)
+        world.MusicCharacterState.cooldown = min(30, world.MusicCharacterState.cooldown + delta)
+        if level <= 0.0025 {
+            // A quiet passage retains the established identity and form.
+            world.MusicCharacterState.dwell = 0
+            dynamics := world.MusicCharacterState.dynamics
+            dynamics.y *= exp(-delta * 1.2)
+            dynamics.z *= exp(-delta * 1.2)
+            world.MusicCharacterState.dynamics = dynamics
+            return
+        }
+        // Tonal music has very small flatness. Perceptual scales preserve its
+        // audible variation without treating every nonzero value as noise.
+        brightness := sqrt(clamp((spectrum.x - 80) / 8000, 0, 1))
+        flatness := sqrt(sqrt(clamp(spectrum.y, 0, 1)))
+        flux := clamp(spectrum.z * 4, 0, 1)
+        low := clamp(texture.x, 0, 1)
+        width := clamp(texture.y, 0, 1)
+        crest := clamp(texture.z, 0, 1)
+        rhythm := clamp(world.VisualState.beat_confidence, 0, 1)
+        // Low weight gives real attacks more body; bass alone invents no pulse.
+        percussion := clamp((flux * 0.8 + max(0, crest - 0.38) * (0.9 + rhythm * 0.7)) * (0.65 + low * 0.6), 0, 1)
+        tonal := (1 - clamp(flatness * 1.8, 0, 1)) * (1 - flux * 0.6) * (1 - max(0, crest - 0.45) * 0.6)
+        airy := clamp(flatness * 1.1 + brightness * 0.45 + width * 0.12, 0, 1)
+        density := clamp(world.VisualState.energy * 0.4 + flatness * 0.45 + width * 0.1 + (1 - crest) * 0.1, 0, 1)
+        features := vec3(brightness, flatness, low)
+        dynamics := vec3(flux, density, rhythm)
+        character := vec3(percussion, tonal, airy)
+        blend := 1 - exp(-delta * 0.8)
+        world.MusicCharacterState.character += (character - world.MusicCharacterState.character) * blend
+        world.MusicCharacterState.features += (features - world.MusicCharacterState.features) * blend
+        world.MusicCharacterState.dynamics += (dynamics - world.MusicCharacterState.dynamics) * blend
+        world.MusicCharacterState.heard += delta
+        if !world.MusicCharacterState.ready {
+            world.MusicCharacterState.baseline_features = world.MusicCharacterState.features
+            world.MusicCharacterState.baseline_dynamics = world.MusicCharacterState.dynamics
+            world.MusicCharacterState.baseline_character = world.MusicCharacterState.character
+            if world.MusicCharacterState.heard >= 2.5 {
+                world.MusicCharacterState.ready = true
+                Section(world, 0.55)
+            }
+            return
+        }
+        difference := world.MusicCharacterState.features - world.MusicCharacterState.baseline_features
+        movement := world.MusicCharacterState.dynamics - world.MusicCharacterState.baseline_dynamics
+        timbre := world.MusicCharacterState.character - world.MusicCharacterState.baseline_character
+        novelty := (abs(difference.x) + abs(difference.y) + abs(difference.z) + abs(movement.x) + abs(movement.y) + abs(movement.z)) / 6
+        // Accumulated timbre changes can mark a new layer within the same family.
+        timbre_change := abs(timbre.x) + abs(timbre.y) + abs(timbre.z)
+        novelty = max(novelty, timbre_change)
+        world.MusicCharacterState.novelty = novelty
+        baseline_blend := 1 - exp(-delta * 0.08)
+        world.MusicCharacterState.baseline_features += difference * baseline_blend
+        world.MusicCharacterState.baseline_dynamics += movement * baseline_blend
+        world.MusicCharacterState.baseline_character += timbre * baseline_blend
+        if world.MusicCharacterState.cooldown < 8 {
+            return
+        }
+        if novelty > 0.15 {
+            world.MusicCharacterState.dwell += delta
+        } else {
+            world.MusicCharacterState.dwell = max(0, world.MusicCharacterState.dwell - delta * 2)
+        }
+        if world.MusicCharacterState.dwell >= 2 {
+            Section(world, clamp(novelty * 3, 0.45, 1))
+        }
+    }
+}

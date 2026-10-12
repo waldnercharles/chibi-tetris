@@ -1,0 +1,17 @@
+// Measured song identity and rolling section evidence; visual consumers ease separately.
+component MusicCharacterState {
+    character: CF_V3
+    features: CF_V3
+    dynamics: CF_V3
+    baseline_features: CF_V3
+    baseline_dynamics: CF_V3
+    baseline_character: CF_V3
+    heard: number
+    dwell: number
+    cooldown: number
+    novelty: number
+    envelope: number
+    section_serial: int
+    selected: int
+    ready: bool
+}

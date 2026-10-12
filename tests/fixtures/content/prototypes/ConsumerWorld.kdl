@@ -3,6 +3,7 @@ name "ConsumerWorld"
 components {
     (object)DirectionalLight
     GlobalBinding name="World"
+    (object)MusicCharacterState
     Session effects=2 mode=3 run=1 screen=1
     StageState seed=17.0
     (object)VisualState

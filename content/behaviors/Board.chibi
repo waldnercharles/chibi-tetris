@@ -50,6 +50,9 @@ behavior Board {
     base_finish: CF_V3 = { x: 0.54, y: 0.06, z: 0.025 }
     base_opacity := 0.9
     finish_signal: CF_V3 = { x: 0, y: 0, z: 0 }
+    finish_character: CF_V3 = { x: 0, y: 0, z: 0 }
+    finish_structure: CF_V3 = { x: 0, y: 0, z: 0 }
+    impact_gain := 1
     music_lift := 0
     music_scale := 0
     action_drive := 0
@@ -651,7 +654,7 @@ behavior Board {
     function Finish(tile: entity, active: bool) {
         emission := block_emission
         if active {
-            emission += 0.035 + music_scale * 0.5 + action_flash * 0.1
+            emission += 0.035 + music_scale * 0.5 + action_flash * 0.1 * impact_gain
         }
         // The coat changes alpha; the mesh's inner BlockCore always writes depth.
         alpha := cast<uint>(cast<int>(floor(block_opacity * 255)))
@@ -741,8 +744,10 @@ behavior Board {
         }
         quiet := world.Session.reduced_motion || world.Session.effects == 0
         if quiet {
-            if finish_signal.x + finish_signal.y + finish_signal.z > 0 {
+            if finish_signal.x + finish_signal.y + finish_signal.z + finish_character.x + finish_character.y + finish_character.z + finish_structure.x + finish_structure.y + finish_structure.z > 0 {
                 finish_signal = vec3(0, 0, 0)
+                finish_character = vec3(0, 0, 0)
+                finish_structure = vec3(0, 0, 0)
                 UpdateFinish()
             }
             if music_lift != 0 || music_scale != 0 {
@@ -756,7 +761,11 @@ behavior Board {
             finish_clock += seconds
             if finish_clock >= 0.125 {
                 signal := vec3(clamp(world.VisualState.bass, 0, 1), clamp(world.VisualState.energy * 0.6 + world.VisualState.mid * 0.4, 0, 1), clamp(world.VisualState.treble, 0, 1))
-                finish_signal += (signal - finish_signal) * (1 - exp(-min(finish_clock, 0.25) * 6))
+                blend := 1 - exp(-min(finish_clock, 0.25) * 6)
+                activity := clamp(world.VisualState.energy * 2 + world.VisualState.bass * 0.4, 0, 1)
+                finish_signal += (signal - finish_signal) * blend
+                finish_character += (world.StageState.character * activity - finish_character) * blend
+                finish_structure += (world.StageState.structure * activity - finish_structure) * blend
                 finish_clock = 0
                 UpdateFinish()
             }
@@ -767,23 +776,29 @@ behavior Board {
         elapsed := min(music_clock, 0.1)
         music_clock = 0
         pulse := clamp(world.VisualState.beat * 0.7 + world.VisualState.bass * 0.2 + world.VisualState.energy * 0.1, 0, 1)
-        music_lift += (pulse * 2.6 - music_lift) * (1 - exp(-elapsed * 18))
-        music_scale += (pulse * 0.075 - music_scale) * (1 - exp(-elapsed * 18))
+        energy := clamp(world.VisualState.energy, 0, 1)
+        lift := pulse * (2.6 + finish_character.x * 0.45) + energy * (finish_character.y * 0.75 + finish_character.z * 0.25)
+        depth := pulse * 0.075 + energy * (finish_character.y * 0.018 + finish_character.z * 0.008)
+        blend := 1 - exp(-elapsed * (18 + finish_character.x * 4 - finish_character.y * 8))
+        music_lift += (lift - music_lift) * blend
+        music_scale += (min(depth, 0.095) - music_scale) * blend
         motion_dirty = true
     }
 
     function UpdateFinish() {
-        roughness := clamp(base_finish.x - finish_signal.y * 0.08 + finish_signal.z * 0.035, 0.14, 0.7)
-        metallic := clamp(base_finish.y + finish_signal.x * 0.07 + finish_signal.z * 0.04, 0, 0.72)
-        emission := base_finish.z + finish_signal.y * 0.025 + finish_signal.x * 0.015
+        roughness := clamp(base_finish.x - finish_signal.y * 0.08 + finish_signal.z * 0.035 + finish_character.x * 0.035 - finish_character.y * 0.14 + finish_character.z * 0.09 + finish_structure.x * 0.02, 0.14, 0.78)
+        metallic := clamp(base_finish.y + finish_signal.x * 0.07 + finish_signal.z * 0.04 + finish_character.x * 0.02 + finish_character.y * 0.14 - finish_character.z * 0.035 + finish_structure.y * 0.025, 0, 0.72)
+        emission := base_finish.z + finish_signal.y * 0.025 + finish_signal.x * 0.015 + finish_character.y * 0.018 + finish_character.z * 0.006 + finish_structure.x * 0.004 + finish_structure.z * 0.004
+        impact := clamp(1 + finish_character.x * 0.18 - finish_character.y * 0.14 - finish_character.z * 0.04 + finish_structure.x * 0.04 + finish_structure.y * 0.03 + finish_structure.z * 0.05, 0.8, 1.24)
         opacity := clamp(base_opacity + finish_signal.x * 0.015 - finish_signal.z * 0.01, 0.84, 0.96)
-        if abs(roughness - block_roughness) + abs(metallic - block_metallic) + abs(emission - block_emission) + abs(opacity - block_opacity) < 0.0001 {
+        if abs(roughness - block_roughness) + abs(metallic - block_metallic) + abs(emission - block_emission) + abs(opacity - block_opacity) + abs(impact - impact_gain) < 0.0001 {
             return
         }
         block_roughness = roughness
         block_metallic = metallic
         block_emission = emission
         block_opacity = opacity
+        impact_gain = impact
         finish_dirty = true
     }
 
@@ -924,7 +939,7 @@ behavior Board {
             contact_flashes[index] = flash
             Finish(tile, false)
             tile.Transform3D.scale = vec3(1 + flash * 0.015, 1, 1 - flash * 0.1)
-            emission := block_emission + flash * 0.11
+            emission := block_emission + flash * 0.11 * impact_gain
             tile.Material.emission_intensity = emission
             set_material_parameter(tile, "Finish", vec3(block_roughness, block_metallic, emission))
             if flash < 0.0001 {
@@ -1010,7 +1025,7 @@ behavior Board {
                 attack := clamp(age / 0.055, 0, 1)
                 light += get(ripple_strengths, i) * attack * attack * (3 - 2 * attack) * exp(-max(0, age - 0.055) * 7)
             }
-            flash := light / (1 + light * 0.35)
+            flash := light / (1 + light * 0.35) * impact_gain
             set_material_parameter(tile, "Impact", flash)
             tile.Material.emission_intensity = block_emission + flash * 0.9
         }

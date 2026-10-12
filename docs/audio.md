@@ -38,7 +38,7 @@ A connected stream remains on the opening screen until you click Play, including
 
 During play, pause or a completed run, M reconnects while preserving the board, elapsed time and return screen. A paused run remains paused after connection. The source measures actual samples; level, frequency bands and transients drive the scene and cosmetic piece motion. Logical falling, input and lock timing stay predictable. External music stays audible in its own player; the game does not play a duplicate, save or upload the capture. Browser sharing requires a video track, but only audio is consumed.
 
-The game does not sign into YouTube, Spotify or TIDAL. A service's player can supply shared audio when the browser, operating system and playback protection permit it. Account sign-in is not proof of captured audio. The same path can use a local audio file playing in a browser tab. Scene changes follow sustained spectrum changes, silence/resumption and musical phrase timers; they do not read track names or provider metadata.
+The game does not sign into YouTube, Spotify or TIDAL. A service's player can supply shared audio when the browser, operating system and playback protection permit it. Account sign-in is not proof of captured audio. The same path can use a local audio file playing in a browser tab. Scene changes follow measured timbre, rhythm and sustained spectral changes; they do not read track names or provider metadata.
 
 Native capture uses a loopback recording device. Set `CHIBI_AUDIO_INPUT` to its exact device name before launching. Without that setting, the engine selects the first recognized loopback device: `Background Music`, or a name containing `BlackHole`, `Soundflower`, `Stereo Mix`, `CABLE Output` or `Monitor of`. It does not choose the default microphone automatically.
 
@@ -110,6 +110,72 @@ clock.
 contains its FFT, and the measured processing cost does not justify a second
 FFT implementation. The retained BTT license and local patch record ship in the
 SDK and exported player's license directory.
+
+### Sound character and section changes
+
+`get_audio_character()` reads the existing BTT spectrum before the tracker
+compresses or normalizes it. It exposes spectral centroid in Hz, power flatness,
+positive spectral flux, power below 250 Hz, stereo width and crest. The last
+five values are normalized to 0–1. These describe brightness, tonal versus noisy
+sound, change, bass weight, spatial spread and transients. A complete analysis
+window precedes the first result; silence and PCM discontinuities clear stale
+measurements. There is no second FFT or additional library.
+
+`MusicCharacter.chibi` combines these measurements with the existing energy
+and beat confidence. It retains independent percussive, sustained/tonal and
+airy/noisy traits, plus density and rhythmic regularity. A 1.25-second response
+preserves the passage's character across individual beats. Initial identity
+needs 2.5 seconds of audible input. Later sections compare those features with
+a slower 12.5-second baseline, require two seconds of sustained difference and
+allow at least eight seconds between accepted changes. Silence retains the
+established identity rather than selecting a new scene.
+
+Full 60-second production-score traces were replayed through the actual
+`MusicResponse` and `MusicCharacter` libraries at 60 Hz. Shore's arrangement
+entry at 20 seconds is accepted at 22.983 seconds, retaining the tonal family.
+Current and Aurora remain tonal with continuous trait variation; their subtler
+20/40-second overlays do not produce discrete section events. This detector
+does not identify every composed section. The compact regression for a modest,
+sustained tonal change fails with the previous averaged timbre distance and
+passes with accumulated percussive/tonal/airy distance.
+
+The traits continuously reshape the field. A clear winning score can also
+select broad orbital swarms, elongated tonal streams, folded airy sheets or
+dense turbulent knots. Family changes ease over ten seconds along the shortest
+cyclic path. Fixed scene timers and chapter-driven family changes are removed.
+New block-action trails capture the current traits at birth, changing their
+spread, curl and form while older trails finish continuously. Blocks keep a
+shared color and ease their surface finish and musical depth lift with the same
+traits. Pause and reduced motion retain the last rendered shape.
+
+These are sound-driven choices, not genre, instrument or chorus labels. The
+library review considered [LibXtract](https://github.com/jamiebullock/LibXtract)
+for its C99 spectral descriptors and current zlib license. Its broader feature
+set is unnecessary for these six bounded measurements. KissFFT would duplicate
+the transform already in BTT. Neither is bundled.
+
+The October 12 review also followed the
+[audio-visualization list](https://github.com/willianjusten/awesome-audio-visualization)
+and [music-visualizer topic](https://github.com/topics/music-visualizer).
+[Clubber](https://github.com/wizgrav/clubber#instructions) provides useful
+note-band distributions and independent envelopes;
+[Meyda](https://meyda.js.org/audio-features) offers chroma and perceptual spread.
+Those could distinguish harmonic passages at similar energy, but are not part
+of this pass. Their JavaScript wrappers are unnecessary for the shared native
+and Wasm analyzer. [Muser's tagger](https://github.com/jonshamir/muser/blob/master/tools/tagger.py)
+runs musicnn offline and supplies saved song tags; it is not live browser genre
+recognition.
+
+[projectM](https://github.com/projectM-visualizer/projectm/blob/master/docs/building.rst)
+and [Butterchurn](https://github.com/jberg/butterchurn/blob/master/src/audio/audioLevels.js)
+are complete visualization renderers whose immediate and smoothed three-band
+controls overlap the existing pipeline. [aubio](https://github.com/aubio/aubio#readme),
+used by LedFx, adds C pitch, MFCC and transient/steady-state analysis and has an
+[Emscripten build](https://github.com/aubio/aubio/blob/master/scripts/build_emscripten),
+but duplicates onset/tempo work and uses GPL-3.0-or-later. It does not supply a
+song-section or instrument classifier by itself. No code from these projects
+was imported. BTT remains the analysis dependency; the new descriptors reduce
+its existing spectrum.
 
 Effects use the same felt, glass, pluck, bass, and air voices as the score. The move and rotate sounds are quiet pitched touches. Lock has a wooden body; hard drop adds a low impact. Clears widen from a small chord to a rising D minor 7 arpeggio. Hold descends, rescue rises after an intake of air, completion settles on F major 6, and top-out falls gently to D.
 

@@ -28,7 +28,7 @@ A small 3D scene runs the same production World and Hud with test boards so the 
 
 These are bounded simulation checks. They do not claim GPU rendering, physical-controller input, audio output, browser playability, or full engine-suite coverage.
 
-`--motion` covers a single-row soft tap, controlled held repeats, no stored-gravity burst, repeated short taps, high gravity, four solid block finishes with a shared bevel, a camera depth-precision margin for their thinnest preview coating, restrained idle emission, music-reactive settled and active coat opacity, physical reaction origins and cosmetic beat motion. `--stage` covers seeded starts, musical/chapter transitions, ten-second morphs through every family including wraparound, removal of surrounding facets, stage-light freeze and reduced motion. `--vfx` covers birth/delay/retirement, physical front-face and landing positions, contact-light timing, four clear layers with exact instance budgets and shader bindings, and saturation without overwriting live cues.
+`--motion` covers a single-row soft tap, controlled held repeats, no stored-gravity burst, repeated short taps, high gravity, uniform block color with a shared bevel and sound-driven surface finishes, a camera depth-precision margin for their thinnest preview coating, restrained idle emission, music-reactive settled and active coat opacity, physical reaction origins and cosmetic beat motion. `--stage` covers seeded starts, measured family choices, ten-second shortest-path morphs including both wrap directions, same-family section state, removal of surrounding facets, and complete pause/reduced-motion freezing. `--music-character` covers timbre and crest contrasts, minute-long stability without timer cycling, transient rejection, section dwell/refractory timing, same-family changes, quiet identity retention and source resets. `--vfx` covers birth/delay/retirement, physical front-face and landing positions, contact-light timing, four clear layers with exact instance budgets and shader bindings, and saturation without overwriting live cues.
 
 `--loss` drives real boards into top-out in Solo and Duet. It verifies sparse
 row occupancy, original colored blocks flying outward and tumbling at full size, the fixed
@@ -43,3 +43,5 @@ wakes, accepted-action ownership, paused Solo/Duet tails and final retirement;
 `--music-field` checks that the force targets decay after input stops.
 A loss snapshot is simulation evidence;
 rendered drift, shader compilation and browser frame time are separate checks.
+
+`MusicShapes` is a test-only visual comparison scene: four production particle fields share seed, clock and intensity, with fixed percussive, tonal, airy and dense profiles. Panels 1–4 show orbital swarms, tonal streams, airy sheets and turbulent clouds. It is inspected separately from the shipped scene and is not exported with the game.
