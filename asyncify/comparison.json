@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "kind": "asyncify-comparison",
+  "source_repository": "https://github.com/waldnercharles/chibi-examples.git",
+  "project_path": "projects/tetris",
+  "game_source_revision": "f986a210f8c874e6a236ce500c7c0e785a492498",
+  "prepared_engine_revision": "4abe4cb7fd214844ad92a9df1e42741e3a102288",
+  "player_engine_revision": "dc77581665861e9025c7767479e1ec3471d63ae1",
+  "asyncify": true,
+  "asyncify_stack_size": 2097152,
+  "baseline_pages_revision": "9e9e1358690d90c0f46a4182564cc8ef946e3763",
+  "files": {
+    "chibi-player.js": "869cd7c67fea6c9b7b8620a24bfd9e7fbb3e4df1a19871b817d206beb87c27da",
+    "chibi-player.wasm": "286cb44cf69f793fccad74fbe5ea0a4d847aa3ccf599851396d5cba8f176a596",
+    "index.html": "0e6b1e033f9e1f7e9cd7d9db77f01ba25446a488e62634c18713e8d1ffd243c3",
+    "data/game.chibip": "11426d3b232b4334827e97bb2418cfe4492af38a4f308a1724872cf35ea761bf"
+  },
+  "local_build_commit": "38ccd2fa556bba435342ffdc0c137a5a11cf082c",
+  "player_source_tree": "c4096d0082f1ca493d1f2488c60ffe25b6725988"
+}
