@@ -16,5 +16,8 @@
     "Editor Play uses desktop input; Phone viewport sensing, tilt and haptics are unavailable.",
     "Raw GLSL shaders load and play through the pinned SDK; this editor does not create or edit raw GLSL assets.",
     "Edit composed prototypes in Text Editor; reopen after child definitions, entity-reference paths or sound-file changes."
+  ],
+  "compatible_engines": [
+    "4abe4cb7fd214844ad92a9df1e42741e3a102288"
   ]
 }

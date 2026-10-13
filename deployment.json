@@ -1,5 +1,7 @@
 {
   "format": 1,
-  "source_revision": "bdfe57b68df3a6cb2765e98a623056b2d1395fe1",
-  "engine_revision": "88c5dac493a650dd035e3e05ac0ab3323a7a36fa"
+  "source_repository": "https://github.com/waldnercharles/chibi-examples.git",
+  "project_path": "projects/tetris",
+  "source_revision": "f986a210f8c874e6a236ce500c7c0e785a492498",
+  "engine_revision": "4abe4cb7fd214844ad92a9df1e42741e3a102288"
 }
