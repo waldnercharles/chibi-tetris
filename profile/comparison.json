@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "kind": "frame-profile-comparison",
+  "player_engine_revision": "13a94394c2c5fec3b97d18a881da724462a7dc83",
+  "source_repository": "https://github.com/waldnercharles/chibi-examples.git",
+  "project_path": "projects/tetris",
+  "game_source_revision": "f986a210f8c874e6a236ce500c7c0e785a492498",
+  "prepared_engine_revision": "4abe4cb7fd214844ad92a9df1e42741e3a102288",
+  "asyncify": false,
+  "baseline_pages_revision": "4884b9949ee9be03146b2c5d8dbe4a066a9d9f86",
+  "profile_query": "profile=1",
+  "low_resolution_query": "dpr=1",
+  "files": {
+    "index.html": "6f92630a9ce8049b1ac41f81212001e343a86be426a4c3e63e84e489a3014d89",
+    "chibi-player.js": "bbc4048b0ef34e34f2408c2c08c37f046c90ca8ff333304076208deafa918c05",
+    "chibi-player.wasm": "330bd85765da6bb0d1ea3f04d2f9e91617a8212c4de151fc68e957bc76176f21",
+    "data/game.chibip": "11426d3b232b4334827e97bb2418cfe4492af38a4f308a1724872cf35ea761bf"
+  }
+}
